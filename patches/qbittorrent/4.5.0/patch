@@ -1,0 +1,3550 @@
+From f1432a2e3debc6f74b139678db39a65cb6e20e37 Mon Sep 17 00:00:00 2001
+From: thalieht <eretrus@outlook.com>
+Date: Mon, 28 Nov 2022 01:45:41 +0200
+Subject: [PATCH 01/26] WebUI: Fix missing "queued" icon
+
+---
+ src/webui/www/private/images/queued.svg | 1 +
+ src/webui/www/webui.qrc                 | 1 +
+ 2 files changed, 2 insertions(+)
+ create mode 100644 src/webui/www/private/images/queued.svg
+
+diff --git a/src/webui/www/private/images/queued.svg b/src/webui/www/private/images/queued.svg
+new file mode 100644
+index 000000000..51b1e1646
+--- /dev/null
++++ b/src/webui/www/private/images/queued.svg
+@@ -0,0 +1 @@
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><path d="m15.976074 2.0000001c-1.898047 0-3.702044.3774399-5.43457 1.1210939-3.4414923 1.4768262-5.9621632 3.981944-7.4409176 7.430664-.7410025 1.727793-1.1005864 3.532173-1.1005864 5.431152 0 1.899345.3595839 3.723503 1.1005864 5.451661 1.4787544 3.448721 3.9997447 5.967146 7.4409176 7.444335 1.732845.743658 3.536475 1.121094 5.43457 1.121094 1.898092 0 3.71749-.381376 5.45166-1.121094 3.470223-1.480806 5.978124-4.001473 7.45459-7.444335.743244-1.733697 1.117676-3.552316 1.117676-5.451661 0-1.898979-.374066-3.6975-1.117676-5.431152-1.476148-3.4431816-3.984367-5.9499014-7.454591-7.430664-1.734444-.7400839-3.553292-1.1210939-5.451659-1.1210939zm-.864745 5.1372072c.713853 0 1.295409.5846206 1.295409 1.2988283v8.8935554l5.041504 3.940917c.584062.432879.671923 1.255625.239258 1.818359-.237977.324639-.629181.495605-1.018554.495605-.281192 0-.558411-.107117-.796387-.280273l-5.561036-4.327148c-.302874-.238094-.499023-.607371-.499023-1.018554v-9.5224614c0-.7142077.584971-1.2988283 1.298829-1.2988283z" fill="#cd853f"/></svg>
+\ No newline at end of file
+diff --git a/src/webui/www/webui.qrc b/src/webui/www/webui.qrc
+index 8de89af7d..4a6a5038d 100644
+--- a/src/webui/www/webui.qrc
++++ b/src/webui/www/webui.qrc
+@@ -332,6 +332,7 @@
+         <file>private/images/name.svg</file>
+         <file>private/images/peers-add.svg</file>
+         <file>private/images/peers-remove.svg</file>
++        <file>private/images/queued.svg</file>
+         <file>private/images/ratio.svg</file>
+         <file>private/images/reannounce.svg</file>
+         <file>private/images/set-location.svg</file>
+-- 
+2.34.1
+
+
+From 86671bee4663c2143d44d0a9f0e16fe381ba4d8e Mon Sep 17 00:00:00 2001
+From: "Nowshed H. Imran" <nowshed.imran@gmail.com>
+Date: Tue, 29 Nov 2022 22:19:00 +0600
+Subject: [PATCH 02/26] Fix Speed limit icon size
+
+---
+ src/webui/www/private/index.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/webui/www/private/index.html b/src/webui/www/private/index.html
+index 44e7122a5..2b4c089e3 100644
+--- a/src/webui/www/private/index.html
++++ b/src/webui/www/private/index.html
+@@ -238,7 +238,7 @@
+                     <td class="statusBarSeparator"></td>
+                     <td class="speedLabel"><img src="images/downloading.svg" alt="QBT_TR(Download speed icon)QBT_TR[CONTEXT=MainWindow]" style="height: 1.5em; padding-right: 5px; margin-bottom: -4px;"><span id="DlInfos"></span></td>
+                     <td class="statusBarSeparator"></td>
+-                    <td class="speedLabel"><img src="images/upload.svg" alt="QBT_TR(Upload speed icon)QBT_TR[CONTEXT=MainWindow]" style="height: 1.4em; padding-right: 5px; margin-bottom: -4px;"><span id="UpInfos"></span></td>
++                    <td class="speedLabel"><img src="images/upload.svg" alt="QBT_TR(Upload speed icon)QBT_TR[CONTEXT=MainWindow]" style="height: 1.5em; padding-right: 5px; margin-bottom: -4px;"><span id="UpInfos"></span></td>
+                 </tr>
+             </table>
+         </div>
+-- 
+2.34.1
+
+
+From 701b84dc4813e6ab06dd2e9e6bd284cbd30317c3 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Wed, 30 Nov 2022 20:09:51 +0300
+Subject: [PATCH 03/26] Destroy desktop integration at correct place
+
+Otherwise it is destructed in QObject destructor, i.e. after GUI application is already destructed.
+This can be related to some problems with system tray icon.
+
+PR #18108.
+Closes #18093.
+---
+ src/app/application.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/app/application.cpp b/src/app/application.cpp
+index 1b1bcfb85..4e4e1fc7a 100644
+--- a/src/app/application.cpp
++++ b/src/app/application.cpp
+@@ -706,7 +706,7 @@ try
+ #ifndef DISABLE_GUI
+     UIThemeManager::initInstance();
+ 
+-    m_desktopIntegration = new DesktopIntegration(this);
++    m_desktopIntegration = new DesktopIntegration;
+     m_desktopIntegration->setToolTip(tr("Loading torrents..."));
+ #ifndef Q_OS_MACOS
+     auto *desktopIntegrationMenu = new QMenu;
+@@ -1201,6 +1201,7 @@ void Application::cleanup()
+         ::ShutdownBlockReasonDestroy(reinterpret_cast<HWND>(m_window->effectiveWinId()));
+ #endif // Q_OS_WIN
+         delete m_window;
++        delete m_desktopIntegration;
+         UIThemeManager::freeInstance();
+     }
+ #endif // DISABLE_GUI
+-- 
+2.34.1
+
+
+From 06593e36781205c0011aa3888f207106694948e4 Mon Sep 17 00:00:00 2001
+From: Chocobo1 <Chocobo1@users.noreply.github.com>
+Date: Tue, 29 Nov 2022 07:13:18 +0800
+Subject: [PATCH 04/26] Revise color for completed status
+
+Now it uses the purple color which matches the completed status icon color.
+
+Related: #18078.
+---
+ src/gui/color.h               | 4 ++--
+ src/gui/transferlistmodel.cpp | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/gui/color.h b/src/gui/color.h
+index 906ada454..ce034ab4b 100644
+--- a/src/gui/color.h
++++ b/src/gui/color.h
+@@ -43,13 +43,13 @@ namespace Color
+             inline const QColor accentEmphasis = 0x1f6feb;
+             inline const QColor accentFg = 0x58a6ff;
+             inline const QColor dangerFg = 0xf85149;
++            inline const QColor doneFg = 0xa371f7;
+             inline const QColor fgMuted = 0x8b949e;
+             inline const QColor fgSubtle = 0x6e7681;
+             inline const QColor severeFg = 0xdb6d28;
+             inline const QColor successEmphasis = 0x238636;
+             inline const QColor successFg = 0x1a7f37;
+             // Scale variables
+-            inline const QColor scaleBlue4 = 0x388bfd;
+             inline const QColor scaleYellow6 = 0x845306;
+         }
+ 
+@@ -59,13 +59,13 @@ namespace Color
+             inline const QColor accentEmphasis = 0x0969da;
+             inline const QColor accentFg = 0x0969da;
+             inline const QColor dangerFg = 0xcf222e;
++            inline const QColor doneFg = 0x8250df;
+             inline const QColor fgMuted = 0x57606a;
+             inline const QColor fgSubtle = 0x6e7781;
+             inline const QColor severeFg = 0xbc4c00;
+             inline const QColor successEmphasis = 0x2da44e;
+             inline const QColor successFg = 0x1a7f37;
+             // Scale variables
+-            inline const QColor scaleBlue4 = 0x218bff;
+             inline const QColor scaleYellow6 = 0x7d4e00;
+         }
+     }
+diff --git a/src/gui/transferlistmodel.cpp b/src/gui/transferlistmodel.cpp
+index 14c8c4cb8..720e93691 100644
+--- a/src/gui/transferlistmodel.cpp
++++ b/src/gui/transferlistmodel.cpp
+@@ -70,7 +70,7 @@ namespace
+         case BitTorrent::TorrentState::PausedDownloading:
+             return (isDarkTheme ? Color::Primer::Dark::fgMuted : Color::Primer::Light::fgMuted);
+         case BitTorrent::TorrentState::PausedUploading:
+-            return (isDarkTheme ? Color::Primer::Dark::scaleBlue4 : Color::Primer::Light::scaleBlue4);
++            return (isDarkTheme ? Color::Primer::Dark::doneFg : Color::Primer::Light::doneFg);
+         case BitTorrent::TorrentState::QueuedDownloading:
+         case BitTorrent::TorrentState::QueuedUploading:
+             return (isDarkTheme ? Color::Primer::Dark::scaleYellow6 : Color::Primer::Light::scaleYellow6);
+-- 
+2.34.1
+
+
+From 6a4bb1356a05e500d401c5ed8c1b2b3206998f40 Mon Sep 17 00:00:00 2001
+From: Chocobo1 <Chocobo1@users.noreply.github.com>
+Date: Wed, 30 Nov 2022 15:23:49 +0800
+Subject: [PATCH 05/26] Fix wrong color code
+
+Must have been a copy-paste error...
+---
+ src/gui/color.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/gui/color.h b/src/gui/color.h
+index ce034ab4b..7438f91e0 100644
+--- a/src/gui/color.h
++++ b/src/gui/color.h
+@@ -48,7 +48,7 @@ namespace Color
+             inline const QColor fgSubtle = 0x6e7681;
+             inline const QColor severeFg = 0xdb6d28;
+             inline const QColor successEmphasis = 0x238636;
+-            inline const QColor successFg = 0x1a7f37;
++            inline const QColor successFg = 0x3fb950;
+             // Scale variables
+             inline const QColor scaleYellow6 = 0x845306;
+         }
+-- 
+2.34.1
+
+
+From 65611cd3dc4b4d8b367296b6b28fd3de1b423fe1 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 8 Dec 2022 08:36:06 +0300
+Subject: [PATCH 06/26] WebAPI: return paths using platform-independent
+ separator format
+
+PR #18118.
+Closes #18096.
+---
+ src/webui/api/torrentscontroller.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/webui/api/torrentscontroller.cpp b/src/webui/api/torrentscontroller.cpp
+index 72483e09d..e998cbc7a 100644
+--- a/src/webui/api/torrentscontroller.cpp
++++ b/src/webui/api/torrentscontroller.cpp
+@@ -577,7 +577,8 @@ void TorrentsController::filesAction()
+                 {KEY_FILE_PRIORITY, static_cast<int>(priorities[index])},
+                 {KEY_FILE_SIZE, torrent->fileSize(index)},
+                 {KEY_FILE_AVAILABILITY, fileAvailability[index]},
+-                {KEY_FILE_NAME, torrent->filePath(index).toString()}
++                // need to provide paths using a platform-independent separator format
++                {KEY_FILE_NAME, torrent->filePath(index).data()}
+             };
+ 
+             const BitTorrent::TorrentInfo::PieceRange idx = info.filePieces(index);
+-- 
+2.34.1
+
+
+From 4314bbdf9c32402de75fb12320df0f0848894276 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 8 Dec 2022 17:00:02 +0300
+Subject: [PATCH 07/26] Correctly load folder based UI theme
+
+PR #18173.
+---
+ src/gui/uithememanager.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/gui/uithememanager.cpp b/src/gui/uithememanager.cpp
+index 54d9f6623..1253646b4 100644
+--- a/src/gui/uithememanager.cpp
++++ b/src/gui/uithememanager.cpp
+@@ -140,7 +140,7 @@ namespace
+     std::unique_ptr<UIThemeSource> createUIThemeSource(const Path &themePath)
+     {
+         if (themePath.filename() == CONFIG_FILE_NAME)
+-            return std::make_unique<FolderThemeSource>(themePath);
++            return std::make_unique<FolderThemeSource>(themePath.parentPath());
+ 
+         if ((themePath.hasExtension(u".qbtheme"_qs))
+                 && QResource::registerResource(themePath.data(), u"/uitheme"_qs))
+-- 
+2.34.1
+
+
+From 24bf8eef6da5c4c116d7846e257485db600ce245 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 8 Dec 2022 17:02:47 +0300
+Subject: [PATCH 08/26] Use identical conversions of tracker names
+
+PR #18146.
+Closes #18070.
+
+The problem is that conversions between std::string and QString is not mutually equivalent (i.e. QString::fromStdString(stdStr).toStdString() == stdStr isn't always true).
+---
+ src/base/bittorrent/torrentimpl.cpp | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/src/base/bittorrent/torrentimpl.cpp b/src/base/bittorrent/torrentimpl.cpp
+index 31a098991..da8a19e30 100644
+--- a/src/base/bittorrent/torrentimpl.cpp
++++ b/src/base/bittorrent/torrentimpl.cpp
+@@ -1530,20 +1530,21 @@ void TorrentImpl::refreshTrackerEntries() const
+     const std::vector<lt::announce_entry> nativeTrackers = m_nativeHandle.trackers();
+     Q_ASSERT(nativeTrackers.size() == m_trackerEntries.size());
+ 
+-    for (TrackerEntry &trackerEntry : m_trackerEntries)
++    for (const lt::announce_entry &announceEntry : nativeTrackers)
+     {
+-        const auto updatedTrackerIter = m_updatedTrackerEntries.find(trackerEntry.url);
++        const auto trackerURL = QString::fromStdString(announceEntry.url);
++        const auto updatedTrackerIter = m_updatedTrackerEntries.find(trackerURL);
+         if (updatedTrackerIter == m_updatedTrackerEntries.end())
+             continue;
+ 
+-        const auto nativeTrackerIter = std::find_if(nativeTrackers.cbegin(), nativeTrackers.cend()
+-                                    , [trackerURL = trackerEntry.url.toStdString()](const lt::announce_entry &announceEntry)
++        const auto trackerIter = std::find_if(m_trackerEntries.begin(), m_trackerEntries.end()
++                                    , [&trackerURL](const TrackerEntry &trackerEntry)
+         {
+-            return (announceEntry.url == trackerURL);
++            return (trackerEntry.url == trackerURL);
+         });
+-        Q_ASSERT(nativeTrackerIter != nativeTrackers.cend());
++        Q_ASSERT(trackerIter != m_trackerEntries.end());
+ 
+-        const lt::announce_entry &announceEntry = *nativeTrackerIter;
++        TrackerEntry &trackerEntry = *trackerIter;
+ #ifdef QBT_USES_LIBTORRENT2
+         updateTrackerEntry(trackerEntry, announceEntry, m_nativeHandle.info_hashes(), updatedTrackerIter.value());
+ #else
+-- 
+2.34.1
+
+
+From 97a053916b628cfea06ff326ee89652030ac26f8 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Sat, 10 Dec 2022 10:14:45 +0300
+Subject: [PATCH 09/26] Ensure thread is stopped before deleting QThread
+
+PR #18178.
+Backports #18037.
+---
+ src/base/CMakeLists.txt                       |  2 +
+ src/base/base.pri                             |  4 +-
+ .../bittorrent/bencoderesumedatastorage.cpp   | 14 ++----
+ .../bittorrent/bencoderesumedatastorage.h     |  7 +--
+ src/base/bittorrent/dbresumedatastorage.cpp   | 11 ++---
+ src/base/bittorrent/dbresumedatastorage.h     |  5 ++-
+ src/base/bittorrent/sessionimpl.cpp           | 11 ++---
+ src/base/bittorrent/sessionimpl.h             |  3 +-
+ src/base/rss/rss_autodownloader.cpp           |  9 ++--
+ src/base/rss/rss_autodownloader.h             |  3 +-
+ src/base/rss/rss_session.cpp                  | 17 +++-----
+ src/base/rss/rss_session.h                    |  3 +-
+ src/base/torrentfileswatcher.cpp              |  7 ++-
+ src/base/torrentfileswatcher.h                |  3 +-
+ src/base/utils/thread.cpp                     | 38 ++++++++++++++++
+ src/base/utils/thread.h                       | 43 +++++++++++++++++++
+ src/webui/api/synccontroller.cpp              | 14 ++----
+ src/webui/api/synccontroller.h                |  4 +-
+ 18 files changed, 131 insertions(+), 67 deletions(-)
+ create mode 100644 src/base/utils/thread.cpp
+ create mode 100644 src/base/utils/thread.h
+
+diff --git a/src/base/CMakeLists.txt b/src/base/CMakeLists.txt
+index 115c61d67..15929773c 100644
+--- a/src/base/CMakeLists.txt
++++ b/src/base/CMakeLists.txt
+@@ -101,6 +101,7 @@ add_library(qbt_base STATIC
+     utils/password.h
+     utils/random.h
+     utils/string.h
++    utils/thread.h
+     utils/version.h
+     version.h
+ 
+@@ -183,6 +184,7 @@ add_library(qbt_base STATIC
+     utils/password.cpp
+     utils/random.cpp
+     utils/string.cpp
++    utils/thread.cpp
+ )
+ 
+ target_link_libraries(qbt_base
+diff --git a/src/base/base.pri b/src/base/base.pri
+index 83853344b..393743167 100644
+--- a/src/base/base.pri
++++ b/src/base/base.pri
+@@ -101,6 +101,7 @@ HEADERS += \
+     $$PWD/utils/password.h \
+     $$PWD/utils/random.h \
+     $$PWD/utils/string.h \
++    $$PWD/utils/thread.h \
+     $$PWD/utils/version.h \
+     $$PWD/version.h
+ 
+@@ -182,4 +183,5 @@ SOURCES += \
+     $$PWD/utils/net.cpp \
+     $$PWD/utils/password.cpp \
+     $$PWD/utils/random.cpp \
+-    $$PWD/utils/string.cpp
++    $$PWD/utils/string.cpp \
++    $$PWD/utils/thread.cpp
+diff --git a/src/base/bittorrent/bencoderesumedatastorage.cpp b/src/base/bittorrent/bencoderesumedatastorage.cpp
+index 5c13d0926..b6f02ce22 100644
+--- a/src/base/bittorrent/bencoderesumedatastorage.cpp
++++ b/src/base/bittorrent/bencoderesumedatastorage.cpp
+@@ -1,6 +1,6 @@
+ /*
+  * Bittorrent Client using Qt and libtorrent.
+- * Copyright (C) 2015, 2018  Vladimir Golovnev <glassez@yandex.ru>
++ * Copyright (C) 2015-2022  Vladimir Golovnev <glassez@yandex.ru>
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -91,7 +91,7 @@ namespace
+ 
+ BitTorrent::BencodeResumeDataStorage::BencodeResumeDataStorage(const Path &path, QObject *parent)
+     : ResumeDataStorage(path, parent)
+-    , m_ioThread {new QThread(this)}
++    , m_ioThread {new QThread}
+     , m_asyncWorker {new Worker(path)}
+ {
+     Q_ASSERT(path.isAbsolute());
+@@ -117,17 +117,11 @@ BitTorrent::BencodeResumeDataStorage::BencodeResumeDataStorage(const Path &path,
+ 
+     qDebug() << "Registered torrents count: " << m_registeredTorrents.size();
+ 
+-    m_asyncWorker->moveToThread(m_ioThread);
+-    connect(m_ioThread, &QThread::finished, m_asyncWorker, &QObject::deleteLater);
++    m_asyncWorker->moveToThread(m_ioThread.get());
++    connect(m_ioThread.get(), &QThread::finished, m_asyncWorker, &QObject::deleteLater);
+     m_ioThread->start();
+ }
+ 
+-BitTorrent::BencodeResumeDataStorage::~BencodeResumeDataStorage()
+-{
+-    m_ioThread->quit();
+-    m_ioThread->wait();
+-}
+-
+ QVector<BitTorrent::TorrentID> BitTorrent::BencodeResumeDataStorage::registeredTorrents() const
+ {
+     return m_registeredTorrents;
+diff --git a/src/base/bittorrent/bencoderesumedatastorage.h b/src/base/bittorrent/bencoderesumedatastorage.h
+index 3ce84a32b..9e7820e99 100644
+--- a/src/base/bittorrent/bencoderesumedatastorage.h
++++ b/src/base/bittorrent/bencoderesumedatastorage.h
+@@ -1,6 +1,6 @@
+ /*
+  * Bittorrent Client using Qt and libtorrent.
+- * Copyright (C) 2015, 2018  Vladimir Golovnev <glassez@yandex.ru>
++ * Copyright (C) 2015-2022  Vladimir Golovnev <glassez@yandex.ru>
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -32,6 +32,8 @@
+ #include <QVector>
+ 
+ #include "base/pathfwd.h"
++#include "base/utils/thread.h"
++
+ #include "resumedatastorage.h"
+ 
+ class QByteArray;
+@@ -46,7 +48,6 @@ namespace BitTorrent
+ 
+     public:
+         explicit BencodeResumeDataStorage(const Path &path, QObject *parent = nullptr);
+-        ~BencodeResumeDataStorage() override;
+ 
+         QVector<TorrentID> registeredTorrents() const override;
+         LoadResumeDataResult load(const TorrentID &id) const override;
+@@ -60,7 +61,7 @@ namespace BitTorrent
+         LoadResumeDataResult loadTorrentResumeData(const QByteArray &data, const QByteArray &metadata) const;
+ 
+         QVector<TorrentID> m_registeredTorrents;
+-        QThread *m_ioThread = nullptr;
++        Utils::Thread::UniquePtr m_ioThread;
+ 
+         class Worker;
+         Worker *m_asyncWorker = nullptr;
+diff --git a/src/base/bittorrent/dbresumedatastorage.cpp b/src/base/bittorrent/dbresumedatastorage.cpp
+index dfaece90e..fb0ce3311 100644
+--- a/src/base/bittorrent/dbresumedatastorage.cpp
++++ b/src/base/bittorrent/dbresumedatastorage.cpp
+@@ -1,6 +1,6 @@
+ /*
+  * Bittorrent Client using Qt and libtorrent.
+- * Copyright (C) 2021  Vladimir Golovnev <glassez@yandex.ru>
++ * Copyright (C) 2021-2022  Vladimir Golovnev <glassez@yandex.ru>
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -256,7 +256,7 @@ namespace BitTorrent
+ 
+ BitTorrent::DBResumeDataStorage::DBResumeDataStorage(const Path &dbPath, QObject *parent)
+     : ResumeDataStorage(dbPath, parent)
+-    , m_ioThread {new QThread(this)}
++    , m_ioThread {new QThread}
+ {
+     const bool needCreateDB = !dbPath.exists();
+ 
+@@ -277,8 +277,8 @@ BitTorrent::DBResumeDataStorage::DBResumeDataStorage(const Path &dbPath, QObject
+     }
+ 
+     m_asyncWorker = new Worker(dbPath, u"ResumeDataStorageWorker"_qs, m_dbLock);
+-    m_asyncWorker->moveToThread(m_ioThread);
+-    connect(m_ioThread, &QThread::finished, m_asyncWorker, &QObject::deleteLater);
++    m_asyncWorker->moveToThread(m_ioThread.get());
++    connect(m_ioThread.get(), &QThread::finished, m_asyncWorker, &QObject::deleteLater);
+     m_ioThread->start();
+ 
+     RuntimeError *errPtr = nullptr;
+@@ -302,9 +302,6 @@ BitTorrent::DBResumeDataStorage::~DBResumeDataStorage()
+ {
+     QMetaObject::invokeMethod(m_asyncWorker, &Worker::closeDatabase);
+     QSqlDatabase::removeDatabase(DB_CONNECTION_NAME);
+-
+-    m_ioThread->quit();
+-    m_ioThread->wait();
+ }
+ 
+ QVector<BitTorrent::TorrentID> BitTorrent::DBResumeDataStorage::registeredTorrents() const
+diff --git a/src/base/bittorrent/dbresumedatastorage.h b/src/base/bittorrent/dbresumedatastorage.h
+index 1dd9392cb..d53ea2192 100644
+--- a/src/base/bittorrent/dbresumedatastorage.h
++++ b/src/base/bittorrent/dbresumedatastorage.h
+@@ -1,6 +1,6 @@
+ /*
+  * Bittorrent Client using Qt and libtorrent.
+- * Copyright (C) 2021  Vladimir Golovnev <glassez@yandex.ru>
++ * Copyright (C) 2021-2022  Vladimir Golovnev <glassez@yandex.ru>
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of the GNU General Public License
+@@ -31,6 +31,7 @@
+ #include <QReadWriteLock>
+ 
+ #include "base/pathfwd.h"
++#include "base/utils/thread.h"
+ #include "resumedatastorage.h"
+ 
+ class QThread;
+@@ -59,7 +60,7 @@ namespace BitTorrent
+         void createDB() const;
+         void updateDB(int fromVersion) const;
+ 
+-        QThread *m_ioThread = nullptr;
++        Utils::Thread::UniquePtr m_ioThread;
+ 
+         class Worker;
+         Worker *m_asyncWorker = nullptr;
+diff --git a/src/base/bittorrent/sessionimpl.cpp b/src/base/bittorrent/sessionimpl.cpp
+index 9a5b3f443..89ce7a9bd 100644
+--- a/src/base/bittorrent/sessionimpl.cpp
++++ b/src/base/bittorrent/sessionimpl.cpp
+@@ -511,7 +511,7 @@ SessionImpl::SessionImpl(QObject *parent)
+     , m_resumeDataStorageType(BITTORRENT_SESSION_KEY(u"ResumeDataStorageType"_qs), ResumeDataStorageType::Legacy)
+     , m_seedingLimitTimer {new QTimer {this}}
+     , m_resumeDataTimer {new QTimer {this}}
+-    , m_ioThread {new QThread {this}}
++    , m_ioThread {new QThread}
+     , m_recentErroredTorrentsTimer {new QTimer {this}}
+ #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+     , m_networkManager {new QNetworkConfigurationManager {this}}
+@@ -562,8 +562,8 @@ SessionImpl::SessionImpl(QObject *parent)
+ #endif
+ 
+     m_fileSearcher = new FileSearcher;
+-    m_fileSearcher->moveToThread(m_ioThread);
+-    connect(m_ioThread, &QThread::finished, m_fileSearcher, &QObject::deleteLater);
++    m_fileSearcher->moveToThread(m_ioThread.get());
++    connect(m_ioThread.get(), &QThread::finished, m_fileSearcher, &QObject::deleteLater);
+     connect(m_fileSearcher, &FileSearcher::searchFinished, this, &SessionImpl::fileSearchFinished);
+ 
+     m_ioThread->start();
+@@ -596,11 +596,8 @@ SessionImpl::~SessionImpl()
+     // we delete lt::session
+     delete Net::PortForwarder::instance();
+ 
+-    qDebug("Deleting the session");
++    qDebug("Deleting libtorrent session...");
+     delete m_nativeSession;
+-
+-    m_ioThread->quit();
+-    m_ioThread->wait();
+ }
+ 
+ bool SessionImpl::isDHTEnabled() const
+diff --git a/src/base/bittorrent/sessionimpl.h b/src/base/bittorrent/sessionimpl.h
+index c788f9c53..d9bbc1a7c 100644
+--- a/src/base/bittorrent/sessionimpl.h
++++ b/src/base/bittorrent/sessionimpl.h
+@@ -45,6 +45,7 @@
+ #include "base/path.h"
+ #include "base/settingvalue.h"
+ #include "base/types.h"
++#include "base/utils/thread.h"
+ #include "addtorrentparams.h"
+ #include "cachestatus.h"
+ #include "categoryoptions.h"
+@@ -689,7 +690,7 @@ namespace BitTorrent
+         // Tracker
+         QPointer<Tracker> m_tracker;
+ 
+-        QThread *m_ioThread = nullptr;
++        Utils::Thread::UniquePtr m_ioThread;
+         ResumeDataStorage *m_resumeDataStorage = nullptr;
+         FileSearcher *m_fileSearcher = nullptr;
+ 
+diff --git a/src/base/rss/rss_autodownloader.cpp b/src/base/rss/rss_autodownloader.cpp
+index bf50222ef..c6b94b5e6 100644
+--- a/src/base/rss/rss_autodownloader.cpp
++++ b/src/base/rss/rss_autodownloader.cpp
+@@ -102,15 +102,15 @@ AutoDownloader::AutoDownloader()
+     , m_storeSmartEpisodeFilter(u"RSS/AutoDownloader/SmartEpisodeFilter"_qs)
+     , m_storeDownloadRepacks(u"RSS/AutoDownloader/DownloadRepacks"_qs)
+     , m_processingTimer(new QTimer(this))
+-    , m_ioThread(new QThread(this))
++    , m_ioThread(new QThread)
+ {
+     Q_ASSERT(!m_instance); // only one instance is allowed
+     m_instance = this;
+ 
+     m_fileStorage = new AsyncFileStorage(specialFolderLocation(SpecialFolder::Config) / Path(CONF_FOLDER_NAME));
+ 
+-    m_fileStorage->moveToThread(m_ioThread);
+-    connect(m_ioThread, &QThread::finished, m_fileStorage, &AsyncFileStorage::deleteLater);
++    m_fileStorage->moveToThread(m_ioThread.get());
++    connect(m_ioThread.get(), &QThread::finished, m_fileStorage, &AsyncFileStorage::deleteLater);
+     connect(m_fileStorage, &AsyncFileStorage::failed, [](const Path &fileName, const QString &errorString)
+     {
+         LogMsg(tr("Couldn't save RSS AutoDownloader data in %1. Error: %2")
+@@ -155,9 +155,6 @@ AutoDownloader::AutoDownloader()
+ AutoDownloader::~AutoDownloader()
+ {
+     store();
+-
+-    m_ioThread->quit();
+-    m_ioThread->wait();
+ }
+ 
+ AutoDownloader *AutoDownloader::instance()
+diff --git a/src/base/rss/rss_autodownloader.h b/src/base/rss/rss_autodownloader.h
+index 1b54f443e..a3e95be9d 100644
+--- a/src/base/rss/rss_autodownloader.h
++++ b/src/base/rss/rss_autodownloader.h
+@@ -38,6 +38,7 @@
+ 
+ #include "base/exceptions.h"
+ #include "base/settingvalue.h"
++#include "base/utils/thread.h"
+ 
+ class QThread;
+ class QTimer;
+@@ -137,7 +138,7 @@ namespace RSS
+         SettingValue<bool> m_storeDownloadRepacks;
+ 
+         QTimer *m_processingTimer = nullptr;
+-        QThread *m_ioThread = nullptr;
++        Utils::Thread::UniquePtr m_ioThread;
+         AsyncFileStorage *m_fileStorage = nullptr;
+         QHash<QString, AutoDownloadRule> m_rules;
+         QList<QSharedPointer<ProcessingJob>> m_processingQueue;
+diff --git a/src/base/rss/rss_session.cpp b/src/base/rss/rss_session.cpp
+index 5dbc3ef84..bbc4d413d 100644
+--- a/src/base/rss/rss_session.cpp
++++ b/src/base/rss/rss_session.cpp
+@@ -62,14 +62,14 @@ Session::Session()
+     : m_storeProcessingEnabled(u"RSS/Session/EnableProcessing"_qs)
+     , m_storeRefreshInterval(u"RSS/Session/RefreshInterval"_qs, 30)
+     , m_storeMaxArticlesPerFeed(u"RSS/Session/MaxArticlesPerFeed"_qs, 50)
+-    , m_workingThread(new QThread(this))
++    , m_workingThread(new QThread)
+ {
+     Q_ASSERT(!m_instance); // only one instance is allowed
+     m_instance = this;
+ 
+     m_confFileStorage = new AsyncFileStorage(specialFolderLocation(SpecialFolder::Config) / Path(CONF_FOLDER_NAME));
+-    m_confFileStorage->moveToThread(m_workingThread);
+-    connect(m_workingThread, &QThread::finished, m_confFileStorage, &AsyncFileStorage::deleteLater);
++    m_confFileStorage->moveToThread(m_workingThread.get());
++    connect(m_workingThread.get(), &QThread::finished, m_confFileStorage, &AsyncFileStorage::deleteLater);
+     connect(m_confFileStorage, &AsyncFileStorage::failed, [](const Path &fileName, const QString &errorString)
+     {
+         LogMsg(tr("Couldn't save RSS session configuration. File: \"%1\". Error: \"%2\"")
+@@ -77,8 +77,8 @@ Session::Session()
+     });
+ 
+     m_dataFileStorage = new AsyncFileStorage(specialFolderLocation(SpecialFolder::Data) / Path(DATA_FOLDER_NAME));
+-    m_dataFileStorage->moveToThread(m_workingThread);
+-    connect(m_workingThread, &QThread::finished, m_dataFileStorage, &AsyncFileStorage::deleteLater);
++    m_dataFileStorage->moveToThread(m_workingThread.get());
++    connect(m_workingThread.get(), &QThread::finished, m_dataFileStorage, &AsyncFileStorage::deleteLater);
+     connect(m_dataFileStorage, &AsyncFileStorage::failed, [](const Path &fileName, const QString &errorString)
+     {
+         LogMsg(tr("Couldn't save RSS session data. File: \"%1\". Error: \"%2\"")
+@@ -126,11 +126,6 @@ Session::~Session()
+     //store();
+     delete m_itemsByPath[u""_qs]; // deleting root folder
+ 
+-    // some items may add I/O operation at destruction
+-    // stop working thread after deleting root folder
+-    m_workingThread->quit();
+-    m_workingThread->wait();
+-
+     qDebug() << "RSS Session deleted.";
+ }
+ 
+@@ -487,7 +482,7 @@ void Session::setRefreshInterval(const int refreshInterval)
+ 
+ QThread *Session::workingThread() const
+ {
+-    return m_workingThread;
++    return m_workingThread.get();
+ }
+ 
+ void Session::handleItemAboutToBeDestroyed(Item *item)
+diff --git a/src/base/rss/rss_session.h b/src/base/rss/rss_session.h
+index cb7f9ac99..1472802ce 100644
+--- a/src/base/rss/rss_session.h
++++ b/src/base/rss/rss_session.h
+@@ -75,6 +75,7 @@
+ 
+ #include "base/3rdparty/expected.hpp"
+ #include "base/settingvalue.h"
++#include "base/utils/thread.h"
+ 
+ class QThread;
+ 
+@@ -158,7 +159,7 @@ namespace RSS
+         CachedSettingValue<bool> m_storeProcessingEnabled;
+         CachedSettingValue<int> m_storeRefreshInterval;
+         CachedSettingValue<int> m_storeMaxArticlesPerFeed;
+-        QThread *m_workingThread = nullptr;
++        Utils::Thread::UniquePtr m_workingThread;
+         AsyncFileStorage *m_confFileStorage = nullptr;
+         AsyncFileStorage *m_dataFileStorage = nullptr;
+         QTimer m_refreshTimer;
+diff --git a/src/base/torrentfileswatcher.cpp b/src/base/torrentfileswatcher.cpp
+index dbc6390f4..11b04c953 100644
+--- a/src/base/torrentfileswatcher.cpp
++++ b/src/base/torrentfileswatcher.cpp
+@@ -254,7 +254,7 @@ TorrentFilesWatcher *TorrentFilesWatcher::instance()
+ 
+ TorrentFilesWatcher::TorrentFilesWatcher(QObject *parent)
+     : QObject {parent}
+-    , m_ioThread {new QThread(this)}
++    , m_ioThread {new QThread}
+ {
+     const auto *btSession = BitTorrent::Session::instance();
+     if (btSession->isRestored())
+@@ -267,8 +267,7 @@ TorrentFilesWatcher::TorrentFilesWatcher(QObject *parent)
+ 
+ TorrentFilesWatcher::~TorrentFilesWatcher()
+ {
+-    m_ioThread->quit();
+-    m_ioThread->wait();
++    m_ioThread.reset();
+     delete m_asyncWorker;
+ }
+ 
+@@ -281,7 +280,7 @@ void TorrentFilesWatcher::initWorker()
+     connect(m_asyncWorker, &TorrentFilesWatcher::Worker::magnetFound, this, &TorrentFilesWatcher::onMagnetFound);
+     connect(m_asyncWorker, &TorrentFilesWatcher::Worker::torrentFound, this, &TorrentFilesWatcher::onTorrentFound);
+ 
+-    m_asyncWorker->moveToThread(m_ioThread);
++    m_asyncWorker->moveToThread(m_ioThread.get());
+     m_ioThread->start();
+ 
+     for (auto it = m_watchedFolders.cbegin(); it != m_watchedFolders.cend(); ++it)
+diff --git a/src/base/torrentfileswatcher.h b/src/base/torrentfileswatcher.h
+index 6b8ff828d..8b66a85ef 100644
+--- a/src/base/torrentfileswatcher.h
++++ b/src/base/torrentfileswatcher.h
+@@ -33,6 +33,7 @@
+ 
+ #include "base/bittorrent/addtorrentparams.h"
+ #include "base/path.h"
++#include "base/utils/thread.h"
+ 
+ class QThread;
+ 
+@@ -89,7 +90,7 @@ private:
+ 
+     QHash<Path, WatchedFolderOptions> m_watchedFolders;
+ 
+-    QThread *m_ioThread = nullptr;
++    Utils::Thread::UniquePtr m_ioThread;
+ 
+     class Worker;
+     Worker *m_asyncWorker = nullptr;
+diff --git a/src/base/utils/thread.cpp b/src/base/utils/thread.cpp
+new file mode 100644
+index 000000000..bb71bc42a
+--- /dev/null
++++ b/src/base/utils/thread.cpp
+@@ -0,0 +1,38 @@
++/*
++ * Bittorrent Client using Qt and libtorrent.
++ * Copyright (C) 2022  Vladimir Golovnev <glassez@yandex.ru>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++ *
++ * In addition, as a special exception, the copyright holders give permission to
++ * link this program with the OpenSSL project's "OpenSSL" library (or with
++ * modified versions of it that use the same license as the "OpenSSL" library),
++ * and distribute the linked executables. You must obey the GNU General Public
++ * License in all respects for all of the code used other than "OpenSSL".  If you
++ * modify file(s), you may extend this exception to your version of the file(s),
++ * but you are not obligated to do so. If you do not wish to do so, delete this
++ * exception statement from your version.
++ */
++
++#include "thread.h"
++
++#include <QThread>
++
++void Utils::Thread::GracefulDeleter::operator()(QThread *thread) const
++{
++    thread->quit();
++    thread->wait();
++    delete thread;
++}
+diff --git a/src/base/utils/thread.h b/src/base/utils/thread.h
+new file mode 100644
+index 000000000..1f6683311
+--- /dev/null
++++ b/src/base/utils/thread.h
+@@ -0,0 +1,43 @@
++/*
++ * Bittorrent Client using Qt and libtorrent.
++ * Copyright (C) 2022  Vladimir Golovnev <glassez@yandex.ru>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++ *
++ * In addition, as a special exception, the copyright holders give permission to
++ * link this program with the OpenSSL project's "OpenSSL" library (or with
++ * modified versions of it that use the same license as the "OpenSSL" library),
++ * and distribute the linked executables. You must obey the GNU General Public
++ * License in all respects for all of the code used other than "OpenSSL".  If you
++ * modify file(s), you may extend this exception to your version of the file(s),
++ * but you are not obligated to do so. If you do not wish to do so, delete this
++ * exception statement from your version.
++ */
++
++#pragma once
++
++#include <memory>
++
++class QThread;
++
++namespace Utils::Thread
++{
++    struct GracefulDeleter
++    {
++        void operator()(QThread *thread) const;
++    };
++
++    using UniquePtr = std::unique_ptr<QThread, GracefulDeleter>;
++}
+diff --git a/src/webui/api/synccontroller.cpp b/src/webui/api/synccontroller.cpp
+index f7770aeb5..f3b6c160b 100644
+--- a/src/webui/api/synccontroller.cpp
++++ b/src/webui/api/synccontroller.cpp
+@@ -372,12 +372,12 @@ namespace
+ 
+ SyncController::SyncController(IApplication *app, QObject *parent)
+     : APIController(app, parent)
++    , m_freeDiskSpaceChecker {new FreeDiskSpaceChecker}
++    , m_freeDiskSpaceThread {new QThread}
+ {
+-    m_freeDiskSpaceThread = new QThread(this);
+-    m_freeDiskSpaceChecker = new FreeDiskSpaceChecker();
+-    m_freeDiskSpaceChecker->moveToThread(m_freeDiskSpaceThread);
++    m_freeDiskSpaceChecker->moveToThread(m_freeDiskSpaceThread.get());
+ 
+-    connect(m_freeDiskSpaceThread, &QThread::finished, m_freeDiskSpaceChecker, &QObject::deleteLater);
++    connect(m_freeDiskSpaceThread.get(), &QThread::finished, m_freeDiskSpaceChecker, &QObject::deleteLater);
+     connect(m_freeDiskSpaceChecker, &FreeDiskSpaceChecker::checked, this, &SyncController::freeDiskSpaceSizeUpdated);
+ 
+     m_freeDiskSpaceThread->start();
+@@ -385,12 +385,6 @@ SyncController::SyncController(IApplication *app, QObject *parent)
+     m_freeDiskSpaceElapsedTimer.start();
+ }
+ 
+-SyncController::~SyncController()
+-{
+-    m_freeDiskSpaceThread->quit();
+-    m_freeDiskSpaceThread->wait();
+-}
+-
+ // The function returns the changed data from the server to synchronize with the web client.
+ // Return value is map in JSON format.
+ // Map contain the key:
+diff --git a/src/webui/api/synccontroller.h b/src/webui/api/synccontroller.h
+index dfb21fd2f..aae77c36f 100644
+--- a/src/webui/api/synccontroller.h
++++ b/src/webui/api/synccontroller.h
+@@ -31,6 +31,7 @@
+ #include <QElapsedTimer>
+ #include <QVariantMap>
+ 
++#include "base/utils/thread.h"
+ #include "apicontroller.h"
+ 
+ class QThread;
+@@ -46,7 +47,6 @@ public:
+     using APIController::APIController;
+ 
+     explicit SyncController(IApplication *app, QObject *parent = nullptr);
+-    ~SyncController() override;
+ 
+ private slots:
+     void maindataAction();
+@@ -59,7 +59,7 @@ private:
+ 
+     qint64 m_freeDiskSpace = 0;
+     FreeDiskSpaceChecker *m_freeDiskSpaceChecker = nullptr;
+-    QThread *m_freeDiskSpaceThread = nullptr;
++    Utils::Thread::UniquePtr m_freeDiskSpaceThread;
+     QElapsedTimer m_freeDiskSpaceElapsedTimer;
+ 
+     QVariantMap m_lastMaindataResponse;
+-- 
+2.34.1
+
+
+From 691cb4fe2bea81f95e00c5aec6edb4dacaaea95a Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 22 Dec 2022 07:15:39 +0300
+Subject: [PATCH 10/26] Don't drop !qB extension when rename incomplete file
+
+PR #18186.
+Closes #18181.
+---
+ src/base/bittorrent/torrentimpl.cpp | 63 ++++++++++++++++-------------
+ src/base/bittorrent/torrentimpl.h   |  2 +
+ 2 files changed, 37 insertions(+), 28 deletions(-)
+
+diff --git a/src/base/bittorrent/torrentimpl.cpp b/src/base/bittorrent/torrentimpl.cpp
+index da8a19e30..c9f9aae4a 100644
+--- a/src/base/bittorrent/torrentimpl.cpp
++++ b/src/base/bittorrent/torrentimpl.cpp
+@@ -520,6 +520,17 @@ void TorrentImpl::setAutoManaged(const bool enable)
+         m_nativeHandle.unset_flags(lt::torrent_flags::auto_managed);
+ }
+ 
++Path TorrentImpl::wantedActualPath(int index, const Path &path) const
++{
++    if (m_session->isAppendExtensionEnabled()
++            && (fileSize(index) > 0) && !m_completedFiles.at(index))
++    {
++        return path + QB_EXT;
++    }
++
++    return path;
++}
++
+ QVector<TrackerEntry> TorrentImpl::trackers() const
+ {
+     if (!m_updatedTrackerEntries.isEmpty())
+@@ -1731,15 +1742,12 @@ void TorrentImpl::moveStorage(const Path &newPath, const MoveStorageMode mode)
+ 
+ void TorrentImpl::renameFile(const int index, const Path &path)
+ {
+-    const QVector<lt::file_index_t> nativeIndexes = m_torrentInfo.nativeIndexes();
+-
+-    Q_ASSERT(index >= 0);
+-    Q_ASSERT(index < nativeIndexes.size());
+-    if ((index < 0) || (index >= nativeIndexes.size()))
++    Q_ASSERT((index >= 0) && (index < filesCount()));
++    if (Q_UNLIKELY((index < 0) || (index >= filesCount())))
+         return;
+ 
+-    ++m_renameCount;
+-    m_nativeHandle.rename_file(nativeIndexes[index], path.toString().toStdString());
++    const Path wantedPath = wantedActualPath(index, path);
++    doRenameFile(index, wantedPath);
+ }
+ 
+ void TorrentImpl::handleStateUpdate(const lt::torrent_status &nativeStatus)
+@@ -1991,13 +1999,12 @@ void TorrentImpl::handleFileRenamedAlert(const lt::file_renamed_alert *p)
+     // For example renaming "a/b/c" to "d/b/c", then folders "a/b" and "a" will
+     // be removed if they are empty
+     const Path oldFilePath = m_filePaths.at(fileIndex);
+-    const Path newFilePath {QString::fromUtf8(p->new_name())};
++    const Path newFilePath = Path(QString::fromUtf8(p->new_name())).removedExtension(QB_EXT);
+ 
+     // Check if ".!qB" extension was just added or removed
+     // We should compare path in a case sensitive manner even on case insensitive
+     // platforms since it can be renamed by only changing case of some character(s)
+-    if ((oldFilePath.data() != newFilePath.data())
+-            && ((oldFilePath + QB_EXT) != newFilePath))
++    if (oldFilePath.data() != newFilePath.data())
+     {
+         m_filePaths[fileIndex] = newFilePath;
+ 
+@@ -2049,7 +2056,7 @@ void TorrentImpl::handleFileCompletedAlert(const lt::file_completed_alert *p)
+         if (actualPath != path)
+         {
+             qDebug("Renaming %s to %s", qUtf8Printable(actualPath.toString()), qUtf8Printable(path.toString()));
+-            renameFile(fileIndex, path);
++            doRenameFile(fileIndex, path);
+         }
+     }
+ }
+@@ -2156,7 +2163,6 @@ void TorrentImpl::manageIncompleteFiles()
+ {
+     const std::shared_ptr<const lt::torrent_info> nativeInfo = nativeTorrentInfo();
+     const lt::file_storage &nativeFiles = nativeInfo->files();
+-    const bool isAppendExtensionEnabled = m_session->isAppendExtensionEnabled();
+ 
+     for (int i = 0; i < filesCount(); ++i)
+     {
+@@ -2164,23 +2170,11 @@ void TorrentImpl::manageIncompleteFiles()
+ 
+         const auto nativeIndex = m_torrentInfo.nativeIndexes().at(i);
+         const Path actualPath {nativeFiles.file_path(nativeIndex)};
+-
+-        if (isAppendExtensionEnabled && (fileSize(i) > 0) && !m_completedFiles.at(i))
+-        {
+-            const Path wantedPath = path + QB_EXT;
+-            if (actualPath != wantedPath)
+-            {
+-                qDebug() << "Renaming" << actualPath.toString() << "to" << wantedPath.toString();
+-                renameFile(i, wantedPath);
+-            }
+-        }
+-        else
++        const Path wantedPath = wantedActualPath(i, path);
++        if (actualPath != wantedPath)
+         {
+-            if (actualPath != path)
+-            {
+-                qDebug() << "Renaming" << actualPath.toString() << "to" << path.toString();
+-                renameFile(i, path);
+-            }
++            qDebug() << "Renaming" << actualPath.toString() << "to" << wantedPath.toString();
++            doRenameFile(i, wantedPath);
+         }
+     }
+ }
+@@ -2195,6 +2189,19 @@ void TorrentImpl::adjustStorageLocation()
+         moveStorage(targetPath, MoveStorageMode::FailIfExist);
+ }
+ 
++void TorrentImpl::doRenameFile(int index, const Path &path)
++{
++    const QVector<lt::file_index_t> nativeIndexes = m_torrentInfo.nativeIndexes();
++
++    Q_ASSERT(index >= 0);
++    Q_ASSERT(index < nativeIndexes.size());
++    if (Q_UNLIKELY((index < 0) || (index >= nativeIndexes.size())))
++        return;
++
++    ++m_renameCount;
++    m_nativeHandle.rename_file(nativeIndexes[index], path.toString().toStdString());
++}
++
+ lt::torrent_handle TorrentImpl::nativeHandle() const
+ {
+     return m_nativeHandle;
+diff --git a/src/base/bittorrent/torrentimpl.h b/src/base/bittorrent/torrentimpl.h
+index d8947ba1b..1a049eeeb 100644
+--- a/src/base/bittorrent/torrentimpl.h
++++ b/src/base/bittorrent/torrentimpl.h
+@@ -281,7 +281,9 @@ namespace BitTorrent
+ 
+         void setAutoManaged(bool enable);
+ 
++        Path wantedActualPath(int index, const Path &path) const;
+         void adjustStorageLocation();
++        void doRenameFile(int index, const Path &path);
+         void moveStorage(const Path &newPath, MoveStorageMode mode);
+         void manageIncompleteFiles();
+         void applyFirstLastPiecePriority(bool enabled);
+-- 
+2.34.1
+
+
+From 0da132b69e9813a4ad7cb3765a1738e0d49c6430 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 22 Dec 2022 08:22:06 +0300
+Subject: [PATCH 11/26] Correctly detect drive letter in path
+
+PR #18258.
+Closes #18224.
+---
+ src/base/path.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/base/path.cpp b/src/base/path.cpp
+index 51bea7694..0eef0fa20 100644
+--- a/src/base/path.cpp
++++ b/src/base/path.cpp
+@@ -142,7 +142,7 @@ Path Path::rootItem() const
+ 
+ #ifdef Q_OS_WIN
+     // should be `c:/` instead of `c:`
+-    if (m_pathStr.at(slashIndex - 1) == u':')
++    if ((slashIndex == 2) && hasDriveLetter(m_pathStr))
+         return createUnchecked(m_pathStr.left(slashIndex + 1));
+ #endif
+     return createUnchecked(m_pathStr.left(slashIndex));
+-- 
+2.34.1
+
+
+From e822d4fca788327544125d04c9597a65ffed2272 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 22 Dec 2022 08:22:36 +0300
+Subject: [PATCH 12/26] Correctly detect whether desktop integration is active
+
+PR #18259.
+---
+ src/gui/desktopintegration.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/gui/desktopintegration.cpp b/src/gui/desktopintegration.cpp
+index c24c807ca..ee0950924 100644
+--- a/src/gui/desktopintegration.cpp
++++ b/src/gui/desktopintegration.cpp
+@@ -104,7 +104,7 @@ bool DesktopIntegration::isActive() const
+ #ifdef Q_OS_MACOS
+     return true;
+ #else
+-    return QSystemTrayIcon::isSystemTrayAvailable();
++    return m_systrayIcon && QSystemTrayIcon::isSystemTrayAvailable();
+ #endif
+ }
+ 
+-- 
+2.34.1
+
+
+From 911f0d403920e0cc5da10fee80330ce2092b669f Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 22 Dec 2022 08:19:33 +0300
+Subject: [PATCH 13/26] Correctly count the number of torrents in subcategories
+
+PR #18261.
+Closes #18137.
+---
+ src/gui/categoryfiltermodel.cpp | 29 ++++++++++++++++-------------
+ 1 file changed, 16 insertions(+), 13 deletions(-)
+
+diff --git a/src/gui/categoryfiltermodel.cpp b/src/gui/categoryfiltermodel.cpp
+index c45351952..f30ceaaae 100644
+--- a/src/gui/categoryfiltermodel.cpp
++++ b/src/gui/categoryfiltermodel.cpp
+@@ -56,7 +56,7 @@ public:
+         clear();
+         if (m_parent)
+         {
+-            m_parent->m_torrentsCount -= m_torrentsCount;
++            m_parent->decreaseTorrentsCount(m_torrentsCount);
+             const QString uid = m_parent->m_children.key(this);
+             m_parent->m_children.remove(uid);
+             m_parent->m_childUids.removeOne(uid);
+@@ -86,18 +86,18 @@ public:
+         return m_torrentsCount;
+     }
+ 
+-    void increaseTorrentsCount()
++    void increaseTorrentsCount(const int delta = 1)
+     {
+-        ++m_torrentsCount;
++        m_torrentsCount += delta;
+         if (m_parent)
+-            m_parent->increaseTorrentsCount();
++            m_parent->increaseTorrentsCount(delta);
+     }
+ 
+-    void decreaseTorrentsCount()
++    void decreaseTorrentsCount(const int delta = 1)
+     {
+-        --m_torrentsCount;
++        m_torrentsCount -= delta;
+         if (m_parent)
+-            m_parent->decreaseTorrentsCount();
++            m_parent->decreaseTorrentsCount(delta);
+     }
+ 
+     int pos() const
+@@ -139,7 +139,7 @@ public:
+         item->m_parent = this;
+         m_children[uid] = item;
+         m_childUids.append(uid);
+-        m_torrentsCount += item->torrentsCount();
++        increaseTorrentsCount(item->torrentsCount());
+     }
+ 
+     void clear()
+@@ -408,9 +408,9 @@ void CategoryFilterModel::populate()
+     m_rootItem->addChild(UID_UNCATEGORIZED, new CategoryModelItem(nullptr, tr("Uncategorized"), torrentsCount));
+ 
+     using BitTorrent::Torrent;
+-    for (const QString &categoryName : asConst(session->categories()))
++    if (m_isSubcategoriesEnabled)
+     {
+-        if (m_isSubcategoriesEnabled)
++        for (const QString &categoryName : asConst(session->categories()))
+         {
+             CategoryModelItem *parent = m_rootItem;
+             for (const QString &subcat : asConst(session->expandCategory(categoryName)))
+@@ -419,16 +419,19 @@ void CategoryFilterModel::populate()
+                 if (!parent->hasChild(subcatName))
+                 {
+                     const int torrentsCount = std::count_if(torrents.cbegin(), torrents.cend()
+-                                                            , [subcat](Torrent *torrent) { return torrent->category() == subcat; });
++                            , [subcat](Torrent *torrent) { return torrent->category() == subcat; });
+                     new CategoryModelItem(parent, subcatName, torrentsCount);
+                 }
+                 parent = parent->child(subcatName);
+             }
+         }
+-        else
++    }
++    else
++    {
++        for (const QString &categoryName : asConst(session->categories()))
+         {
+             const int torrentsCount = std::count_if(torrents.begin(), torrents.end()
+-                                                    , [categoryName](Torrent *torrent) { return torrent->belongsToCategory(categoryName); });
++                    , [categoryName](Torrent *torrent) { return torrent->belongsToCategory(categoryName); });
+             new CategoryModelItem(m_rootItem, categoryName, torrentsCount);
+         }
+     }
+-- 
+2.34.1
+
+
+From c57896df8fe8b4cb40970addbd2445491872f14b Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Thu, 22 Dec 2022 08:21:29 +0300
+Subject: [PATCH 14/26] Use "additional trackers" when metadata retrieving
+
+This can help when the DHT nodes are few.
+
+PR #18251.
+Closes #18244.
+---
+ src/base/bittorrent/sessionimpl.cpp | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/src/base/bittorrent/sessionimpl.cpp b/src/base/bittorrent/sessionimpl.cpp
+index 89ce7a9bd..96def934e 100644
+--- a/src/base/bittorrent/sessionimpl.cpp
++++ b/src/base/bittorrent/sessionimpl.cpp
+@@ -2811,6 +2811,19 @@ bool SessionImpl::downloadMetadata(const MagnetUri &magnetUri)
+ 
+     lt::add_torrent_params p = magnetUri.addTorrentParams();
+ 
++    if (isAddTrackersEnabled())
++    {
++        // Use "additional trackers" when metadata retrieving (this can help when the DHT nodes are few)
++        p.trackers.reserve(p.trackers.size() + static_cast<std::size_t>(m_additionalTrackerList.size()));
++        p.tracker_tiers.reserve(p.trackers.size() + static_cast<std::size_t>(m_additionalTrackerList.size()));
++        p.tracker_tiers.resize(p.trackers.size(), 0);
++        for (const TrackerEntry &trackerEntry : asConst(m_additionalTrackerList))
++        {
++            p.trackers.push_back(trackerEntry.url.toStdString());
++            p.tracker_tiers.push_back(trackerEntry.tier);
++        }
++    }
++
+     // Flags
+     // Preallocation mode
+     if (isPreallocationEnabled())
+-- 
+2.34.1
+
+
+From 967c3bb55d8450e44bc10c5f494030da3e271cd0 Mon Sep 17 00:00:00 2001
+From: "Nowshed H. Imran" <nowshed.imran@gmail.com>
+Date: Thu, 22 Dec 2022 17:14:29 +0600
+Subject: [PATCH 15/26] Fix icon colors inconsistencies
+
+PR #18226.
+Fixes #18163.
+Fixes #18222.
+---
+ src/icons/browser-cookies.svg                   | 2 +-
+ src/icons/filter-stalled.svg                    | 2 +-
+ src/icons/view-refresh.svg                      | 2 +-
+ src/webui/www/private/images/filter-stalled.svg | 2 +-
+ src/webui/www/private/images/view-refresh.svg   | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/icons/browser-cookies.svg b/src/icons/browser-cookies.svg
+index c5fdc49d6..0873b0db0 100644
+--- a/src/icons/browser-cookies.svg
++++ b/src/icons/browser-cookies.svg
+@@ -1 +1 @@
+-<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><path d="m16 2c-7.7227501.0017-13.99825 6.2772505-14 14 .0017 7.72275 6.2772499 13.99825 14 14 7.72275-.0018 13.99825-6.27725 14-14 0-.89075-.09338-1.755094-.25-2.589844-.07088-.37625-.376109-.661531-.755859-.707031-.380625-.0455-.742891.160641-.900391.509766-.277375.6125-.887625 1.037984-1.59375 1.037109-.783125.0017-1.443563-.526578-1.664062-1.251953-.133-.44275-.58736-.704611-1.03711-.599609-.2765.064738-.538953.101562-.798828.101562-1.927625-.0035-3.4965-1.572375-3.5-3.5 0-.259875.03681-.52125.101562-.796875.105876-.44975-.156859-.9060625-.599609-1.0390625-.725375-.219625-1.253703-.8809375-1.251953-1.6640625-.000875-.707.424609-1.3144219 1.037109-1.5917969.349125-.1575.555266-.5225937.509766-.9023437-.0455-.3806253-.330781-.6849844-.707031-.7558594-.83475-.156625-1.699094-.25-2.589844-.25zm-3.5 5.25a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75zm-3.5 7a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75zm7.875 1.75a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm7 3.5a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm-12.25 1.75a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm6.125 0a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75z" fill="#1e90ff" stroke="#4285f4" stroke-width=".055"/></svg>
+\ No newline at end of file
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="#1e90ff"><path d="m16 2c-7.7227501.0017-13.99825 6.2772505-14 14 .0017 7.72275 6.2772499 13.99825 14 14 7.72275-.0018 13.99825-6.27725 14-14 0-.89075-.09338-1.755094-.25-2.589844-.07088-.37625-.376109-.661531-.755859-.707031-.380625-.0455-.742891.160641-.900391.509766-.277375.6125-.887625 1.037984-1.59375 1.037109-.783125.0017-1.443563-.526578-1.664062-1.251953-.133-.44275-.58736-.704611-1.03711-.599609-.2765.064738-.538953.101562-.798828.101562-1.927625-.0035-3.4965-1.572375-3.5-3.5 0-.259875.03681-.52125.101562-.796875.105876-.44975-.156859-.9060625-.599609-1.0390625-.725375-.219625-1.253703-.8809375-1.251953-1.6640625-.000875-.707.424609-1.3144219 1.037109-1.5917969.349125-.1575.555266-.5225937.509766-.9023437-.0455-.3806253-.330781-.6849844-.707031-.7558594-.83475-.156625-1.699094-.25-2.589844-.25zm-3.5 5.25a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75zm-3.5 7a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75zm7.875 1.75a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm7 3.5a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm-12.25 1.75a.875.875 0 0 1 .875.875.875.875 0 0 1 -.875.875.875.875 0 0 1 -.875-.875.875.875 0 0 1 .875-.875zm6.125 0a1.75 1.75 0 0 1 1.75 1.75 1.75 1.75 0 0 1 -1.75 1.75 1.75 1.75 0 0 1 -1.75-1.75 1.75 1.75 0 0 1 1.75-1.75z" stroke-width=".055"/><path d="m16 1.9726562c-7.7376369.0017033-14.0255904 6.2897078-14.0273438 14.0273438.0017033 7.737637 6.2897072 14.02559 14.0273438 14.027344 7.737636-.001804 14.02559-6.289707 14.027344-14.027344 0-.892671-.09311-1.75952-.25-2.595703-.07307-.387879-.387794-.681608-.779297-.728516-.392387-.04691-.767356.165557-.929688.525391-.273096.603051-.873301 1.022346-1.568359 1.021484-.770724.0017-1.421537-.518112-1.638672-1.232422-.137105-.456415-.604759-.727376-1.068359-.61914-.274993.064385-.535692.101562-.792969.101562-1.912729-.003473-3.469183-1.559927-3.472656-3.472656 0-.2572779.03717-.5169001.101562-.7910156.109152-.4636657-.162663-.933189-.61914-1.0703125-.714266-.2162612-1.234145-.8679506-1.232422-1.6386719-.000862-.6959465.418369-1.2932811 1.021484-1.5664062.359947-.162382.572306-.5400825.525391-.9316407-.046903-.3923609-.340677-.7062388-.728516-.7792968-.836184-.1568941-1.703032-.2500001-2.595703-.2500001zm0 .054688c.888827 0 1.75067.093644 2.583984.25.36466.068692.64145.3635329.685547.7324218.04408.3679411-.155838.7204292-.49414.8730469-.621884.2816239-1.053623.8991351-1.052735 1.6171871-.0018.7955271.535001 1.4664648 1.271485 1.6894531.429022.1288762.682678.5719791.580078 1.0078125-.065107.277134-.101563.5402628-.101563.8027344.0035 1.942517 1.584827 3.523817 3.527344 3.527344.262473 0 .526681-.03647.804687-.101563.435899-.101768.876965.150995 1.00586.580078.223862.73644.893928 1.273212 1.689453 1.271485.717191.000888 1.337487-.430787 1.619141-1.052735.152668-.338415.502231-.538234.871093-.49414.367997.04409.663733.320926.732422.685547.156351.833314.25 1.695157.25 2.583984-.001746 7.707848-6.264808 13.97086-13.972656 13.972656-7.7078481-.001746-13.9709595-6.264808-13.9726562-13.972656.0017466-7.7078475 6.2648083-13.9709595 13.9726562-13.9726562zm-3.5 5.1953124c-.981359 0-1.777344.7959844-1.777344 1.7773438s.795985 1.777344 1.777344 1.777344 1.777344-.7959846 1.777344-1.777344-.795985-1.7773437-1.777344-1.7773438zm0 .054687c.951635 0 1.722656.771021 1.722656 1.7226563s-.771021 1.722656-1.722656 1.722656-1.722656-.7710207-1.722656-1.722656.771021-1.7226562 1.722656-1.7226563zm-3.5 6.9453124c-.9813594 0-1.7773437.795985-1.7773438 1.777344 0 .981359.7959844 1.777344 1.7773438 1.777344s1.777344-.795985 1.777344-1.777344-.7959846-1.777344-1.777344-1.777344zm0 .05469c.9516353 0 1.722656.771021 1.722656 1.722656s-.7710207 1.722656-1.722656 1.722656-1.7226562-.771021-1.7226563-1.722656c0-.951635.771021-1.722656 1.7226563-1.722656zm7.875 1.695312c-.498111 0-.902344.404233-.902344.902344s.404233.902344.902344.902344.902344-.404233.902344-.902344-.404233-.902344-.902344-.902344zm0 .05469c.468387 0 .847656.379269.847656.847656s-.379269.847656-.847656.847656-.847656-.379269-.847656-.847656.379269-.847656.847656-.847656zm7 3.445312c-.498111 0-.902344.404233-.902344.902344s.404233.902344.902344.902344.902344-.404233.902344-.902344-.404233-.902344-.902344-.902344zm0 .05469c.468387 0 .847656.379269.847656.847656s-.379269.847656-.847656.847656-.847656-.379269-.847656-.847656.379269-.847656.847656-.847656zm-12.25 1.695312c-.498111 0-.902344.404233-.902344.902344s.404233.902344.902344.902344.902344-.404233.902344-.902344-.404233-.902344-.902344-.902344zm6.125 0c-.981359 0-1.777344.795985-1.777344 1.777344s.795985 1.777344 1.777344 1.777344 1.777344-.795985 1.777344-1.777344-.795985-1.777344-1.777344-1.777344zm-6.125.05469c.468387 0 .847656.379269.847656.847656s-.379269.847656-.847656.847656-.847656-.379269-.847656-.847656.379269-.847656.847656-.847656zm6.125 0c.951635 0 1.722656.771021 1.722656 1.722656s-.771021 1.722656-1.722656 1.722656-1.722656-.771021-1.722656-1.722656.771021-1.722656 1.722656-1.722656z"/></g></svg>
+\ No newline at end of file
+diff --git a/src/icons/filter-stalled.svg b/src/icons/filter-stalled.svg
+index b376051c5..28896ec8a 100644
+--- a/src/icons/filter-stalled.svg
++++ b/src/icons/filter-stalled.svg
+@@ -1 +1 @@
+-<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" transform="matrix(.96198992 0 0 .96361031 .608162 .582235)"><path d="m4.0469562 10.349429 5.7224138-6.2783812 5.722414 6.2783812m-5.722414 17.579469v-22.6021738" stroke="#6495ed"/><path d="m27.953043 21.650571-5.722413 6.278382-5.722414-6.278382m5.722414-17.5794689v22.6021739" stroke="#3cb371"/></g></svg>
+\ No newline at end of file
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.00656"><path d="m10.005859 2.0019531a2.5032799 2.5032799 0 0 0 -2.5039059 2.5039063v16.5156246l-1.1484375-1.261718a2.5032799 2.5032799 0 0 0 -3.5371093-.166016 2.5032799 2.5032799 0 0 0 -.1660157 3.535156l5.5039063 6.050781a2.5035303 2.5035303 0 0 0 3.7031251 0l5.505859-6.050781a2.5032799 2.5032799 0 0 0 -.167969-3.535156 2.5032799 2.5032799 0 0 0 -3.535156.166016l-1.15039 1.263671v-16.5175776a2.5032799 2.5032799 0 0 0 -2.503907-2.5039063z" fill="#3cb371"/><path d="m21.994141 2.0019531a2.5035303 2.5035303 0 0 0 -1.851563.8183594l-5.505859 6.0507813a2.5032799 2.5032799 0 0 0 .167969 3.5351562 2.5032799 2.5032799 0 0 0 3.535156-.166016l1.15039-1.263671v16.517578a2.5032799 2.5032799 0 0 0 2.503907 2.503906 2.5032799 2.5032799 0 0 0 2.503906-2.503906v-16.515625l1.148437 1.261718a2.5032799 2.5032799 0 0 0 3.53711.166016 2.5032799 2.5032799 0 0 0 .166015-3.5351562l-5.503906-6.0507813a2.5035303 2.5035303 0 0 0 -1.851562-.8183594z" fill="#1e90ff"/></g></svg>
+\ No newline at end of file
+diff --git a/src/icons/view-refresh.svg b/src/icons/view-refresh.svg
+index 3b5b6a848..bea8382f0 100644
+--- a/src/icons/view-refresh.svg
++++ b/src/icons/view-refresh.svg
+@@ -1 +1 @@
+-<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g stroke="#1e90ff"><path d="m26.502476 9.1481903-1.356007-1.5373535a12.290749 11.977843 0 0 0 -8.916781-3.7185561c-6.8057232 0-12.3273474 5.3810502-12.3273474 12.0135073 0 6.632457 5.5216242 12.013508 12.3273474 12.013508a12.333125 12.019138 0 0 0 11.625587-8.009005" fill="none" stroke-linecap="round" stroke-miterlimit="10" stroke-width="3.99096"/><path d="m29.861915 3.2711167v7.6925913a1.1518373 1.1130536 0 0 1 -1.15184 1.113053h-7.960634c-1.026576 0-1.540583-1.198619-.814926-1.899843l7.961356-7.6932866c.725658-.7026152 1.966044-.2045237 1.966044.7874853z" fill="#4285f4" stroke-width=".070767"/></g></svg>
+\ No newline at end of file
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1.0016046 0 0 .9993628 .090124 .104351)"><path d="m26.502476 9.1481903-1.356007-1.5373535a12.290749 11.977843 0 0 0 -8.916781-3.7185561c-6.8057232 0-12.3273474 5.3810502-12.3273474 12.0135073 0 6.632457 5.5216242 12.013508 12.3273474 12.013508a12.333125 12.019138 0 0 0 11.625587-8.009005" fill="none" stroke="#1e90ff" stroke-linecap="round" stroke-miterlimit="10" stroke-width="3.99096"/><path d="m29.861915 3.2711167v7.6925913a1.1518373 1.1130536 0 0 1 -1.15184 1.113053h-7.960634c-1.026576 0-1.540583-1.198619-.814926-1.899843l7.961356-7.6932866c.725658-.7026152 1.966044-.2045237 1.966044.7874853z" fill="#1e90ff"/></g></svg>
+\ No newline at end of file
+diff --git a/src/webui/www/private/images/filter-stalled.svg b/src/webui/www/private/images/filter-stalled.svg
+index b376051c5..28896ec8a 100644
+--- a/src/webui/www/private/images/filter-stalled.svg
++++ b/src/webui/www/private/images/filter-stalled.svg
+@@ -1 +1 @@
+-<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.2" transform="matrix(.96198992 0 0 .96361031 .608162 .582235)"><path d="m4.0469562 10.349429 5.7224138-6.2783812 5.722414 6.2783812m-5.722414 17.579469v-22.6021738" stroke="#6495ed"/><path d="m27.953043 21.650571-5.722413 6.278382-5.722414-6.278382m5.722414-17.5794689v22.6021739" stroke="#3cb371"/></g></svg>
+\ No newline at end of file
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.00656"><path d="m10.005859 2.0019531a2.5032799 2.5032799 0 0 0 -2.5039059 2.5039063v16.5156246l-1.1484375-1.261718a2.5032799 2.5032799 0 0 0 -3.5371093-.166016 2.5032799 2.5032799 0 0 0 -.1660157 3.535156l5.5039063 6.050781a2.5035303 2.5035303 0 0 0 3.7031251 0l5.505859-6.050781a2.5032799 2.5032799 0 0 0 -.167969-3.535156 2.5032799 2.5032799 0 0 0 -3.535156.166016l-1.15039 1.263671v-16.5175776a2.5032799 2.5032799 0 0 0 -2.503907-2.5039063z" fill="#3cb371"/><path d="m21.994141 2.0019531a2.5035303 2.5035303 0 0 0 -1.851563.8183594l-5.505859 6.0507813a2.5032799 2.5032799 0 0 0 .167969 3.5351562 2.5032799 2.5032799 0 0 0 3.535156-.166016l1.15039-1.263671v16.517578a2.5032799 2.5032799 0 0 0 2.503907 2.503906 2.5032799 2.5032799 0 0 0 2.503906-2.503906v-16.515625l1.148437 1.261718a2.5032799 2.5032799 0 0 0 3.53711.166016 2.5032799 2.5032799 0 0 0 .166015-3.5351562l-5.503906-6.0507813a2.5035303 2.5035303 0 0 0 -1.851562-.8183594z" fill="#1e90ff"/></g></svg>
+\ No newline at end of file
+diff --git a/src/webui/www/private/images/view-refresh.svg b/src/webui/www/private/images/view-refresh.svg
+index 3b5b6a848..bea8382f0 100644
+--- a/src/webui/www/private/images/view-refresh.svg
++++ b/src/webui/www/private/images/view-refresh.svg
+@@ -1 +1 @@
+-<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g stroke="#1e90ff"><path d="m26.502476 9.1481903-1.356007-1.5373535a12.290749 11.977843 0 0 0 -8.916781-3.7185561c-6.8057232 0-12.3273474 5.3810502-12.3273474 12.0135073 0 6.632457 5.5216242 12.013508 12.3273474 12.013508a12.333125 12.019138 0 0 0 11.625587-8.009005" fill="none" stroke-linecap="round" stroke-miterlimit="10" stroke-width="3.99096"/><path d="m29.861915 3.2711167v7.6925913a1.1518373 1.1130536 0 0 1 -1.15184 1.113053h-7.960634c-1.026576 0-1.540583-1.198619-.814926-1.899843l7.961356-7.6932866c.725658-.7026152 1.966044-.2045237 1.966044.7874853z" fill="#4285f4" stroke-width=".070767"/></g></svg>
+\ No newline at end of file
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(1.0016046 0 0 .9993628 .090124 .104351)"><path d="m26.502476 9.1481903-1.356007-1.5373535a12.290749 11.977843 0 0 0 -8.916781-3.7185561c-6.8057232 0-12.3273474 5.3810502-12.3273474 12.0135073 0 6.632457 5.5216242 12.013508 12.3273474 12.013508a12.333125 12.019138 0 0 0 11.625587-8.009005" fill="none" stroke="#1e90ff" stroke-linecap="round" stroke-miterlimit="10" stroke-width="3.99096"/><path d="m29.861915 3.2711167v7.6925913a1.1518373 1.1130536 0 0 1 -1.15184 1.113053h-7.960634c-1.026576 0-1.540583-1.198619-.814926-1.899843l7.961356-7.6932866c.725658-.7026152 1.966044-.2045237 1.966044.7874853z" fill="#1e90ff"/></g></svg>
+\ No newline at end of file
+-- 
+2.34.1
+
+
+From a4289a517ff62807104671a2e1193e6b5cbe3fad Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Sun, 25 Dec 2022 16:14:59 +0300
+Subject: [PATCH 16/26] Apply correct tab order to Category options dialog
+
+Also pre-select (sub)category name for editing when dialog is opened for creating new (sub)category.
+
+PR #18270.
+Closes #18265.
+---
+ src/gui/torrentcategorydialog.cpp |  3 +++
+ src/gui/torrentcategorydialog.ui  | 28 +++++++++++++++++-----------
+ 2 files changed, 20 insertions(+), 11 deletions(-)
+
+diff --git a/src/gui/torrentcategorydialog.cpp b/src/gui/torrentcategorydialog.cpp
+index 34cdce354..ccbc3bd62 100644
+--- a/src/gui/torrentcategorydialog.cpp
++++ b/src/gui/torrentcategorydialog.cpp
+@@ -133,6 +133,9 @@ QString TorrentCategoryDialog::categoryName() const
+ void TorrentCategoryDialog::setCategoryName(const QString &categoryName)
+ {
+     m_ui->textCategoryName->setText(categoryName);
++
++    const int subcategoryNameStart = categoryName.lastIndexOf(u"/") + 1;
++    m_ui->textCategoryName->setSelection(subcategoryNameStart, (categoryName.size() - subcategoryNameStart));
+ }
+ 
+ BitTorrent::CategoryOptions TorrentCategoryDialog::categoryOptions() const
+diff --git a/src/gui/torrentcategorydialog.ui b/src/gui/torrentcategorydialog.ui
+index 7eaaa7909..2a9c785ef 100644
+--- a/src/gui/torrentcategorydialog.ui
++++ b/src/gui/torrentcategorydialog.ui
+@@ -29,13 +29,10 @@
+    </item>
+    <item>
+     <layout class="QGridLayout" name="gridLayout">
+-     <item row="1" column="1">
+-      <widget class="FileSystemPathComboEdit" name="comboSavePath" native="true">
+-       <property name="sizePolicy">
+-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+-         <horstretch>0</horstretch>
+-         <verstretch>0</verstretch>
+-        </sizepolicy>
++     <item row="0" column="0">
++      <widget class="QLabel" name="labelCategoryName">
++       <property name="text">
++        <string>Name:</string>
+        </property>
+       </widget>
+      </item>
+@@ -49,10 +46,13 @@
+        </property>
+       </widget>
+      </item>
+-     <item row="0" column="0">
+-      <widget class="QLabel" name="labelCategoryName">
+-       <property name="text">
+-        <string>Name:</string>
++     <item row="1" column="1">
++      <widget class="FileSystemPathComboEdit" name="comboSavePath" native="true">
++       <property name="sizePolicy">
++        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
++         <horstretch>0</horstretch>
++         <verstretch>0</verstretch>
++        </sizepolicy>
+        </property>
+       </widget>
+      </item>
+@@ -173,6 +173,12 @@
+    <container>1</container>
+   </customwidget>
+  </customwidgets>
++ <tabstops>
++  <tabstop>textCategoryName</tabstop>
++  <tabstop>comboSavePath</tabstop>
++  <tabstop>comboUseDownloadPath</tabstop>
++  <tabstop>comboDownloadPath</tabstop>
++ </tabstops>
+  <resources/>
+  <connections>
+   <connection>
+-- 
+2.34.1
+
+
+From de15907ea78e74d5b4d344a3ed6ac3dd82d36671 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Sun, 25 Dec 2022 16:25:56 +0300
+Subject: [PATCH 17/26] Re-allow to use icons from system theme
+
+PR #18195.
+---
+ src/base/preferences.cpp                      | 12 +++
+ src/base/preferences.h                        |  4 +
+ src/gui/categoryfiltermodel.cpp               |  2 +-
+ src/gui/categoryfilterwidget.cpp              | 10 +--
+ src/gui/executionlogwidget.cpp                |  4 +-
+ src/gui/mainwindow.cpp                        | 19 ++---
+ src/gui/optionsdialog.cpp                     | 25 ++++--
+ src/gui/optionsdialog.ui                      | 83 ++++++++++---------
+ src/gui/properties/propertieswidget.cpp       |  2 +-
+ src/gui/properties/proptabbar.cpp             |  4 +-
+ src/gui/properties/trackerlistwidget.cpp      |  6 +-
+ src/gui/properties/trackersadditiondialog.cpp |  2 +-
+ src/gui/rss/articlelistwidget.cpp             |  6 +-
+ src/gui/rss/automatedrssdownloader.cpp        | 12 +--
+ src/gui/rss/feedlistwidget.cpp                |  2 +-
+ src/gui/rss/rsswidget.cpp                     |  8 +-
+ src/gui/search/searchjobwidget.cpp            |  8 +-
+ src/gui/search/searchwidget.cpp               |  2 +-
+ src/gui/statusbar.cpp                         |  4 +-
+ src/gui/tagfiltermodel.cpp                    |  2 +-
+ src/gui/tagfilterwidget.cpp                   |  8 +-
+ src/gui/torrentcontentmodel.cpp               |  2 +-
+ src/gui/transferlistfilterswidget.cpp         | 36 ++++----
+ src/gui/transferlistmodel.cpp                 |  8 +-
+ src/gui/transferlistwidget.cpp                | 24 +++---
+ src/gui/uithememanager.cpp                    | 48 ++++++++---
+ src/gui/uithememanager.h                      |  5 +-
+ 27 files changed, 204 insertions(+), 144 deletions(-)
+
+diff --git a/src/base/preferences.cpp b/src/base/preferences.cpp
+index 4cc99227c..101eefd77 100644
+--- a/src/base/preferences.cpp
++++ b/src/base/preferences.cpp
+@@ -996,6 +996,18 @@ void Preferences::resolvePeerHostNames(const bool resolve)
+     setValue(u"Preferences/Connection/ResolvePeerHostNames"_qs, resolve);
+ }
+ 
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++bool Preferences::useSystemIcons() const
++{
++    return value(u"Preferences/Advanced/useSystemIconTheme"_qs, false);
++}
++
++void Preferences::useSystemIcons(const bool enabled)
++{
++    setValue(u"Preferences/Advanced/useSystemIconTheme"_qs, enabled);
++}
++#endif
++
+ bool Preferences::isRecursiveDownloadEnabled() const
+ {
+     return !value(u"Preferences/Advanced/DisableRecursiveDownload"_qs, false);
+diff --git a/src/base/preferences.h b/src/base/preferences.h
+index d22db8df5..0dde9afef 100644
+--- a/src/base/preferences.h
++++ b/src/base/preferences.h
+@@ -281,6 +281,10 @@ public:
+     void resolvePeerCountries(bool resolve);
+     bool resolvePeerHostNames() const;
+     void resolvePeerHostNames(bool resolve);
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    bool useSystemIcons() const;
++    void useSystemIcons(bool enabled);
++#endif
+     bool isRecursiveDownloadEnabled() const;
+     void setRecursiveDownloadEnabled(bool enable);
+ #ifdef Q_OS_WIN
+diff --git a/src/gui/categoryfiltermodel.cpp b/src/gui/categoryfiltermodel.cpp
+index f30ceaaae..7b3844770 100644
+--- a/src/gui/categoryfiltermodel.cpp
++++ b/src/gui/categoryfiltermodel.cpp
+@@ -211,7 +211,7 @@ QVariant CategoryFilterModel::data(const QModelIndex &index, int role) const
+ 
+     if ((index.column() == 0) && (role == Qt::DecorationRole))
+     {
+-        return UIThemeManager::instance()->getIcon(u"view-categories"_qs);
++        return UIThemeManager::instance()->getIcon(u"view-categories"_qs, u"inode-directory"_qs);
+     }
+ 
+     if ((index.column() == 0) && (role == Qt::DisplayRole))
+diff --git a/src/gui/categoryfilterwidget.cpp b/src/gui/categoryfilterwidget.cpp
+index 61a77f049..5c22bfbd4 100644
+--- a/src/gui/categoryfilterwidget.cpp
++++ b/src/gui/categoryfilterwidget.cpp
+@@ -121,18 +121,18 @@ void CategoryFilterWidget::showMenu()
+                 , this, &CategoryFilterWidget::addSubcategory);
+         }
+ 
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-rename"_qs), tr("Edit category...")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-rename"_qs, u"document-edit"_qs), tr("Edit category...")
+             , this, &CategoryFilterWidget::editCategory);
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove category")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove category")
+             , this, &CategoryFilterWidget::removeCategory);
+     }
+ 
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove unused categories")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove unused categories")
+         , this, &CategoryFilterWidget::removeUnusedCategories);
+     menu->addSeparator();
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs), tr("Resume torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs), tr("Resume torrents")
+         , this, &CategoryFilterWidget::actionResumeTorrentsTriggered);
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs), tr("Pause torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs), tr("Pause torrents")
+         , this, &CategoryFilterWidget::actionPauseTorrentsTriggered);
+     menu->addAction(UIThemeManager::instance()->getIcon(u"list-remove"_qs), tr("Remove torrents")
+         , this, &CategoryFilterWidget::actionDeleteTorrentsTriggered);
+diff --git a/src/gui/executionlogwidget.cpp b/src/gui/executionlogwidget.cpp
+index 5d12f3f50..95f1cb064 100644
+--- a/src/gui/executionlogwidget.cpp
++++ b/src/gui/executionlogwidget.cpp
+@@ -69,8 +69,8 @@ ExecutionLogWidget::ExecutionLogWidget(const Log::MsgTypes types, QWidget *paren
+     m_ui->tabBan->layout()->addWidget(peerView);
+ 
+ #ifndef Q_OS_MACOS
+-    m_ui->tabConsole->setTabIcon(0, UIThemeManager::instance()->getIcon(u"help-contents"_qs));
+-    m_ui->tabConsole->setTabIcon(1, UIThemeManager::instance()->getIcon(u"ip-blocked"_qs));
++    m_ui->tabConsole->setTabIcon(0, UIThemeManager::instance()->getIcon(u"help-contents"_qs, u"view-calendar-journal"_qs));
++    m_ui->tabConsole->setTabIcon(1, UIThemeManager::instance()->getIcon(u"ip-blocked"_qs, u"view-filter"_qs));
+ #endif
+ }
+ 
+diff --git a/src/gui/mainwindow.cpp b/src/gui/mainwindow.cpp
+index 6f73e4ce9..636cf78c7 100644
+--- a/src/gui/mainwindow.cpp
++++ b/src/gui/mainwindow.cpp
+@@ -134,8 +134,7 @@ MainWindow::MainWindow(IGUIApplication *app, const State initialState)
+     m_displaySpeedInTitle = pref->speedInTitleBar();
+     // Setting icons
+ #ifndef Q_OS_MACOS
+-    const QIcon appLogo(UIThemeManager::instance()->getIcon(u"qbittorrent"_qs, u"qbittorrent-tray"_qs));
+-    setWindowIcon(appLogo);
++    setWindowIcon(UIThemeManager::instance()->getIcon(u"qbittorrent"_qs));
+ #endif // Q_OS_MACOS
+ 
+ #if (defined(Q_OS_UNIX))
+@@ -147,7 +146,7 @@ MainWindow::MainWindow(IGUIApplication *app, const State initialState)
+     m_ui->actionOpen->setIcon(UIThemeManager::instance()->getIcon(u"list-add"_qs));
+     m_ui->actionDownloadFromURL->setIcon(UIThemeManager::instance()->getIcon(u"insert-link"_qs));
+     m_ui->actionSetGlobalSpeedLimits->setIcon(UIThemeManager::instance()->getIcon(u"speedometer"_qs));
+-    m_ui->actionCreateTorrent->setIcon(UIThemeManager::instance()->getIcon(u"torrent-creator"_qs));
++    m_ui->actionCreateTorrent->setIcon(UIThemeManager::instance()->getIcon(u"torrent-creator"_qs, u"document-edit"_qs));
+     m_ui->actionAbout->setIcon(UIThemeManager::instance()->getIcon(u"help-about"_qs));
+     m_ui->actionStatistics->setIcon(UIThemeManager::instance()->getIcon(u"view-statistics"_qs));
+     m_ui->actionTopQueuePos->setIcon(UIThemeManager::instance()->getIcon(u"go-top"_qs));
+@@ -159,13 +158,13 @@ MainWindow::MainWindow(IGUIApplication *app, const State initialState)
+     m_ui->actionDonateMoney->setIcon(UIThemeManager::instance()->getIcon(u"wallet-open"_qs));
+     m_ui->actionExit->setIcon(UIThemeManager::instance()->getIcon(u"application-exit"_qs));
+     m_ui->actionLock->setIcon(UIThemeManager::instance()->getIcon(u"object-locked"_qs));
+-    m_ui->actionOptions->setIcon(UIThemeManager::instance()->getIcon(u"configure"_qs));
+-    m_ui->actionPause->setIcon(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs));
+-    m_ui->actionPauseAll->setIcon(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs));
+-    m_ui->actionStart->setIcon(UIThemeManager::instance()->getIcon(u"torrent-start"_qs));
+-    m_ui->actionStartAll->setIcon(UIThemeManager::instance()->getIcon(u"torrent-start"_qs));
+-    m_ui->menuAutoShutdownOnDownloadsCompletion->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs));
+-    m_ui->actionManageCookies->setIcon(UIThemeManager::instance()->getIcon(u"browser-cookies"_qs));
++    m_ui->actionOptions->setIcon(UIThemeManager::instance()->getIcon(u"configure"_qs, u"preferences-system"_qs));
++    m_ui->actionPause->setIcon(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs));
++    m_ui->actionPauseAll->setIcon(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs));
++    m_ui->actionStart->setIcon(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs));
++    m_ui->actionStartAll->setIcon(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs));
++    m_ui->menuAutoShutdownOnDownloadsCompletion->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs, u"application-exit"_qs));
++    m_ui->actionManageCookies->setIcon(UIThemeManager::instance()->getIcon(u"browser-cookies"_qs, u"preferences-web-browser-cookies"_qs));
+     m_ui->menuLog->setIcon(UIThemeManager::instance()->getIcon(u"help-contents"_qs));
+     m_ui->actionCheckForUpdates->setIcon(UIThemeManager::instance()->getIcon(u"view-refresh"_qs));
+ 
+diff --git a/src/gui/optionsdialog.cpp b/src/gui/optionsdialog.cpp
+index d4068e26a..c13146136 100644
+--- a/src/gui/optionsdialog.cpp
++++ b/src/gui/optionsdialog.cpp
+@@ -203,17 +203,17 @@ OptionsDialog::OptionsDialog(IGUIApplication *app, QWidget *parent)
+ 
+     // Main icons
+     m_ui->tabSelection->item(TAB_UI)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-desktop"_qs));
+-    m_ui->tabSelection->item(TAB_BITTORRENT)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-bittorrent"_qs));
+-    m_ui->tabSelection->item(TAB_CONNECTION)->setIcon(UIThemeManager::instance()->getIcon(u"network-connect"_qs));
+-    m_ui->tabSelection->item(TAB_DOWNLOADS)->setIcon(UIThemeManager::instance()->getIcon(u"download"_qs));
+-    m_ui->tabSelection->item(TAB_SPEED)->setIcon(UIThemeManager::instance()->getIcon(u"speedometer"_qs));
+-    m_ui->tabSelection->item(TAB_RSS)->setIcon(UIThemeManager::instance()->getIcon(u"application-rss"_qs));
++    m_ui->tabSelection->item(TAB_BITTORRENT)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-bittorrent"_qs, u"preferences-system-network"_qs));
++    m_ui->tabSelection->item(TAB_CONNECTION)->setIcon(UIThemeManager::instance()->getIcon(u"network-connect"_qs, u"network-wired"_qs));
++    m_ui->tabSelection->item(TAB_DOWNLOADS)->setIcon(UIThemeManager::instance()->getIcon(u"download"_qs, u"folder-download"_qs));
++    m_ui->tabSelection->item(TAB_SPEED)->setIcon(UIThemeManager::instance()->getIcon(u"speedometer"_qs, u"chronometer"_qs));
++    m_ui->tabSelection->item(TAB_RSS)->setIcon(UIThemeManager::instance()->getIcon(u"application-rss"_qs, u"application-rss+xml"_qs));
+ #ifdef DISABLE_WEBUI
+     m_ui->tabSelection->item(TAB_WEBUI)->setHidden(true);
+ #else
+-    m_ui->tabSelection->item(TAB_WEBUI)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-webui"_qs));
++    m_ui->tabSelection->item(TAB_WEBUI)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-webui"_qs, u"network-server"_qs));
+ #endif
+-    m_ui->tabSelection->item(TAB_ADVANCED)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-advanced"_qs));
++    m_ui->tabSelection->item(TAB_ADVANCED)->setIcon(UIThemeManager::instance()->getIcon(u"preferences-advanced"_qs, u"preferences-other"_qs));
+ 
+     // set uniform size for all icons
+     int maxHeight = -1;
+@@ -288,6 +288,11 @@ void OptionsDialog::loadBehaviorTabOptions()
+     m_ui->customThemeFilePath->setMode(FileSystemPathEdit::Mode::FileOpen);
+     m_ui->customThemeFilePath->setDialogCaption(tr("Select qBittorrent UI Theme file"));
+     m_ui->customThemeFilePath->setFileNameFilter(tr("qBittorrent UI Theme file (*.qbtheme config.json)"));
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    m_ui->checkUseSystemIcon->setChecked(pref->useSystemIcons());
++#else
++    m_ui->checkUseSystemIcon->setVisible(false);
++#endif
+ 
+     m_ui->confirmDeletion->setChecked(pref->confirmTorrentDeletion());
+     m_ui->checkAltRowColors->setChecked(pref->useAlternatingRowColors());
+@@ -382,6 +387,9 @@ void OptionsDialog::loadBehaviorTabOptions()
+ 
+     connect(m_ui->comboI18n, qComboBoxCurrentIndexChanged, this, &ThisType::enableApplyButton);
+ 
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    connect(m_ui->checkUseSystemIcon, &QAbstractButton::toggled, this, &ThisType::enableApplyButton);
++#endif
+     connect(m_ui->checkUseCustomTheme, &QGroupBox::toggled, this, &ThisType::enableApplyButton);
+     connect(m_ui->customThemeFilePath, &FileSystemPathEdit::selectedPathChanged, this, &ThisType::enableApplyButton);
+ 
+@@ -451,6 +459,9 @@ void OptionsDialog::saveBehaviorTabOptions() const
+     }
+     pref->setLocale(locale);
+ 
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    pref->useSystemIcons(m_ui->checkUseSystemIcon->isChecked());
++#endif
+     pref->setUseCustomUITheme(m_ui->checkUseCustomTheme->isChecked());
+     pref->setCustomUIThemePath(m_ui->customThemeFilePath->selectedPath());
+ 
+diff --git a/src/gui/optionsdialog.ui b/src/gui/optionsdialog.ui
+index ea4c73d7f..e407d79e9 100644
+--- a/src/gui/optionsdialog.ui
++++ b/src/gui/optionsdialog.ui
+@@ -133,41 +133,18 @@
+                <string>Interface</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_81">
+-               <item row="3" column="0" colspan="3">
+-                <widget class="QGroupBox" name="checkUseCustomTheme">
+-                 <property name="title">
+-                  <string>Use custom UI Theme</string>
++               <item row="0" column="0" colspan="2">
++                <widget class="QLabel" name="label_15">
++                 <property name="font">
++                  <font>
++                   <italic>true</italic>
++                  </font>
+                  </property>
+-                 <property name="checkable">
+-                  <bool>true</bool>
++                 <property name="text">
++                  <string>Changing Interface settings requires application restart</string>
+                  </property>
+-                 <layout class="QHBoxLayout" name="horizontalLayout_18">
+-                  <item>
+-                   <widget class="QLabel" name="label_16">
+-                    <property name="text">
+-                     <string>UI Theme file:</string>
+-                    </property>
+-                   </widget>
+-                  </item>
+-                  <item>
+-                   <widget class="FileSystemPathLineEdit" name="customThemeFilePath" native="true"/>
+-                  </item>
+-                 </layout>
+                 </widget>
+                </item>
+-               <item row="1" column="2">
+-                <spacer name="horizontalSpacer_111">
+-                 <property name="orientation">
+-                  <enum>Qt::Horizontal</enum>
+-                 </property>
+-                 <property name="sizeHint" stdset="0">
+-                  <size>
+-                   <width>200</width>
+-                   <height>20</height>
+-                  </size>
+-                 </property>
+-                </spacer>
+-               </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_9">
+                  <property name="text">
+@@ -191,15 +168,45 @@
+                  </property>
+                 </widget>
+                </item>
+-               <item row="0" column="0" colspan="2">
+-                <widget class="QLabel" name="label_15">
+-                 <property name="font">
+-                  <font>
+-                   <italic>true</italic>
+-                  </font>
++               <item row="1" column="2">
++                <spacer name="horizontalSpacer_111">
++                 <property name="orientation">
++                  <enum>Qt::Horizontal</enum>
++                 </property>
++                 <property name="sizeHint" stdset="0">
++                  <size>
++                   <width>200</width>
++                   <height>20</height>
++                  </size>
+                  </property>
++                </spacer>
++               </item>
++               <item row="2" column="0" colspan="3">
++                <widget class="QGroupBox" name="checkUseCustomTheme">
++                 <property name="title">
++                  <string>Use custom UI Theme</string>
++                 </property>
++                 <property name="checkable">
++                  <bool>true</bool>
++                 </property>
++                 <layout class="QHBoxLayout" name="horizontalLayout_18">
++                  <item>
++                   <widget class="QLabel" name="label_16">
++                    <property name="text">
++                     <string>UI Theme file:</string>
++                    </property>
++                   </widget>
++                  </item>
++                  <item>
++                   <widget class="FileSystemPathLineEdit" name="customThemeFilePath" native="true"/>
++                  </item>
++                 </layout>
++                </widget>
++               </item>
++               <item row="3" column="0" colspan="2">
++                <widget class="QCheckBox" name="checkUseSystemIcon">
+                  <property name="text">
+-                  <string>Changing Interface settings requires application restart</string>
++                  <string>Use icons from system theme</string>
+                  </property>
+                 </widget>
+                </item>
+diff --git a/src/gui/properties/propertieswidget.cpp b/src/gui/properties/propertieswidget.cpp
+index 8c63d048f..b8875a6e7 100644
+--- a/src/gui/properties/propertieswidget.cpp
++++ b/src/gui/properties/propertieswidget.cpp
+@@ -750,7 +750,7 @@ void PropertiesWidget::displayWebSeedListMenu()
+ 
+     if (!rows.isEmpty())
+     {
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove Web seed")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove Web seed")
+             , this, &PropertiesWidget::deleteSelectedUrlSeeds);
+         menu->addSeparator();
+         menu->addAction(UIThemeManager::instance()->getIcon(u"edit-copy"_qs), tr("Copy Web seed URL")
+diff --git a/src/gui/properties/proptabbar.cpp b/src/gui/properties/proptabbar.cpp
+index 81941f9fa..d2094a658 100644
+--- a/src/gui/properties/proptabbar.cpp
++++ b/src/gui/properties/proptabbar.cpp
+@@ -45,7 +45,7 @@ PropTabBar::PropTabBar(QWidget *parent)
+     // General tab
+     QPushButton *mainInfosButton = new QPushButton(
+ #ifndef Q_OS_MACOS
+-            UIThemeManager::instance()->getIcon(u"help-about"_qs),
++            UIThemeManager::instance()->getIcon(u"help-about"_qs, u"document-properties"_qs),
+ #endif
+             tr("General"), parent);
+     mainInfosButton->setShortcut(Qt::ALT + Qt::Key_G);
+@@ -54,7 +54,7 @@ PropTabBar::PropTabBar(QWidget *parent)
+     // Trackers tab
+     QPushButton *trackersButton = new QPushButton(
+ #ifndef Q_OS_MACOS
+-            UIThemeManager::instance()->getIcon(u"trackers"_qs),
++            UIThemeManager::instance()->getIcon(u"trackers"_qs, u"network-server"_qs),
+ #endif
+             tr("Trackers"), parent);
+     trackersButton->setShortcut(Qt::ALT + Qt::Key_C);
+diff --git a/src/gui/properties/trackerlistwidget.cpp b/src/gui/properties/trackerlistwidget.cpp
+index 791700485..e38afdcaa 100644
+--- a/src/gui/properties/trackerlistwidget.cpp
++++ b/src/gui/properties/trackerlistwidget.cpp
+@@ -572,7 +572,7 @@ void TrackerListWidget::showTrackerListMenu()
+     {
+         menu->addAction(UIThemeManager::instance()->getIcon(u"edit-rename"_qs),tr("Edit tracker URL...")
+             , this, &TrackerListWidget::editSelectedTracker);
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove tracker")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove tracker")
+             , this, &TrackerListWidget::deleteSelectedTrackers);
+         menu->addAction(UIThemeManager::instance()->getIcon(u"edit-copy"_qs), tr("Copy tracker URL")
+             , this, &TrackerListWidget::copyTrackerUrl);
+@@ -580,10 +580,10 @@ void TrackerListWidget::showTrackerListMenu()
+ 
+     if (!torrent->isPaused())
+     {
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs), tr("Force reannounce to selected trackers")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs, u"view-refresh"_qs), tr("Force reannounce to selected trackers")
+             , this, &TrackerListWidget::reannounceSelected);
+         menu->addSeparator();
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs), tr("Force reannounce to all trackers")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs, u"view-refresh"_qs), tr("Force reannounce to all trackers")
+             , this, [this]()
+         {
+             BitTorrent::Torrent *h = m_properties->getCurrentTorrent();
+diff --git a/src/gui/properties/trackersadditiondialog.cpp b/src/gui/properties/trackersadditiondialog.cpp
+index 4ea931ddd..5b154c994 100644
+--- a/src/gui/properties/trackersadditiondialog.cpp
++++ b/src/gui/properties/trackersadditiondialog.cpp
+@@ -52,7 +52,7 @@ TrackersAdditionDialog::TrackersAdditionDialog(QWidget *parent, BitTorrent::Torr
+ {
+     m_ui->setupUi(this);
+ 
+-    m_ui->downloadButton->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs));
++    m_ui->downloadButton->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs, u"download"_qs));
+     m_ui->buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Add"));
+ 
+     connect(m_ui->downloadButton, &QAbstractButton::clicked, this, &TrackersAdditionDialog::onDownloadButtonClicked);
+diff --git a/src/gui/rss/articlelistwidget.cpp b/src/gui/rss/articlelistwidget.cpp
+index 8d8d48daf..3f3f3b0aa 100644
+--- a/src/gui/rss/articlelistwidget.cpp
++++ b/src/gui/rss/articlelistwidget.cpp
+@@ -105,7 +105,7 @@ void ArticleListWidget::handleArticleRead(RSS::Article *rssArticle)
+     const QColor defaultColor {palette().color(QPalette::Inactive, QPalette::WindowText)};
+     const QBrush foregroundBrush {UIThemeManager::instance()->getColor(u"RSS.ReadArticle"_qs, defaultColor)};
+     item->setData(Qt::ForegroundRole, foregroundBrush);
+-    item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs));
++    item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs, u"sphere"_qs));
+ 
+     checkInvariant();
+ }
+@@ -133,14 +133,14 @@ QListWidgetItem *ArticleListWidget::createItem(RSS::Article *article) const
+         const QColor defaultColor {palette().color(QPalette::Inactive, QPalette::WindowText)};
+         const QBrush foregroundBrush {UIThemeManager::instance()->getColor(u"RSS.ReadArticle"_qs, defaultColor)};
+         item->setData(Qt::ForegroundRole, foregroundBrush);
+-        item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs));
++        item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs, u"sphere"_qs));
+     }
+     else
+     {
+         const QColor defaultColor {palette().color(QPalette::Active, QPalette::Link)};
+         const QBrush foregroundBrush {UIThemeManager::instance()->getColor(u"RSS.UnreadArticle"_qs, defaultColor)};
+         item->setData(Qt::ForegroundRole, foregroundBrush);
+-        item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs));
++        item->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"loading"_qs, u"sphere"_qs));
+     }
+ 
+     return item;
+diff --git a/src/gui/rss/automatedrssdownloader.cpp b/src/gui/rss/automatedrssdownloader.cpp
+index ff5f31f4e..a8f9204a2 100644
+--- a/src/gui/rss/automatedrssdownloader.cpp
++++ b/src/gui/rss/automatedrssdownloader.cpp
+@@ -75,7 +75,7 @@ AutomatedRssDownloader::AutomatedRssDownloader(QWidget *parent)
+ {
+     m_ui->setupUi(this);
+     // Icons
+-    m_ui->removeRuleBtn->setIcon(UIThemeManager::instance()->getIcon(u"edit-clear"_qs));
++    m_ui->removeRuleBtn->setIcon(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs));
+     m_ui->addRuleBtn->setIcon(UIThemeManager::instance()->getIcon(u"list-add"_qs));
+     m_ui->addCategoryBtn->setIcon(UIThemeManager::instance()->getIcon(u"list-add"_qs));
+ 
+@@ -521,7 +521,7 @@ void AutomatedRssDownloader::displayRulesListMenu()
+     {
+         if (selection.count() == 1)
+         {
+-            menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Delete rule")
++            menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Delete rule")
+                 , this, &AutomatedRssDownloader::on_removeRuleBtn_clicked);
+             menu->addSeparator();
+             menu->addAction(UIThemeManager::instance()->getIcon(u"edit-rename"_qs), tr("Rename rule...")
+@@ -529,7 +529,7 @@ void AutomatedRssDownloader::displayRulesListMenu()
+         }
+         else
+         {
+-            menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Delete selected rules")
++            menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Delete selected rules")
+                 , this, &AutomatedRssDownloader::on_removeRuleBtn_clicked);
+         }
+ 
+@@ -759,7 +759,7 @@ void AutomatedRssDownloader::updateMustLineValidity()
+     else
+     {
+         m_ui->lineContains->setStyleSheet(u"QLineEdit { color: #ff0000; }"_qs);
+-        m_ui->labelMustStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs).pixmap(16, 16));
++        m_ui->labelMustStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs, u"task-attention"_qs).pixmap(16, 16));
+         m_ui->labelMustStat->setToolTip(error);
+     }
+ }
+@@ -806,7 +806,7 @@ void AutomatedRssDownloader::updateMustNotLineValidity()
+     else
+     {
+         m_ui->lineNotContains->setStyleSheet(u"QLineEdit { color: #ff0000; }"_qs);
+-        m_ui->labelMustNotStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs).pixmap(16, 16));
++        m_ui->labelMustNotStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs, u"task-attention"_qs).pixmap(16, 16));
+         m_ui->labelMustNotStat->setToolTip(error);
+     }
+ }
+@@ -824,7 +824,7 @@ void AutomatedRssDownloader::updateEpisodeFilterValidity()
+     else
+     {
+         m_ui->lineEFilter->setStyleSheet(u"QLineEdit { color: #ff0000; }"_qs);
+-        m_ui->labelEpFilterStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs).pixmap(16, 16));
++        m_ui->labelEpFilterStat->setPixmap(UIThemeManager::instance()->getIcon(u"dialog-warning"_qs, u"task-attention"_qs).pixmap(16, 16));
+     }
+ }
+ 
+diff --git a/src/gui/rss/feedlistwidget.cpp b/src/gui/rss/feedlistwidget.cpp
+index 06676be1d..8657dcca8 100644
+--- a/src/gui/rss/feedlistwidget.cpp
++++ b/src/gui/rss/feedlistwidget.cpp
+@@ -81,7 +81,7 @@ namespace
+         if (feed->isLoading())
+             return UIThemeManager::instance()->getIcon(u"loading"_qs);
+         if (feed->hasError())
+-            return UIThemeManager::instance()->getIcon(u"task-reject"_qs);
++            return UIThemeManager::instance()->getIcon(u"task-reject"_qs, u"unavailable"_qs);
+ 
+         return loadIcon(feed->iconPath(), u"application-rss"_qs);
+     }
+diff --git a/src/gui/rss/rsswidget.cpp b/src/gui/rss/rsswidget.cpp
+index 52d76a341..e0bfec041 100644
+--- a/src/gui/rss/rsswidget.cpp
++++ b/src/gui/rss/rsswidget.cpp
+@@ -64,8 +64,8 @@ RSSWidget::RSSWidget(QWidget *parent)
+     // Icons
+     m_ui->actionCopyFeedURL->setIcon(UIThemeManager::instance()->getIcon(u"edit-copy"_qs));
+     m_ui->actionDelete->setIcon(UIThemeManager::instance()->getIcon(u"edit-clear"_qs));
+-    m_ui->actionDownloadTorrent->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs));
+-    m_ui->actionMarkItemsRead->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs));
++    m_ui->actionDownloadTorrent->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs, u"download"_qs));
++    m_ui->actionMarkItemsRead->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs, u"mail-mark-read"_qs));
+     m_ui->actionNewFolder->setIcon(UIThemeManager::instance()->getIcon(u"folder-new"_qs));
+     m_ui->actionNewSubscription->setIcon(UIThemeManager::instance()->getIcon(u"list-add"_qs));
+     m_ui->actionOpenNewsURL->setIcon(UIThemeManager::instance()->getIcon(u"application-url"_qs));
+@@ -74,9 +74,9 @@ RSSWidget::RSSWidget(QWidget *parent)
+     m_ui->actionUpdateAllFeeds->setIcon(UIThemeManager::instance()->getIcon(u"view-refresh"_qs));
+ #ifndef Q_OS_MACOS
+     m_ui->newFeedButton->setIcon(UIThemeManager::instance()->getIcon(u"list-add"_qs));
+-    m_ui->markReadButton->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs));
++    m_ui->markReadButton->setIcon(UIThemeManager::instance()->getIcon(u"task-complete"_qs, u"mail-mark-read"_qs));
+     m_ui->updateAllButton->setIcon(UIThemeManager::instance()->getIcon(u"view-refresh"_qs));
+-    m_ui->rssDownloaderBtn->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs));
++    m_ui->rssDownloaderBtn->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs, u"download"_qs));
+ #endif
+ 
+     m_articleListWidget = new ArticleListWidget(m_ui->splitterMain);
+diff --git a/src/gui/search/searchjobwidget.cpp b/src/gui/search/searchjobwidget.cpp
+index 9b907c717..3b7cb37d1 100644
+--- a/src/gui/search/searchjobwidget.cpp
++++ b/src/gui/search/searchjobwidget.cpp
+@@ -392,7 +392,7 @@ void SearchJobWidget::contextMenuEvent(QContextMenuEvent *event)
+ 
+     menu->addAction(UIThemeManager::instance()->getIcon(u"download"_qs)
+         , tr("Open download window"), this, [this]() { downloadTorrents(AddTorrentOption::ShowDialog); });
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"downloading"_qs)
++    menu->addAction(UIThemeManager::instance()->getIcon(u"downloading"_qs, u"download"_qs)
+         , tr("Download"), this, [this]() { downloadTorrents(AddTorrentOption::SkipDialog); });
+     menu->addSeparator();
+     menu->addAction(UIThemeManager::instance()->getIcon(u"application-url"_qs), tr("Open description page")
+@@ -401,11 +401,11 @@ void SearchJobWidget::contextMenuEvent(QContextMenuEvent *event)
+     QMenu *copySubMenu = menu->addMenu(
+         UIThemeManager::instance()->getIcon(u"edit-copy"_qs), tr("Copy"));
+ 
+-    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"name"_qs), tr("Name")
++    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"name"_qs, u"edit-copy"_qs), tr("Name")
+         , this, &SearchJobWidget::copyTorrentNames);
+-    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"insert-link"_qs), tr("Download link")
++    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"insert-link"_qs, u"edit-copy"_qs), tr("Download link")
+         , this, &SearchJobWidget::copyTorrentDownloadLinks);
+-    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"application-url"_qs), tr("Description page URL")
++    copySubMenu->addAction(UIThemeManager::instance()->getIcon(u"application-url"_qs, u"edit-copy"_qs), tr("Description page URL")
+         , this, &SearchJobWidget::copyTorrentURLs);
+ 
+     menu->popup(event->globalPos());
+diff --git a/src/gui/search/searchwidget.cpp b/src/gui/search/searchwidget.cpp
+index 03d4a39ff..2896f773e 100644
+--- a/src/gui/search/searchwidget.cpp
++++ b/src/gui/search/searchwidget.cpp
+@@ -112,7 +112,7 @@ SearchWidget::SearchWidget(IGUIApplication *app, MainWindow *mainWindow)
+ #ifndef Q_OS_MACOS
+     // Icons
+     m_ui->searchButton->setIcon(UIThemeManager::instance()->getIcon(u"edit-find"_qs));
+-    m_ui->pluginsButton->setIcon(UIThemeManager::instance()->getIcon(u"plugins"_qs));
++    m_ui->pluginsButton->setIcon(UIThemeManager::instance()->getIcon(u"plugins"_qs, u"preferences-system-network"_qs));
+ #else
+     // On macOS the icons overlap the text otherwise
+     QSize iconSize = m_ui->tabWidget->iconSize();
+diff --git a/src/gui/statusbar.cpp b/src/gui/statusbar.cpp
+index 0f4bda38e..b4877b692 100644
+--- a/src/gui/statusbar.cpp
++++ b/src/gui/statusbar.cpp
+@@ -69,7 +69,7 @@ StatusBar::StatusBar(QWidget *parent)
+     connect(m_connecStatusLblIcon, &QAbstractButton::clicked, this, &StatusBar::connectionButtonClicked);
+ 
+     m_dlSpeedLbl = new QPushButton(this);
+-    m_dlSpeedLbl->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs));
++    m_dlSpeedLbl->setIcon(UIThemeManager::instance()->getIcon(u"downloading"_qs, u"downloading_small"_qs));
+     connect(m_dlSpeedLbl, &QAbstractButton::clicked, this, &StatusBar::capSpeed);
+     m_dlSpeedLbl->setFlat(true);
+     m_dlSpeedLbl->setFocusPolicy(Qt::NoFocus);
+@@ -78,7 +78,7 @@ StatusBar::StatusBar(QWidget *parent)
+     m_dlSpeedLbl->setMinimumWidth(200);
+ 
+     m_upSpeedLbl = new QPushButton(this);
+-    m_upSpeedLbl->setIcon(UIThemeManager::instance()->getIcon(u"upload"_qs));
++    m_upSpeedLbl->setIcon(UIThemeManager::instance()->getIcon(u"upload"_qs, u"seeding"_qs));
+     connect(m_upSpeedLbl, &QAbstractButton::clicked, this, &StatusBar::capSpeed);
+     m_upSpeedLbl->setFlat(true);
+     m_upSpeedLbl->setFocusPolicy(Qt::NoFocus);
+diff --git a/src/gui/tagfiltermodel.cpp b/src/gui/tagfiltermodel.cpp
+index 702f9c9e7..c12029efc 100644
+--- a/src/gui/tagfiltermodel.cpp
++++ b/src/gui/tagfiltermodel.cpp
+@@ -123,7 +123,7 @@ QVariant TagFilterModel::data(const QModelIndex &index, int role) const
+     switch (role)
+     {
+     case Qt::DecorationRole:
+-        return UIThemeManager::instance()->getIcon(u"tags"_qs);
++        return UIThemeManager::instance()->getIcon(u"tags"_qs, u"inode-directory"_qs);
+     case Qt::DisplayRole:
+         return u"%1 (%2)"_qs.arg(tagDisplayName(item.tag())).arg(item.torrentsCount());
+     case Qt::UserRole:
+diff --git a/src/gui/tagfilterwidget.cpp b/src/gui/tagfilterwidget.cpp
+index 7d971c516..125769fc3 100644
+--- a/src/gui/tagfilterwidget.cpp
++++ b/src/gui/tagfilterwidget.cpp
+@@ -113,16 +113,16 @@ void TagFilterWidget::showMenu()
+     const auto selectedRows = selectionModel()->selectedRows();
+     if (!selectedRows.empty() && !TagFilterModel::isSpecialItem(selectedRows.first()))
+     {
+-        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove tag")
++        menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove tag")
+             , this, &TagFilterWidget::removeTag);
+     }
+ 
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs), tr("Remove unused tags")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"edit-clear"_qs, u"list-remove"_qs), tr("Remove unused tags")
+         , this, &TagFilterWidget::removeUnusedTags);
+     menu->addSeparator();
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs), tr("Resume torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs), tr("Resume torrents")
+         , this, &TagFilterWidget::actionResumeTorrentsTriggered);
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs), tr("Pause torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs), tr("Pause torrents")
+         , this, &TagFilterWidget::actionPauseTorrentsTriggered);
+     menu->addAction(UIThemeManager::instance()->getIcon(u"list-remove"_qs), tr("Remove torrents")
+         , this, &TagFilterWidget::actionDeleteTorrentsTriggered);
+diff --git a/src/gui/torrentcontentmodel.cpp b/src/gui/torrentcontentmodel.cpp
+index 21bbff55d..0ae77fd57 100644
+--- a/src/gui/torrentcontentmodel.cpp
++++ b/src/gui/torrentcontentmodel.cpp
+@@ -70,7 +70,7 @@ namespace
+     {
+     public:
+         UnifiedFileIconProvider()
+-            : m_textPlainIcon {UIThemeManager::instance()->getIcon(u"help-about"_qs)}
++            : m_textPlainIcon {UIThemeManager::instance()->getIcon(u"help-about"_qs, u"text-plain"_qs)}
+         {
+         }
+ 
+diff --git a/src/gui/transferlistfilterswidget.cpp b/src/gui/transferlistfilterswidget.cpp
+index 4a7c0281d..0a62098ac 100644
+--- a/src/gui/transferlistfilterswidget.cpp
++++ b/src/gui/transferlistfilterswidget.cpp
+@@ -173,31 +173,31 @@ StatusFilterWidget::StatusFilterWidget(QWidget *parent, TransferListWidget *tran
+     // Add status filters
+     auto *all = new QListWidgetItem(this);
+     all->setData(Qt::DisplayRole, tr("All (0)", "this is for the status filter"));
+-    all->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-all"_qs));
++    all->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-all"_qs, u"filterall"_qs));
+     auto *downloading = new QListWidgetItem(this);
+     downloading->setData(Qt::DisplayRole, tr("Downloading (0)"));
+     downloading->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"downloading"_qs));
+     auto *seeding = new QListWidgetItem(this);
+     seeding->setData(Qt::DisplayRole, tr("Seeding (0)"));
+-    seeding->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"upload"_qs));
++    seeding->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"upload"_qs, u"uploading"_qs));
+     auto *completed = new QListWidgetItem(this);
+     completed->setData(Qt::DisplayRole, tr("Completed (0)"));
+-    completed->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"checked-completed"_qs));
++    completed->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"checked-completed"_qs, u"completed"_qs));
+     auto *resumed = new QListWidgetItem(this);
+     resumed->setData(Qt::DisplayRole, tr("Resumed (0)"));
+-    resumed->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"torrent-start"_qs));
++    resumed->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs));
+     auto *paused = new QListWidgetItem(this);
+     paused->setData(Qt::DisplayRole, tr("Paused (0)"));
+-    paused->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"torrent-stop"_qs));
++    paused->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs));
+     auto *active = new QListWidgetItem(this);
+     active->setData(Qt::DisplayRole, tr("Active (0)"));
+-    active->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-active"_qs));
++    active->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-active"_qs, u"filteractive"_qs));
+     auto *inactive = new QListWidgetItem(this);
+     inactive->setData(Qt::DisplayRole, tr("Inactive (0)"));
+-    inactive->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-inactive"_qs));
++    inactive->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-inactive"_qs, u"filterinactive"_qs));
+     auto *stalled = new QListWidgetItem(this);
+     stalled->setData(Qt::DisplayRole, tr("Stalled (0)"));
+-    stalled->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-stalled"_qs));
++    stalled->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"filter-stalled"_qs, u"filterstalled"_qs));
+     auto *stalledUploading = new QListWidgetItem(this);
+     stalledUploading->setData(Qt::DisplayRole, tr("Stalled Uploading (0)"));
+     stalledUploading->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"stalledUP"_qs));
+@@ -206,7 +206,7 @@ StatusFilterWidget::StatusFilterWidget(QWidget *parent, TransferListWidget *tran
+     stalledDownloading->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"stalledDL"_qs));
+     auto *checking = new QListWidgetItem(this);
+     checking->setData(Qt::DisplayRole, tr("Checking (0)"));
+-    checking->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"force-recheck"_qs));
++    checking->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"force-recheck"_qs, u"checking"_qs));
+     auto *moving = new QListWidgetItem(this);
+     moving->setData(Qt::DisplayRole, tr("Moving (0)"));
+     moving->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"set-location"_qs));
+@@ -308,9 +308,9 @@ void StatusFilterWidget::showMenu()
+     QMenu *menu = new QMenu(this);
+     menu->setAttribute(Qt::WA_DeleteOnClose);
+ 
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs), tr("Resume torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs), tr("Resume torrents")
+         , transferList, &TransferListWidget::startVisibleTorrents);
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs), tr("Pause torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs), tr("Pause torrents")
+         , transferList, &TransferListWidget::pauseVisibleTorrents);
+     menu->addAction(UIThemeManager::instance()->getIcon(u"list-remove"_qs), tr("Remove torrents")
+         , transferList, &TransferListWidget::deleteVisibleTorrents);
+@@ -371,16 +371,16 @@ TrackerFiltersList::TrackerFiltersList(QWidget *parent, TransferListWidget *tran
+ {
+     auto *allTrackers = new QListWidgetItem(this);
+     allTrackers->setData(Qt::DisplayRole, tr("All (0)", "this is for the tracker filter"));
+-    allTrackers->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackers"_qs));
++    allTrackers->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackers"_qs, u"network-server"_qs));
+     auto *noTracker = new QListWidgetItem(this);
+     noTracker->setData(Qt::DisplayRole, tr("Trackerless (0)"));
+-    noTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackerless"_qs));
++    noTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackerless"_qs, u"network-server"_qs));
+     auto *errorTracker = new QListWidgetItem(this);
+     errorTracker->setData(Qt::DisplayRole, tr("Error (0)"));
+-    errorTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"tracker-error"_qs));
++    errorTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"tracker-error"_qs, u"dialog-error"_qs));
+     auto *warningTracker = new QListWidgetItem(this);
+     warningTracker->setData(Qt::DisplayRole, tr("Warning (0)"));
+-    warningTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"tracker-warning"_qs));
++    warningTracker->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"tracker-warning"_qs, u"dialog-warning"_qs));
+ 
+     m_trackers[NULL_HOST] = {{}, noTracker};
+ 
+@@ -474,7 +474,7 @@ void TrackerFiltersList::addItems(const QString &trackerURL, const QVector<BitTo
+     else
+     {
+         trackerItem = new QListWidgetItem();
+-        trackerItem->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackers"_qs));
++        trackerItem->setData(Qt::DecorationRole, UIThemeManager::instance()->getIcon(u"trackers"_qs, u"network-server"_qs));
+ 
+         const TrackerData trackerData {{}, trackerItem};
+         trackersIt = m_trackers.insert(host, trackerData);
+@@ -712,9 +712,9 @@ void TrackerFiltersList::showMenu()
+     QMenu *menu = new QMenu(this);
+     menu->setAttribute(Qt::WA_DeleteOnClose);
+ 
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs), tr("Resume torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs), tr("Resume torrents")
+         , transferList, &TransferListWidget::startVisibleTorrents);
+-    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs), tr("Pause torrents")
++    menu->addAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs), tr("Pause torrents")
+         , transferList, &TransferListWidget::pauseVisibleTorrents);
+     menu->addAction(UIThemeManager::instance()->getIcon(u"list-remove"_qs), tr("Remove torrents")
+         , transferList, &TransferListWidget::deleteVisibleTorrents);
+diff --git a/src/gui/transferlistmodel.cpp b/src/gui/transferlistmodel.cpp
+index 720e93691..4547935d1 100644
+--- a/src/gui/transferlistmodel.cpp
++++ b/src/gui/transferlistmodel.cpp
+@@ -158,15 +158,15 @@ TransferListModel::TransferListModel(QObject *parent)
+           {BitTorrent::TorrentState::Error, tr("Errored", "Torrent status, the torrent has an error")}
+     }
+     , m_stateThemeColors {torrentStateColorsFromUITheme()}
+-    , m_checkingIcon {UIThemeManager::instance()->getIcon(u"force-recheck"_qs)}
+-    , m_completedIcon {UIThemeManager::instance()->getIcon(u"checked-completed"_qs)}
++    , m_checkingIcon {UIThemeManager::instance()->getIcon(u"force-recheck"_qs, u"checking"_qs)}
++    , m_completedIcon {UIThemeManager::instance()->getIcon(u"checked-completed"_qs, u"completed"_qs)}
+     , m_downloadingIcon {UIThemeManager::instance()->getIcon(u"downloading"_qs)}
+     , m_errorIcon {UIThemeManager::instance()->getIcon(u"error"_qs)}
+-    , m_pausedIcon {UIThemeManager::instance()->getIcon(u"torrent-stop"_qs)}
++    , m_pausedIcon {UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs)}
+     , m_queuedIcon {UIThemeManager::instance()->getIcon(u"queued"_qs)}
+     , m_stalledDLIcon {UIThemeManager::instance()->getIcon(u"stalledDL"_qs)}
+     , m_stalledUPIcon {UIThemeManager::instance()->getIcon(u"stalledUP"_qs)}
+-    , m_uploadingIcon {UIThemeManager::instance()->getIcon(u"upload"_qs)}
++    , m_uploadingIcon {UIThemeManager::instance()->getIcon(u"upload"_qs, u"uploading"_qs)}
+ {
+     configure();
+     connect(Preferences::instance(), &Preferences::changed, this, &TransferListModel::configure);
+diff --git a/src/gui/transferlistwidget.cpp b/src/gui/transferlistwidget.cpp
+index 196334702..9bca61d45 100644
+--- a/src/gui/transferlistwidget.cpp
++++ b/src/gui/transferlistwidget.cpp
+@@ -930,11 +930,11 @@ void TransferListWidget::displayListMenu()
+ 
+     // Create actions
+ 
+-    auto *actionStart = new QAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs), tr("&Resume", "Resume/start the torrent"), listMenu);
++    auto *actionStart = new QAction(UIThemeManager::instance()->getIcon(u"torrent-start"_qs, u"media-playback-start"_qs), tr("&Resume", "Resume/start the torrent"), listMenu);
+     connect(actionStart, &QAction::triggered, this, &TransferListWidget::startSelectedTorrents);
+-    auto *actionPause = new QAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs), tr("&Pause", "Pause the torrent"), listMenu);
++    auto *actionPause = new QAction(UIThemeManager::instance()->getIcon(u"torrent-stop"_qs, u"media-playback-pause"_qs), tr("&Pause", "Pause the torrent"), listMenu);
+     connect(actionPause, &QAction::triggered, this, &TransferListWidget::pauseSelectedTorrents);
+-    auto *actionForceStart = new QAction(UIThemeManager::instance()->getIcon(u"torrent-start-forced"_qs), tr("Force Resu&me", "Force Resume/start the torrent"), listMenu);
++    auto *actionForceStart = new QAction(UIThemeManager::instance()->getIcon(u"torrent-start-forced"_qs, u"media-playback-start"_qs), tr("Force Resu&me", "Force Resume/start the torrent"), listMenu);
+     connect(actionForceStart, &QAction::triggered, this, &TransferListWidget::forceStartSelectedTorrents);
+     auto *actionDelete = new QAction(UIThemeManager::instance()->getIcon(u"list-remove"_qs), tr("&Remove", "Remove the torrent"), listMenu);
+     connect(actionDelete, &QAction::triggered, this, &TransferListWidget::softDeleteSelectedTorrents);
+@@ -952,21 +952,21 @@ void TransferListWidget::displayListMenu()
+     connect(actionTopQueuePos, &QAction::triggered, this, &TransferListWidget::topQueuePosSelectedTorrents);
+     auto *actionBottomQueuePos = new QAction(UIThemeManager::instance()->getIcon(u"go-bottom"_qs), tr("Move to &bottom", "i.e. Move to bottom of the queue"), listMenu);
+     connect(actionBottomQueuePos, &QAction::triggered, this, &TransferListWidget::bottomQueuePosSelectedTorrents);
+-    auto *actionSetTorrentPath = new QAction(UIThemeManager::instance()->getIcon(u"set-location"_qs), tr("Set loc&ation..."), listMenu);
++    auto *actionSetTorrentPath = new QAction(UIThemeManager::instance()->getIcon(u"set-location"_qs, u"inode-directory"_qs), tr("Set loc&ation..."), listMenu);
+     connect(actionSetTorrentPath, &QAction::triggered, this, &TransferListWidget::setSelectedTorrentsLocation);
+-    auto *actionForceRecheck = new QAction(UIThemeManager::instance()->getIcon(u"force-recheck"_qs), tr("Force rec&heck"), listMenu);
++    auto *actionForceRecheck = new QAction(UIThemeManager::instance()->getIcon(u"force-recheck"_qs, u"document-edit-verify"_qs), tr("Force rec&heck"), listMenu);
+     connect(actionForceRecheck, &QAction::triggered, this, &TransferListWidget::recheckSelectedTorrents);
+-    auto *actionForceReannounce = new QAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs), tr("Force r&eannounce"), listMenu);
++    auto *actionForceReannounce = new QAction(UIThemeManager::instance()->getIcon(u"reannounce"_qs, u"document-edit-verify"_qs), tr("Force r&eannounce"), listMenu);
+     connect(actionForceReannounce, &QAction::triggered, this, &TransferListWidget::reannounceSelectedTorrents);
+-    auto *actionCopyMagnetLink = new QAction(UIThemeManager::instance()->getIcon(u"torrent-magnet"_qs), tr("&Magnet link"), listMenu);
++    auto *actionCopyMagnetLink = new QAction(UIThemeManager::instance()->getIcon(u"torrent-magnet"_qs, u"kt-magnet"_qs), tr("&Magnet link"), listMenu);
+     connect(actionCopyMagnetLink, &QAction::triggered, this, &TransferListWidget::copySelectedMagnetURIs);
+-    auto *actionCopyID = new QAction(UIThemeManager::instance()->getIcon(u"help-about"_qs), tr("Torrent &ID"), listMenu);
++    auto *actionCopyID = new QAction(UIThemeManager::instance()->getIcon(u"help-about"_qs, u"edit-copy"_qs), tr("Torrent &ID"), listMenu);
+     connect(actionCopyID, &QAction::triggered, this, &TransferListWidget::copySelectedIDs);
+-    auto *actionCopyName = new QAction(UIThemeManager::instance()->getIcon(u"name"_qs), tr("&Name"), listMenu);
++    auto *actionCopyName = new QAction(UIThemeManager::instance()->getIcon(u"name"_qs, u"edit-copy"_qs), tr("&Name"), listMenu);
+     connect(actionCopyName, &QAction::triggered, this, &TransferListWidget::copySelectedNames);
+-    auto *actionCopyHash1 = new QAction(UIThemeManager::instance()->getIcon(u"hash"_qs), tr("Info &hash v1"), listMenu);
++    auto *actionCopyHash1 = new QAction(UIThemeManager::instance()->getIcon(u"hash"_qs, u"edit-copy"_qs), tr("Info &hash v1"), listMenu);
+     connect(actionCopyHash1, &QAction::triggered, this, [this]() { copySelectedInfohashes(CopyInfohashPolicy::Version1); });
+-    auto *actionCopyHash2 = new QAction(UIThemeManager::instance()->getIcon(u"hash"_qs), tr("Info h&ash v2"), listMenu);
++    auto *actionCopyHash2 = new QAction(UIThemeManager::instance()->getIcon(u"hash"_qs, u"edit-copy"_qs), tr("Info h&ash v2"), listMenu);
+     connect(actionCopyHash2, &QAction::triggered, this, [this]() { copySelectedInfohashes(CopyInfohashPolicy::Version2); });
+     auto *actionSuperSeedingMode = new TriStateAction(tr("Super seeding mode"), listMenu);
+     connect(actionSuperSeedingMode, &QAction::triggered, this, &TransferListWidget::setSelectedTorrentsSuperSeeding);
+@@ -1152,7 +1152,7 @@ void TransferListWidget::displayListMenu()
+     QStringList tags(BitTorrent::Session::instance()->tags().values());
+     std::sort(tags.begin(), tags.end(), Utils::Compare::NaturalLessThan<Qt::CaseInsensitive>());
+ 
+-    QMenu *tagsMenu = listMenu->addMenu(UIThemeManager::instance()->getIcon(u"tags"_qs), tr("Ta&gs"));
++    QMenu *tagsMenu = listMenu->addMenu(UIThemeManager::instance()->getIcon(u"tags"_qs, u"view-categories"_qs), tr("Ta&gs"));
+ 
+     tagsMenu->addAction(UIThemeManager::instance()->getIcon(u"list-add"_qs), tr("&Add...", "Add / assign multiple tags...")
+         , this, &TransferListWidget::askAddTagsForSelection);
+diff --git a/src/gui/uithememanager.cpp b/src/gui/uithememanager.cpp
+index 1253646b4..25412eb00 100644
+--- a/src/gui/uithememanager.cpp
++++ b/src/gui/uithememanager.cpp
+@@ -167,7 +167,10 @@ void UIThemeManager::initInstance()
+ }
+ 
+ UIThemeManager::UIThemeManager()
+-    : m_useCustomTheme(Preferences::instance()->useCustomUITheme())
++    : m_useCustomTheme {Preferences::instance()->useCustomUITheme()}
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    , m_useSystemIcons {Preferences::instance()->useSystemIcons()}
++#endif
+ {
+     if (m_useCustomTheme)
+     {
+@@ -196,14 +199,25 @@ void UIThemeManager::applyStyleSheet() const
+     qApp->setStyleSheet(QString::fromUtf8(m_themeSource->readStyleSheet()));
+ }
+ 
+-QIcon UIThemeManager::getIcon(const QString &iconId, const QString &fallback) const
++QIcon UIThemeManager::getIcon(const QString &iconId, [[maybe_unused]] const QString &fallback) const
+ {
+     // Cache to avoid rescaling svg icons
+     const auto iter = m_iconCache.find(iconId);
+     if (iter != m_iconCache.end())
+         return *iter;
+ 
+-    const QIcon icon {getIconPathFromResources(iconId, fallback).data()};
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    // Don't cache system icons because users might change them at run time
++    if (m_useSystemIcons)
++    {
++        auto icon = QIcon::fromTheme(iconId);
++        if (icon.name() != iconId)
++            icon = QIcon::fromTheme(fallback, QIcon(getIconPathFromResources(iconId).data()));
++        return icon;
++    }
++#endif
++
++    const QIcon icon {getIconPathFromResources(iconId).data()};
+     m_iconCache[iconId] = icon;
+     return icon;
+ }
+@@ -259,23 +273,33 @@ QIcon UIThemeManager::getSystrayIcon() const
+ 
+ Path UIThemeManager::getIconPath(const QString &iconId) const
+ {
+-    return getIconPathFromResources(iconId, {});
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    if (m_useSystemIcons)
++    {
++        Path path = Utils::Fs::tempPath() / Path(iconId + u".png");
++        if (!path.exists())
++        {
++            const QIcon icon = QIcon::fromTheme(iconId);
++            if (!icon.isNull())
++                icon.pixmap(32).save(path.toString());
++            else
++                path = getIconPathFromResources(iconId);
++        }
++
++        return path;
++    }
++#endif
++
++    return getIconPathFromResources(iconId);
+ }
+ 
+-Path UIThemeManager::getIconPathFromResources(const QString &iconId, const QString &fallback) const
++Path UIThemeManager::getIconPathFromResources(const QString &iconId) const
+ {
+     if (m_useCustomTheme && m_themeSource)
+     {
+         const Path customIcon = m_themeSource->iconPath(iconId);
+         if (!customIcon.isEmpty())
+             return customIcon;
+-
+-        if (!fallback.isEmpty())
+-        {
+-            const Path fallbackIcon = m_themeSource->iconPath(fallback);
+-            if (!fallbackIcon.isEmpty())
+-                return fallbackIcon;
+-        }
+     }
+ 
+     return findIcon(iconId, DEFAULT_ICONS_DIR);
+diff --git a/src/gui/uithememanager.h b/src/gui/uithememanager.h
+index 3b3c18cde..fe5bc4738 100644
+--- a/src/gui/uithememanager.h
++++ b/src/gui/uithememanager.h
+@@ -70,13 +70,16 @@ public:
+ 
+ private:
+     UIThemeManager(); // singleton class
+-    Path getIconPathFromResources(const QString &iconId, const QString &fallback = {}) const;
++    Path getIconPathFromResources(const QString &iconId) const;
+     void loadColorsFromJSONConfig();
+     void applyPalette() const;
+     void applyStyleSheet() const;
+ 
+     static UIThemeManager *m_instance;
+     const bool m_useCustomTheme;
++#if (defined(Q_OS_UNIX) && !defined(Q_OS_MACOS))
++    const bool m_useSystemIcons;
++#endif
+     std::unique_ptr<UIThemeSource> m_themeSource;
+     QHash<QString, QColor> m_colors;
+     mutable QHash<QString, QIcon> m_iconCache;
+-- 
+2.34.1
+
+
+From c78ac614f5bc8a400804619f1e0a7d304d5f40e8 Mon Sep 17 00:00:00 2001
+From: brvphoenix <30111323+brvphoenix@users.noreply.github.com>
+Date: Sun, 25 Dec 2022 21:44:37 +0800
+Subject: [PATCH 18/26] Unify the way to generate the language list in WebUI
+ and GUI
+
+PR #17994.
+Closes #18090.
+---
+ src/base/utils/misc.cpp                      | 90 ++++++++++++++++++
+ src/base/utils/misc.h                        |  2 +
+ src/gui/optionsdialog.cpp                    | 98 +-------------------
+ src/webui/webapplication.cpp                 | 25 ++++-
+ src/webui/www/private/views/preferences.html | 72 +++-----------
+ 5 files changed, 133 insertions(+), 154 deletions(-)
+
+diff --git a/src/base/utils/misc.cpp b/src/base/utils/misc.cpp
+index 01d81e178..e9803f36c 100644
+--- a/src/base/utils/misc.cpp
++++ b/src/base/utils/misc.cpp
+@@ -53,6 +53,8 @@
+ #include <zlib.h>
+ 
+ #include <QCoreApplication>
++#include <QDebug>
++#include <QLocale>
+ #include <QMimeDatabase>
+ #include <QRegularExpression>
+ #include <QSet>
+@@ -403,6 +405,94 @@ QString Utils::Misc::getUserIDString()
+     return uid;
+ }
+ 
++QString Utils::Misc::languageToLocalizedString(const QString &localeStr)
++{
++    if (localeStr.startsWith(u"eo", Qt::CaseInsensitive))
++    {
++        // QLocale doesn't work with that locale. Esperanto isn't a "real" language.
++        return C_LOCALE_ESPERANTO;
++    }
++
++    if (localeStr.startsWith(u"ltg", Qt::CaseInsensitive))
++    {
++        // QLocale doesn't work with that locale.
++        return C_LOCALE_LATGALIAN;
++    }
++
++    const QLocale locale {localeStr};
++    switch (locale.language())
++    {
++    case QLocale::Arabic: return C_LOCALE_ARABIC;
++    case QLocale::Armenian: return C_LOCALE_ARMENIAN;
++    case QLocale::Azerbaijani: return C_LOCALE_AZERBAIJANI;
++    case QLocale::Basque: return C_LOCALE_BASQUE;
++    case QLocale::Bulgarian: return C_LOCALE_BULGARIAN;
++    case QLocale::Byelorussian: return C_LOCALE_BYELORUSSIAN;
++    case QLocale::Catalan: return C_LOCALE_CATALAN;
++    case QLocale::Chinese:
++        switch (locale.country())
++        {
++        case QLocale::China: return C_LOCALE_CHINESE_SIMPLIFIED;
++        case QLocale::HongKong: return C_LOCALE_CHINESE_TRADITIONAL_HK;
++        default: return C_LOCALE_CHINESE_TRADITIONAL_TW;
++        }
++    case QLocale::Croatian: return C_LOCALE_CROATIAN;
++    case QLocale::Czech: return C_LOCALE_CZECH;
++    case QLocale::Danish: return C_LOCALE_DANISH;
++    case QLocale::Dutch: return C_LOCALE_DUTCH;
++    case QLocale::English:
++        switch (locale.country())
++        {
++        case QLocale::Australia: return C_LOCALE_ENGLISH_AUSTRALIA;
++        case QLocale::UnitedKingdom: return C_LOCALE_ENGLISH_UNITEDKINGDOM;
++        default: return C_LOCALE_ENGLISH;
++        }
++    case QLocale::Estonian: return C_LOCALE_ESTONIAN;
++    case QLocale::Finnish: return C_LOCALE_FINNISH;
++    case QLocale::French: return C_LOCALE_FRENCH;
++    case QLocale::Galician: return C_LOCALE_GALICIAN;
++    case QLocale::Georgian: return C_LOCALE_GEORGIAN;
++    case QLocale::German: return C_LOCALE_GERMAN;
++    case QLocale::Greek: return C_LOCALE_GREEK;
++    case QLocale::Hebrew: return C_LOCALE_HEBREW;
++    case QLocale::Hindi: return C_LOCALE_HINDI;
++    case QLocale::Hungarian: return C_LOCALE_HUNGARIAN;
++    case QLocale::Icelandic: return C_LOCALE_ICELANDIC;
++    case QLocale::Indonesian: return C_LOCALE_INDONESIAN;
++    case QLocale::Italian: return C_LOCALE_ITALIAN;
++    case QLocale::Japanese: return C_LOCALE_JAPANESE;
++    case QLocale::Korean: return C_LOCALE_KOREAN;
++    case QLocale::Latvian: return C_LOCALE_LATVIAN;
++    case QLocale::Lithuanian: return C_LOCALE_LITHUANIAN;
++    case QLocale::Malay: return C_LOCALE_MALAY;
++    case QLocale::Mongolian: return C_LOCALE_MONGOLIAN;
++    case QLocale::NorwegianBokmal: return C_LOCALE_NORWEGIAN;
++    case QLocale::Occitan: return C_LOCALE_OCCITAN;
++    case QLocale::Persian: return C_LOCALE_PERSIAN;
++    case QLocale::Polish: return C_LOCALE_POLISH;
++    case QLocale::Portuguese:
++        if (locale.country() == QLocale::Brazil)
++            return C_LOCALE_PORTUGUESE_BRAZIL;
++        return C_LOCALE_PORTUGUESE;
++    case QLocale::Romanian: return C_LOCALE_ROMANIAN;
++    case QLocale::Russian: return C_LOCALE_RUSSIAN;
++    case QLocale::Serbian: return C_LOCALE_SERBIAN;
++    case QLocale::Slovak: return C_LOCALE_SLOVAK;
++    case QLocale::Slovenian: return C_LOCALE_SLOVENIAN;
++    case QLocale::Spanish: return C_LOCALE_SPANISH;
++    case QLocale::Swedish: return C_LOCALE_SWEDISH;
++    case QLocale::Thai: return C_LOCALE_THAI;
++    case QLocale::Turkish: return C_LOCALE_TURKISH;
++    case QLocale::Ukrainian: return C_LOCALE_UKRAINIAN;
++    case QLocale::Uzbek: return C_LOCALE_UZBEK;
++    case QLocale::Vietnamese: return C_LOCALE_VIETNAMESE;
++    default:
++        const QString lang = QLocale::languageToString(locale.language());
++        qWarning() << "Unrecognized language name: " << lang;
++        return lang;
++    }
++}
++
+ QString Utils::Misc::parseHtmlLinks(const QString &rawText)
+ {
+     QString result = rawText;
+diff --git a/src/base/utils/misc.h b/src/base/utils/misc.h
+index 95da08afd..fc1eac40d 100644
+--- a/src/base/utils/misc.h
++++ b/src/base/utils/misc.h
+@@ -85,6 +85,8 @@ namespace Utils::Misc
+     QString userFriendlyDuration(qlonglong seconds, qlonglong maxCap = -1);
+     QString getUserIDString();
+ 
++    QString languageToLocalizedString(const QString &localeStr);
++
+ #ifdef Q_OS_WIN
+     Path windowsSystemPath();
+ 
+diff --git a/src/gui/optionsdialog.cpp b/src/gui/optionsdialog.cpp
+index c13146136..2ae1359e1 100644
+--- a/src/gui/optionsdialog.cpp
++++ b/src/gui/optionsdialog.cpp
+@@ -52,8 +52,8 @@
+ #include "base/rss/rss_session.h"
+ #include "base/torrentfileguard.h"
+ #include "base/torrentfileswatcher.h"
+-#include "base/unicodestrings.h"
+ #include "base/utils/fs.h"
++#include "base/utils/misc.h"
+ #include "base/utils/net.h"
+ #include "base/utils/password.h"
+ #include "base/utils/random.h"
+@@ -89,81 +89,6 @@ namespace
+         return ret;
+     }
+ 
+-    QString languageToLocalizedString(const QLocale &locale)
+-    {
+-        switch (locale.language())
+-        {
+-        case QLocale::Arabic: return C_LOCALE_ARABIC;
+-        case QLocale::Armenian: return C_LOCALE_ARMENIAN;
+-        case QLocale::Azerbaijani: return C_LOCALE_AZERBAIJANI;
+-        case QLocale::Basque: return C_LOCALE_BASQUE;
+-        case QLocale::Bulgarian: return C_LOCALE_BULGARIAN;
+-        case QLocale::Byelorussian: return C_LOCALE_BYELORUSSIAN;
+-        case QLocale::Catalan: return C_LOCALE_CATALAN;
+-        case QLocale::Chinese:
+-            switch (locale.country())
+-            {
+-            case QLocale::China: return C_LOCALE_CHINESE_SIMPLIFIED;
+-            case QLocale::HongKong: return C_LOCALE_CHINESE_TRADITIONAL_HK;
+-            default: return C_LOCALE_CHINESE_TRADITIONAL_TW;
+-            }
+-        case QLocale::Croatian: return C_LOCALE_CROATIAN;
+-        case QLocale::Czech: return C_LOCALE_CZECH;
+-        case QLocale::Danish: return C_LOCALE_DANISH;
+-        case QLocale::Dutch: return C_LOCALE_DUTCH;
+-        case QLocale::English:
+-            switch (locale.country())
+-            {
+-            case QLocale::Australia: return C_LOCALE_ENGLISH_AUSTRALIA;
+-            case QLocale::UnitedKingdom: return C_LOCALE_ENGLISH_UNITEDKINGDOM;
+-            default: return C_LOCALE_ENGLISH;
+-            }
+-        case QLocale::Estonian: return C_LOCALE_ESTONIAN;
+-        case QLocale::Finnish: return C_LOCALE_FINNISH;
+-        case QLocale::French: return C_LOCALE_FRENCH;
+-        case QLocale::Galician: return C_LOCALE_GALICIAN;
+-        case QLocale::Georgian: return C_LOCALE_GEORGIAN;
+-        case QLocale::German: return C_LOCALE_GERMAN;
+-        case QLocale::Greek: return C_LOCALE_GREEK;
+-        case QLocale::Hebrew: return C_LOCALE_HEBREW;
+-        case QLocale::Hindi: return C_LOCALE_HINDI;
+-        case QLocale::Hungarian: return C_LOCALE_HUNGARIAN;
+-        case QLocale::Icelandic: return C_LOCALE_ICELANDIC;
+-        case QLocale::Indonesian: return C_LOCALE_INDONESIAN;
+-        case QLocale::Italian: return C_LOCALE_ITALIAN;
+-        case QLocale::Japanese: return C_LOCALE_JAPANESE;
+-        case QLocale::Korean: return C_LOCALE_KOREAN;
+-        case QLocale::Latvian: return C_LOCALE_LATVIAN;
+-        case QLocale::Lithuanian: return C_LOCALE_LITHUANIAN;
+-        case QLocale::Malay: return C_LOCALE_MALAY;
+-        case QLocale::Mongolian: return C_LOCALE_MONGOLIAN;
+-        case QLocale::NorwegianBokmal: return C_LOCALE_NORWEGIAN;
+-        case QLocale::Occitan: return C_LOCALE_OCCITAN;
+-        case QLocale::Persian: return C_LOCALE_PERSIAN;
+-        case QLocale::Polish: return C_LOCALE_POLISH;
+-        case QLocale::Portuguese:
+-            if (locale.country() == QLocale::Brazil)
+-                return C_LOCALE_PORTUGUESE_BRAZIL;
+-            return C_LOCALE_PORTUGUESE;
+-        case QLocale::Romanian: return C_LOCALE_ROMANIAN;
+-        case QLocale::Russian: return C_LOCALE_RUSSIAN;
+-        case QLocale::Serbian: return C_LOCALE_SERBIAN;
+-        case QLocale::Slovak: return C_LOCALE_SLOVAK;
+-        case QLocale::Slovenian: return C_LOCALE_SLOVENIAN;
+-        case QLocale::Spanish: return C_LOCALE_SPANISH;
+-        case QLocale::Swedish: return C_LOCALE_SWEDISH;
+-        case QLocale::Thai: return C_LOCALE_THAI;
+-        case QLocale::Turkish: return C_LOCALE_TURKISH;
+-        case QLocale::Ukrainian: return C_LOCALE_UKRAINIAN;
+-        case QLocale::Uzbek: return C_LOCALE_UZBEK;
+-        case QLocale::Vietnamese: return C_LOCALE_VIETNAMESE;
+-        default:
+-            const QString lang = QLocale::languageToString(locale.language());
+-            qWarning() << "Unrecognized language name: " << lang;
+-            return lang;
+-        }
+-    }
+-
+     class WheelEventEater final : public QObject
+     {
+     public:
+@@ -1326,25 +1251,8 @@ void OptionsDialog::initializeLanguageCombo()
+     const QStringList langFiles = langDir.entryList(QStringList(u"qbittorrent_*.qm"_qs), QDir::Files);
+     for (const QString &langFile : langFiles)
+     {
+-        QString localeStr = langFile.mid(12); // remove "qbittorrent_"
+-        localeStr.chop(3); // Remove ".qm"
+-        QString languageName;
+-        if (localeStr.startsWith(u"eo", Qt::CaseInsensitive))
+-        {
+-            // QLocale doesn't work with that locale. Esperanto isn't a "real" language.
+-            languageName = C_LOCALE_ESPERANTO;
+-        }
+-        else if (localeStr.startsWith(u"ltg", Qt::CaseInsensitive))
+-        {
+-            // QLocale doesn't work with that locale.
+-            languageName = C_LOCALE_LATGALIAN;
+-        }
+-        else
+-        {
+-            QLocale locale(localeStr);
+-            languageName = languageToLocalizedString(locale);
+-        }
+-        m_ui->comboI18n->addItem(/*QIcon(":/icons/flags/"+country+".svg"), */ languageName, localeStr);
++        const QString localeStr = langFile.section(u"_"_qs, 1, -1).section(u"."_qs, 0, 0); // remove "qbittorrent_" and ".qm"
++        m_ui->comboI18n->addItem(/*QIcon(":/icons/flags/"+country+".svg"), */ Utils::Misc::languageToLocalizedString(localeStr), localeStr);
+         qDebug() << "Supported locale:" << localeStr;
+     }
+ }
+diff --git a/src/webui/webapplication.cpp b/src/webui/webapplication.cpp
+index d35a48c87..f16e6e812 100644
+--- a/src/webui/webapplication.cpp
++++ b/src/webui/webapplication.cpp
+@@ -32,6 +32,7 @@
+ 
+ #include <QDateTime>
+ #include <QDebug>
++#include <QDir>
+ #include <QFile>
+ #include <QFileInfo>
+ #include <QJsonDocument>
+@@ -112,6 +113,22 @@ namespace
+ 
+         return u"no-store"_qs;
+     }
++
++    QString createLanguagesOptionsHtml()
++    {
++        // List language files
++        const QDir langDir {u":/www/translations"_qs};
++        const QStringList langFiles = langDir.entryList(QStringList(u"webui_*.qm"_qs), QDir::Files);
++        QStringList languages;
++        for (const QString &langFile : langFiles)
++        {
++            const QString localeStr = langFile.section(u"_"_qs, 1, -1).section(u"."_qs, 0, 0); // remove "webui_" and ".qm"
++            languages << u"<option value=\"%1\">%2</option>"_qs.arg(localeStr, Utils::Misc::languageToLocalizedString(localeStr));
++            qDebug() << "Supported locale:" << localeStr;
++        }
++
++        return languages.join(u'\n');
++    }
+ }
+ 
+ WebApplication::WebApplication(IApplication *app, QObject *parent)
+@@ -472,13 +489,17 @@ void WebApplication::sendFile(const Path &path)
+     const QMimeType mimeType = QMimeDatabase().mimeTypeForFileNameAndData(path.data(), data);
+     const bool isTranslatable = !m_isAltUIUsed && mimeType.inherits(u"text/plain"_qs);
+ 
+-    // Translate the file
+     if (isTranslatable)
+     {
+         auto dataStr = QString::fromUtf8(data);
++        // Translate the file
+         translateDocument(dataStr);
+-        data = dataStr.toUtf8();
+ 
++        // Add the language options
++        if (path == (m_rootFolder / Path(PRIVATE_FOLDER) / Path(u"views/preferences.html"_qs)))
++            dataStr.replace(u"${LANGUAGE_OPTIONS}"_qs, createLanguagesOptionsHtml());
++
++        data = dataStr.toUtf8();
+         m_translatedFiles[path] = {data, mimeType.name(), lastModified}; // caching translated file
+     }
+ 
+diff --git a/src/webui/www/private/views/preferences.html b/src/webui/www/private/views/preferences.html
+index 78f1b42c5..22bddb687 100644
+--- a/src/webui/www/private/views/preferences.html
++++ b/src/webui/www/private/views/preferences.html
+@@ -666,62 +666,7 @@
+         <legend>QBT_TR(Language)QBT_TR[CONTEXT=OptionsDialog]</legend>
+         <label for="locale_select">QBT_TR(User Interface Language:)QBT_TR[CONTEXT=OptionsDialog]</label>
+         <select id="locale_select">
+-            <option value="ar_AE">عربي</option>
+-            <option value="az@latin">Azərbaycan dili</option>
+-            <option value="be_BY">Беларуская</option>
+-            <option value="bg_BG">Български</option>
+-            <option value="ca_ES">Català</option>
+-            <option value="cs_CZ">Čeština</option>
+-            <option value="da_DK">Dansk</option>
+-            <option value="de_DE">Deutsch</option>
+-            <option value="el_GR">Ελληνικά</option>
+-            <option value="en">English</option>
+-            <option value="en_AU">English (Australia)</option>
+-            <option value="en_GB">English (United Kingdom)</option>
+-            <option value="eo_EO">Esperanto</option>
+-            <option value="es_ES">Español</option>
+-            <option value="et">Eesti, eesti keel</option>
+-            <option value="eu_ES">Euskara</option>
+-            <option value="fa">فارسی</option>
+-            <option value="fi_FI">Suomi</option>
+-            <option value="fr_FR">Français</option>
+-            <option value="gl_ES">Galego</option>
+-            <option value="he_IL">עברית</option>
+-            <option value="hi_IN">हिन्दी, हिंदी</option>
+-            <option value="hr_HR">Hrvatski</option>
+-            <option value="hu_HU">Magyar</option>
+-            <option value="hy_AM">Հայերեն</option>
+-            <option value="id">Bahasa Indonesia</option>
+-            <option value="is">Íslenska</option>
+-            <option value="it_IT">Italiano</option>
+-            <option value="ja_JP">日本語</option>
+-            <option value="ka_GE">ქართული</option>
+-            <option value="ko_KR">한국어</option>
+-            <option value="ltg">Latgalīšu volūda</option>
+-            <option value="lt_LT">Lietuvių</option>
+-            <option value="lv_LV">Latviešu valoda</option>
+-            <option value="mn_MN">Монгол хэл</option>
+-            <option value="ms_MY">بهاس ملايو</option>
+-            <option value="nb_NO">Norsk</option>
+-            <option value="nl_NL">Nederlands</option>
+-            <option value="oc">lenga d'òc</option>
+-            <option value="pl_PL">Polski</option>
+-            <option value="pt_BR">Português brasileiro</option>
+-            <option value="pt_PT">Português</option>
+-            <option value="ro_RO">Română</option>
+-            <option value="ru_RU">Русский</option>
+-            <option value="sk_SK">Slovenčina</option>
+-            <option value="sl_SI">Slovenščina</option>
+-            <option value="sr_CS">Српски</option>
+-            <option value="sv_SE">Svenska</option>
+-            <option value="th">ไทย</option>
+-            <option value="tr_TR">Türkçe</option>
+-            <option value="uk_UA">Українська</option>
+-            <option value="uz@Latn">أۇزبېك</option>
+-            <option value="vi_VN">Tiếng Việt</option>
+-            <option value="zh">简体中文</option>
+-            <option value="zh_HK">香港正體字</option>
+-            <option value="zh_TW">正體中文</option>
++            ${LANGUAGE_OPTIONS}
+         </select>
+     </fieldset>
+ 
+@@ -1408,6 +1353,7 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+                 updateWebUICustomHTTPHeadersSettings: updateWebUICustomHTTPHeadersSettings,
+                 updateWebUIReverseProxySettings: updateWebUIReverseProxySettings,
+                 updateDynDnsSettings: updateDynDnsSettings,
++                updateWebuiLocaleSelect: updateWebuiLocaleSelect,
+                 registerDynDns: registerDynDns,
+                 applyPreferences: applyPreferences
+             };
+@@ -1737,6 +1683,18 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+             }).send();
+         };
+ 
++        const updateWebuiLocaleSelect = (selected) => {
++            let languages = [];
++            for (let i = 0; i < $('locale_select').options.length; i++)
++                languages.push($('locale_select').options[i].value);
++
++            if (!languages.includes(selected)) {
++                const lang = selected.slice(0, selected.indexOf('_'));
++                selected = languages.includes(lang) ? lang : 'en';
++            }
++            $('locale_select').setProperty('value', selected);
++        };
++
+         const loadPreferences = function() {
+             const url = 'api/v2/app/preferences';
+             new Request.JSON({
+@@ -2013,7 +1971,7 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+ 
+                         // Web UI tab
+                         // Language
+-                        $('locale_select').setProperty('value', ((pref.locale === "en_US") ? "en" : pref.locale));
++                        updateWebuiLocaleSelect(pref.locale);
+                         $('performanceWarning').setProperty('checked', pref.performance_warning);
+ 
+                         // HTTP Server
+-- 
+2.34.1
+
+
+From fb22b58ce6dc81f328e33e74b3a8ff9cc1912599 Mon Sep 17 00:00:00 2001
+From: Jason Carr <79025+jcarr@users.noreply.github.com>
+Date: Wed, 28 Dec 2022 05:20:02 -0500
+Subject: [PATCH 19/26] WebUI: change order of accepted types of file input
+
+PR #18286.
+---
+ src/webui/www/private/upload.html | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/webui/www/private/upload.html b/src/webui/www/private/upload.html
+index 32de2b00d..1a0974356 100644
+--- a/src/webui/www/private/upload.html
++++ b/src/webui/www/private/upload.html
+@@ -14,7 +14,7 @@
+     <iframe id="upload_frame" name="upload_frame" class="invisible" src="about:blank"></iframe>
+     <form action="api/v2/torrents/add" enctype="multipart/form-data" method="post" id="uploadForm" style="text-align: center;" target="upload_frame" autocorrect="off" autocapitalize="none">
+         <div style="margin-top: 25px; display: inline-block; border: 1px solid lightgrey; border-radius: 4px;">
+-            <input type="file" id="fileselect" accept="application/x-bittorrent, .torrent" name="fileselect[]" multiple />
++            <input type="file" id="fileselect" accept=".torrent, application/x-bittorrent" name="fileselect[]" multiple />
+         </div>
+         <fieldset class="settings" style="border: 0; text-align: left; margin-top: 12px;">
+             <table style="margin: auto;">
+-- 
+2.34.1
+
+
+From e0d0efcc203946d545fc17e4a74c61b313e557fb Mon Sep 17 00:00:00 2001
+From: brvphoenix <30111323+brvphoenix@users.noreply.github.com>
+Date: Fri, 13 Jan 2023 15:52:53 +0800
+Subject: [PATCH 20/26] WebUI: Add missing icons
+
+PR #18380.
+---
+ src/webui/www/private/images/folder-documents.svg | 1 +
+ src/webui/www/private/images/task-reject.svg      | 1 +
+ src/webui/www/webui.qrc                           | 2 ++
+ 3 files changed, 4 insertions(+)
+ create mode 100644 src/webui/www/private/images/folder-documents.svg
+ create mode 100644 src/webui/www/private/images/task-reject.svg
+
+diff --git a/src/webui/www/private/images/folder-documents.svg b/src/webui/www/private/images/folder-documents.svg
+new file mode 100644
+index 000000000..0b8d29c86
+--- /dev/null
++++ b/src/webui/www/private/images/folder-documents.svg
+@@ -0,0 +1 @@
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><g fill="#1e90ff"><path d="m20.949219 13.083984-9.898438 9.898438c.555802.551364 1.200161 1.005584 1.90625 1.34375.165012.080142.333109.153763.503907.220703.045118.018.091118.033781.136718.050781.760655.238926 1.535072.444831 2.357422.431641.0149 0 .030022.003906.044922.003906.08443 0 .16632-.010672.25-.013672.136229-.00253.272354-.009051.408203-.019531.13051-.0122.258379-.033534.386719-.052734.840074-.172598 1.62762-.465682 2.33789-.865235.710271-.399553 1.343205-.903889 1.873047-1.498047.529843-.594157.957068-1.278743 1.25586-2.035156.298791-.756412.46921-1.586339.486328-2.472656v-.042969c0-.1096-.008672-.216009-.013672-.324219-.06609-.712616-.139954-1.410863-.423828-2.095703-.00642-.01956-.012931-.039093-.019531-.058593-.001-.003-.002937-.00386-.003907-.00586-.349361-.924496-.890527-1.764536-1.58789-2.464844z"/><path d="m2.7773438 2c-.4308891 0-.7773438.446-.7773438 1v3.921875 2.078125 20.078125c0 .5114.3190539.921875.7167969.921875h26.5664061c.397743 0 .716797-.410474.716797-.921875v-22.15625c0-.5113999-.319054-.921875-.716797-.921875h-12.726562c-.886457.034-1.316068-.264328-1.707032-.7363281l-1.849609-2.4199219c-.261411-.4404-.457783-.84375-.888672-.84375zm13.2226562 8.033203c1.0138 0 1.982426.19057 2.873047.535156.890621.344587 1.703238.843189 2.408203 1.464844l.375.34375c.11897.11897.23239.24879.34375.375.621655.704965 1.122211 1.519535 1.466797 2.410156.344586.890622.533203 1.857294.533203 2.871094 0 1.10457-.224084 2.158128-.628906 3.115235-.404822.957106-.990986 1.819111-1.714844 2.542968-.723858.723858-1.585862 1.308069-2.542969 1.712891s-2.008711.628906-3.113281.628906c-1.0138 0-1.982426-.188617-2.873047-.533203s-1.703238-.845142-2.408203-1.466797c-.219938-.213654-.510719-.451508-.71875-.71875-.6216549-.704965-1.1222107-1.517582-1.4667969-2.408203s-.5332031-1.859247-.5332031-2.873047c0-1.10457.2240844-2.156174.6289062-3.113281.4048219-.957107.9909863-1.819111 1.7148438-2.542969.723857-.723857 1.585862-1.310022 2.542969-1.714844s2.008711-.628906 3.113281-.628906z"/></g></svg>
+\ No newline at end of file
+diff --git a/src/webui/www/private/images/task-reject.svg b/src/webui/www/private/images/task-reject.svg
+new file mode 100644
+index 000000000..bcd6364c0
+--- /dev/null
++++ b/src/webui/www/private/images/task-reject.svg
+@@ -0,0 +1 @@
++<svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg"><path d="m28.122773 8.9725973c-1.251859-2.1448373-2.95009-3.843056-5.094918-5.0949173-2.145273-1.2518613-4.487221-1.87768-7.027407-1.87768-2.539963 0-4.882582.6258187-7.0274094 1.87768-2.1450513 1.2516373-3.8432821 2.949856-5.0951397 5.0949173-1.2520819 2.1450427-1.8778989 4.4876717-1.8778989 7.0274027 0 2.539955.6260408 4.882136 1.8776749 7.027403 1.251858 2.144613 2.9500888 3.843056 5.0951399 5.094917 2.1450512 1.251861 4.4874462 1.87768 7.0274092 1.87768 2.539962 0 4.882579-.625819 7.027407-1.87768 2.144828-1.251637 3.843059-2.95008 5.094918-5.094917 1.251635-2.145043 1.877451-4.487672 1.877451-7.027403 0-2.539955-.625816-4.882584-1.877227-7.0274027zm-5.523614 10.3267547c.230907.230673.346582.50456.346582.820475 0 .32801-.115687.607693-.346582.838376l-1.640504 1.640725c-.230906.230907-.510364.34636-.838599.34636-.315929 0-.589794-.115547-.820253-.34636l-3.299579-3.299576-3.29958 3.299576c-.230907.230907-.504323.34636-.820252.34636-.328235 0-.607694-.115547-.8386-.34636l-1.6407277-1.640725c-.2309067-.230674-.3463584-.510366-.3463584-.838376 0-.315915.1154534-.589792.3463584-.820475l3.2995797-3.299352-3.2995797-3.299576c-.2309067-.230673-.3463584-.504336-.3463584-.820251 0-.328234.1154534-.607693.3463584-.8386l1.6407277-1.640501c.230907-.2309067.510365-.34636.8386-.34636.315929 0 .589346.1155467.820252.34636l3.29958 3.299352 3.299579-3.299352c.230459-.2309067.504324-.34636.820253-.34636.328235 0 .607693.1155467.838599.34636l1.640504 1.640501c.230907.230907.346582.510366.346582.8386 0 .315915-.115687.589568-.346582.820251l-3.299356 3.299576z" fill="#f00" stroke-width="2.333333"/></svg>
+\ No newline at end of file
+diff --git a/src/webui/www/webui.qrc b/src/webui/www/webui.qrc
+index 4a6a5038d..597453128 100644
+--- a/src/webui/www/webui.qrc
++++ b/src/webui/www/webui.qrc
+@@ -309,6 +309,7 @@
+         <file>private/images/flags/za.svg</file>
+         <file>private/images/flags/zm.svg</file>
+         <file>private/images/flags/zw.svg</file>
++        <file>private/images/folder-documents.svg</file>
+         <file>private/images/folder-new.svg</file>
+         <file>private/images/force-recheck.svg</file>
+         <file>private/images/go-bottom.svg</file>
+@@ -348,6 +349,7 @@
+         <file>private/images/tabs.gif</file>
+         <file>private/images/tags.svg</file>
+         <file>private/images/task-complete.svg</file>
++        <file>private/images/task-reject.svg</file>
+         <file>private/images/toolbox-divider.gif</file>
+         <file>private/images/torrent-magnet.svg</file>
+         <file>private/images/torrent-start-forced.svg</file>
+-- 
+2.34.1
+
+
+From e3562be0d6c57acdb78fa15716274a5d6d30ef90 Mon Sep 17 00:00:00 2001
+From: thalieht <thalieht@users.noreply.github.com>
+Date: Fri, 13 Jan 2023 09:58:46 +0200
+Subject: [PATCH 21/26] WebUI: Add "Resume data storage type" option
+
+PR #18357.
+---
+ src/webui/api/appcontroller.cpp              |  5 +++++
+ src/webui/webapplication.h                   |  2 +-
+ src/webui/www/private/views/preferences.html | 13 +++++++++++++
+ 3 files changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/src/webui/api/appcontroller.cpp b/src/webui/api/appcontroller.cpp
+index 0b82613c7..e0ddc7d5b 100644
+--- a/src/webui/api/appcontroller.cpp
++++ b/src/webui/api/appcontroller.cpp
+@@ -299,6 +299,8 @@ void AppController::preferencesAction()
+ 
+     // Advanced settings
+     // qBitorrent preferences
++    // Resume data storage type
++    data[u"resume_data_storage_type"_qs] = Utils::String::fromEnum(session->resumeDataStorageType());
+     // Physical memory (RAM) usage limit
+     data[u"memory_working_set_limit"_qs] = app()->memoryWorkingSetLimit();
+     // Current network interface
+@@ -776,6 +778,9 @@ void AppController::setPreferencesAction()
+ 
+     // Advanced settings
+     // qBittorrent preferences
++    // Resume data storage type
++    if (hasKey(u"resume_data_storage_type"_qs))
++        session->setResumeDataStorageType(Utils::String::toEnum(it.value().toString(), BitTorrent::ResumeDataStorageType::Legacy));
+     // Physical memory (RAM) usage limit
+     if (hasKey(u"memory_working_set_limit"_qs))
+         app()->setMemoryWorkingSetLimit(it.value().toInt());
+diff --git a/src/webui/webapplication.h b/src/webui/webapplication.h
+index 54a3f3c4e..bc55919b0 100644
+--- a/src/webui/webapplication.h
++++ b/src/webui/webapplication.h
+@@ -52,7 +52,7 @@
+ #include "base/utils/version.h"
+ #include "api/isessionmanager.h"
+ 
+-inline const Utils::Version<3, 2> API_VERSION {2, 8, 18};
++inline const Utils::Version<3, 2> API_VERSION {2, 8, 19};
+ 
+ class APIController;
+ class AuthController;
+diff --git a/src/webui/www/private/views/preferences.html b/src/webui/www/private/views/preferences.html
+index 22bddb687..3c3634431 100644
+--- a/src/webui/www/private/views/preferences.html
++++ b/src/webui/www/private/views/preferences.html
+@@ -879,6 +879,17 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+     <fieldset class="settings">
+         <legend>QBT_TR(qBittorrent Section)QBT_TR[CONTEXT=OptionsDialog]&nbsp;(<a href="https://github.com/qbittorrent/qBittorrent/wiki/Explanation-of-Options-in-qBittorrent#Advanced" target="_blank">QBT_TR(Open documentation)QBT_TR[CONTEXT=HttpServer]</a>)</legend>
+         <table>
++            <tr>
++                <td>
++                    <label for="resumeDataStorageType">QBT_TR(Resume data storage type (requires restart):)QBT_TR[CONTEXT=OptionsDialog]</label>
++                </td>
++                <td>
++                    <select id="resumeDataStorageType" style="width: 15em;">
++                        <option value="Legacy">QBT_TR(Fastresume files)QBT_TR[CONTEXT=OptionsDialog]</option>
++                        <option value="SQLite">QBT_TR(SQLite database (experimental))QBT_TR[CONTEXT=OptionsDialog]</option>
++                    </select>
++                </td>
++            </tr>
+             <tr>
+                 <td>
+                     <label for="memoryWorkingSetLimit">QBT_TR(Physical memory (RAM) usage limit (applied if libtorrent >= 2.0):)QBT_TR[CONTEXT=OptionsDialog]&nbsp;<a href="https://wikipedia.org/wiki/Working_set" target="_blank">(?)</a></label>
+@@ -2026,6 +2037,7 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+ 
+                         // Advanced settings
+                         // qBittorrent section
++                        $('resumeDataStorageType').setProperty('value', pref.resume_data_storage_type);
+                         $('memoryWorkingSetLimit').setProperty('value', pref.memory_working_set_limit);
+                         updateNetworkInterfaces(pref.current_network_interface);
+                         updateInterfaceAddresses(pref.current_network_interface, pref.current_interface_address);
+@@ -2453,6 +2465,7 @@ Use ';' to split multiple entries. Can use wildcard '*'.)QBT_TR[CONTEXT=OptionsD
+ 
+             // Update advanced settings
+             // qBittorrent section
++            settings.set('resume_data_storage_type', $('resumeDataStorageType').getProperty('value'));
+             settings.set('memory_working_set_limit', $('memoryWorkingSetLimit').getProperty('value'));
+             settings.set('current_network_interface', $('networkInterface').getProperty('value'));
+             settings.set('current_interface_address', $('optionalIPAddressToBind').getProperty('value'));
+-- 
+2.34.1
+
+
+From 0b7c8497f9d6046bd5e1db90c4a681d5eadd6bef Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Mon, 16 Jan 2023 06:54:02 +0300
+Subject: [PATCH 22/26] Add all torrents passed via the command line
+
+PR #18296.
+Closes #18289.
+---
+ src/app/application.cpp | 13 +++++++++----
+ src/app/application.h   |  2 +-
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/src/app/application.cpp b/src/app/application.cpp
+index 4e4e1fc7a..5b3124a45 100644
+--- a/src/app/application.cpp
++++ b/src/app/application.cpp
+@@ -658,8 +658,7 @@ Application::AddTorrentParams Application::parseParams(const QStringList &params
+             continue;
+         }
+ 
+-        parsedParams.torrentSource = param;
+-        break;
++        parsedParams.torrentSources.append(param);
+     }
+ 
+     return parsedParams;
+@@ -675,10 +674,16 @@ void Application::processParams(const AddTorrentParams &params)
+     // should be overridden.
+     const bool showDialogForThisTorrent = !params.skipTorrentDialog.value_or(!AddNewTorrentDialog::isEnabled());
+     if (showDialogForThisTorrent)
+-        AddNewTorrentDialog::show(params.torrentSource, params.torrentParams, m_window);
++    {
++        for (const QString &torrentSource : params.torrentSources)
++            AddNewTorrentDialog::show(torrentSource, params.torrentParams, m_window);
++    }
+     else
+ #endif
+-        BitTorrent::Session::instance()->addTorrent(params.torrentSource, params.torrentParams);
++    {
++        for (const QString &torrentSource : params.torrentSources)
++            BitTorrent::Session::instance()->addTorrent(torrentSource, params.torrentParams);
++    }
+ }
+ 
+ int Application::exec(const QStringList &params)
+diff --git a/src/app/application.h b/src/app/application.h
+index d8801face..21f1dc132 100644
+--- a/src/app/application.h
++++ b/src/app/application.h
+@@ -148,7 +148,7 @@ private slots:
+ private:
+     struct AddTorrentParams
+     {
+-        QString torrentSource;
++        QStringList torrentSources;
+         BitTorrent::AddTorrentParams torrentParams;
+         std::optional<bool> skipTorrentDialog;
+     };
+-- 
+2.34.1
+
+
+From daaa88fa0daf353f6d8603bf3fe4ed0f0b97ba09 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Mon, 16 Jan 2023 14:31:49 +0300
+Subject: [PATCH 23/26] Use QThreadPool to invoke free disk space checking jobs
+
+Prevent the creation of an excessive number of threads.
+PR #18347.
+Closes #18202.
+---
+ src/webui/api/freediskspacechecker.h |  4 +--
+ src/webui/api/synccontroller.cpp     | 42 +++++++++++++---------------
+ src/webui/api/synccontroller.h       |  7 ++---
+ 3 files changed, 24 insertions(+), 29 deletions(-)
+
+diff --git a/src/webui/api/freediskspacechecker.h b/src/webui/api/freediskspacechecker.h
+index 092032bfc..a472f35cc 100644
+--- a/src/webui/api/freediskspacechecker.h
++++ b/src/webui/api/freediskspacechecker.h
+@@ -30,13 +30,13 @@
+ 
+ #include <QObject>
+ 
+-class FreeDiskSpaceChecker : public QObject
++class FreeDiskSpaceChecker final : public QObject
+ {
+     Q_OBJECT
+     Q_DISABLE_COPY_MOVE(FreeDiskSpaceChecker)
+ 
+ public:
+-    FreeDiskSpaceChecker() = default;
++    using QObject::QObject;
+ 
+ public slots:
+     void check();
+diff --git a/src/webui/api/synccontroller.cpp b/src/webui/api/synccontroller.cpp
+index f3b6c160b..1473d4cd6 100644
+--- a/src/webui/api/synccontroller.cpp
++++ b/src/webui/api/synccontroller.cpp
+@@ -32,7 +32,7 @@
+ 
+ #include <QJsonObject>
+ #include <QMetaObject>
+-#include <QThread>
++#include <QThreadPool>
+ 
+ #include "base/bittorrent/cachestatus.h"
+ #include "base/bittorrent/infohash.h"
+@@ -49,7 +49,6 @@
+ #include "base/utils/string.h"
+ #include "apierror.h"
+ #include "freediskspacechecker.h"
+-#include "isessionmanager.h"
+ #include "serialize/serialize_torrent.h"
+ 
+ namespace
+@@ -177,7 +176,7 @@ namespace
+             switch (static_cast<QMetaType::Type>(value.type()))
+             {
+             case QMetaType::QVariantMap:
+-            {
++                {
+                     QVariantMap map;
+                     processMap(prevData[key].toMap(), value.toMap(), map);
+                     if (!map.isEmpty())
+@@ -185,7 +184,7 @@ namespace
+                 }
+                 break;
+             case QMetaType::QVariantHash:
+-            {
++                {
+                     QVariantMap map;
+                     processHash(prevData[key].toHash(), value.toHash(), map, removedItems);
+                     if (!map.isEmpty())
+@@ -195,7 +194,7 @@ namespace
+                 }
+                 break;
+             case QMetaType::QVariantList:
+-            {
++                {
+                     QVariantList list;
+                     processList(prevData[key].toList(), value.toList(), list, removedItems);
+                     if (!list.isEmpty())
+@@ -372,15 +371,7 @@ namespace
+ 
+ SyncController::SyncController(IApplication *app, QObject *parent)
+     : APIController(app, parent)
+-    , m_freeDiskSpaceChecker {new FreeDiskSpaceChecker}
+-    , m_freeDiskSpaceThread {new QThread}
+ {
+-    m_freeDiskSpaceChecker->moveToThread(m_freeDiskSpaceThread.get());
+-
+-    connect(m_freeDiskSpaceThread.get(), &QThread::finished, m_freeDiskSpaceChecker, &QObject::deleteLater);
+-    connect(m_freeDiskSpaceChecker, &FreeDiskSpaceChecker::checked, this, &SyncController::freeDiskSpaceSizeUpdated);
+-
+-    m_freeDiskSpaceThread->start();
+     invokeChecker();
+     m_freeDiskSpaceElapsedTimer.start();
+ }
+@@ -595,20 +586,27 @@ void SyncController::torrentPeersAction()
+ qint64 SyncController::getFreeDiskSpace()
+ {
+     if (m_freeDiskSpaceElapsedTimer.hasExpired(FREEDISKSPACE_CHECK_TIMEOUT))
+-    {
+         invokeChecker();
+-        m_freeDiskSpaceElapsedTimer.restart();
+-    }
+ 
+     return m_freeDiskSpace;
+ }
+ 
+-void SyncController::freeDiskSpaceSizeUpdated(qint64 freeSpaceSize)
++void SyncController::invokeChecker()
+ {
+-    m_freeDiskSpace = freeSpaceSize;
+-}
++    if (m_isFreeDiskSpaceCheckerRunning)
++        return;
+ 
+-void SyncController::invokeChecker() const
+-{
+-    QMetaObject::invokeMethod(m_freeDiskSpaceChecker, &FreeDiskSpaceChecker::check, Qt::QueuedConnection);
++    auto *freeDiskSpaceChecker = new FreeDiskSpaceChecker;
++    connect(freeDiskSpaceChecker, &FreeDiskSpaceChecker::checked, this, [this](const qint64 freeSpaceSize)
++    {
++        m_freeDiskSpace = freeSpaceSize;
++        m_isFreeDiskSpaceCheckerRunning = false;
++        m_freeDiskSpaceElapsedTimer.restart();
++    });
++    connect(freeDiskSpaceChecker, &FreeDiskSpaceChecker::checked, freeDiskSpaceChecker, &QObject::deleteLater);
++    m_isFreeDiskSpaceCheckerRunning = true;
++    QThreadPool::globalInstance()->start([freeDiskSpaceChecker]
++    {
++        freeDiskSpaceChecker->check();
++    });
+ }
+diff --git a/src/webui/api/synccontroller.h b/src/webui/api/synccontroller.h
+index aae77c36f..9d9a4014f 100644
+--- a/src/webui/api/synccontroller.h
++++ b/src/webui/api/synccontroller.h
+@@ -31,7 +31,6 @@
+ #include <QElapsedTimer>
+ #include <QVariantMap>
+ 
+-#include "base/utils/thread.h"
+ #include "apicontroller.h"
+ 
+ class QThread;
+@@ -51,16 +50,14 @@ public:
+ private slots:
+     void maindataAction();
+     void torrentPeersAction();
+-    void freeDiskSpaceSizeUpdated(qint64 freeSpaceSize);
+ 
+ private:
+     qint64 getFreeDiskSpace();
+-    void invokeChecker() const;
++    void invokeChecker();
+ 
+     qint64 m_freeDiskSpace = 0;
+-    FreeDiskSpaceChecker *m_freeDiskSpaceChecker = nullptr;
+-    Utils::Thread::UniquePtr m_freeDiskSpaceThread;
+     QElapsedTimer m_freeDiskSpaceElapsedTimer;
++    bool m_isFreeDiskSpaceCheckerRunning = false;
+ 
+     QVariantMap m_lastMaindataResponse;
+     QVariantMap m_lastAcceptedMaindataResponse;
+-- 
+2.34.1
+
+
+From 7144454a1fa28ef0927108ea9df081e518ea017e Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Mon, 16 Jan 2023 14:43:36 +0300
+Subject: [PATCH 24/26] Remove confusing helpers from Session interface
+
+Such helpers do not make practical sense, since they can be trivially implemented on top of the base interface, but at the same time they can lead to undesirable consequences when some calling code requires slightly different behavior than another.
+
+PR #18367.
+Fixes #18338.
+---
+ src/base/bittorrent/session.h       |  3 ---
+ src/base/bittorrent/sessionimpl.cpp | 30 +++++------------------------
+ src/base/bittorrent/sessionimpl.h   |  3 ---
+ src/gui/mainwindow.cpp              | 20 ++++++++++++++++---
+ 4 files changed, 22 insertions(+), 34 deletions(-)
+
+diff --git a/src/base/bittorrent/session.h b/src/base/bittorrent/session.h
+index 981917dd4..79b3f47b4 100644
+--- a/src/base/bittorrent/session.h
++++ b/src/base/bittorrent/session.h
+@@ -403,9 +403,6 @@ namespace BitTorrent
+         virtual Torrent *findTorrent(const InfoHash &infoHash) const = 0;
+         virtual QVector<Torrent *> torrents() const = 0;
+         virtual qsizetype torrentsCount() const = 0;
+-        virtual bool hasActiveTorrents() const = 0;
+-        virtual bool hasUnfinishedTorrents() const = 0;
+-        virtual bool hasRunningSeed() const = 0;
+         virtual const SessionStatus &status() const = 0;
+         virtual const CacheStatus &cacheStatus() const = 0;
+         virtual bool isListening() const = 0;
+diff --git a/src/base/bittorrent/sessionimpl.cpp b/src/base/bittorrent/sessionimpl.cpp
+index 96def934e..75feae1cb 100644
+--- a/src/base/bittorrent/sessionimpl.cpp
++++ b/src/base/bittorrent/sessionimpl.cpp
+@@ -2190,30 +2190,6 @@ Torrent *SessionImpl::findTorrent(const InfoHash &infoHash) const
+     return m_torrents.value(altID);
+ }
+ 
+-bool SessionImpl::hasActiveTorrents() const
+-{
+-    return std::any_of(m_torrents.begin(), m_torrents.end(), [](TorrentImpl *torrent)
+-    {
+-        return TorrentFilter::ActiveTorrent.match(torrent);
+-    });
+-}
+-
+-bool SessionImpl::hasUnfinishedTorrents() const
+-{
+-    return std::any_of(m_torrents.begin(), m_torrents.end(), [](const TorrentImpl *torrent)
+-    {
+-        return (!torrent->isSeed() && !torrent->isPaused() && !torrent->isErrored() && torrent->hasMetadata());
+-    });
+-}
+-
+-bool SessionImpl::hasRunningSeed() const
+-{
+-    return std::any_of(m_torrents.begin(), m_torrents.end(), [](const TorrentImpl *torrent)
+-    {
+-        return (torrent->isSeed() && !torrent->isPaused());
+-    });
+-}
+-
+ void SessionImpl::banIP(const QString &ip)
+ {
+     QStringList bannedIPs = m_bannedIPs;
+@@ -4651,7 +4627,11 @@ void SessionImpl::handleTorrentFinished(TorrentImpl *const torrent)
+         }
+     }
+ 
+-    if (!hasUnfinishedTorrents())
++    const bool hasUnfinishedTorrents = std::any_of(m_torrents.cbegin(), m_torrents.cend(), [](const TorrentImpl *torrent)
++    {
++        return !(torrent->isSeed() || torrent->isPaused() || torrent->isErrored());
++    });
++    if (!hasUnfinishedTorrents)
+         emit allTorrentsFinished();
+ }
+ 
+diff --git a/src/base/bittorrent/sessionimpl.h b/src/base/bittorrent/sessionimpl.h
+index d9bbc1a7c..3d0c3b08d 100644
+--- a/src/base/bittorrent/sessionimpl.h
++++ b/src/base/bittorrent/sessionimpl.h
+@@ -376,9 +376,6 @@ namespace BitTorrent
+         Torrent *findTorrent(const InfoHash &infoHash) const override;
+         QVector<Torrent *> torrents() const override;
+         qsizetype torrentsCount() const override;
+-        bool hasActiveTorrents() const override;
+-        bool hasUnfinishedTorrents() const override;
+-        bool hasRunningSeed() const override;
+         const SessionStatus &status() const override;
+         const CacheStatus &cacheStatus() const override;
+         bool isListening() const override;
+diff --git a/src/gui/mainwindow.cpp b/src/gui/mainwindow.cpp
+index 636cf78c7..2150b6f1b 100644
+--- a/src/gui/mainwindow.cpp
++++ b/src/gui/mainwindow.cpp
+@@ -1138,7 +1138,12 @@ void MainWindow::closeEvent(QCloseEvent *e)
+     }
+ #endif // Q_OS_MACOS
+ 
+-    if (pref->confirmOnExit() && BitTorrent::Session::instance()->hasActiveTorrents())
++    const QVector<BitTorrent::Torrent *> allTorrents = BitTorrent::Session::instance()->torrents();
++    const bool hasActiveTorrents = std::any_of(allTorrents.cbegin(), allTorrents.cend(), [](BitTorrent::Torrent *torrent)
++    {
++        return torrent->isActive();
++    });
++    if (pref->confirmOnExit() && hasActiveTorrents)
+     {
+         if (e->spontaneous() || m_forceExit)
+         {
+@@ -1902,8 +1907,17 @@ void MainWindow::on_actionAutoShutdown_toggled(bool enabled)
+ 
+ void MainWindow::updatePowerManagementState()
+ {
+-    const bool inhibitSuspend = (Preferences::instance()->preventFromSuspendWhenDownloading() && BitTorrent::Session::instance()->hasUnfinishedTorrents())
+-                             || (Preferences::instance()->preventFromSuspendWhenSeeding() && BitTorrent::Session::instance()->hasRunningSeed());
++    const QVector<BitTorrent::Torrent *> allTorrents = BitTorrent::Session::instance()->torrents();
++    const bool hasUnfinishedTorrents = std::any_of(allTorrents.cbegin(), allTorrents.cend(), [](const BitTorrent::Torrent *torrent)
++    {
++        return (!torrent->isSeed() && !torrent->isPaused() && !torrent->isErrored() && torrent->hasMetadata());
++    });
++    const bool hasRunningSeed = std::any_of(allTorrents.cbegin(), allTorrents.cend(), [](const BitTorrent::Torrent *torrent)
++    {
++        return (torrent->isSeed() && !torrent->isPaused());
++    });
++    const bool inhibitSuspend = (Preferences::instance()->preventFromSuspendWhenDownloading() && hasUnfinishedTorrents)
++                             || (Preferences::instance()->preventFromSuspendWhenSeeding() && hasRunningSeed);
+     m_pwr->setActivityState(inhibitSuspend);
+ }
+ 
+-- 
+2.34.1
+
+
+From c3abe4c2a67c7689c454add9581b167b20eab705 Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Mon, 16 Jan 2023 14:45:12 +0300
+Subject: [PATCH 25/26] Fix startup performance on Qt5
+
+Use more appropriate container (QList) for resume data queue buffer.
+QVector in Qt5 has poor performance of the first element taking operation,
+which is used to process the resume data queue. In Qt6, QVector is just an
+alias for QList, so there was no problem there.
+
+PR #18387.
+Fixes #18341.
+---
+ src/base/bittorrent/resumedatastorage.cpp | 5 +++--
+ src/base/bittorrent/resumedatastorage.h   | 6 +++---
+ src/base/bittorrent/sessionimpl.cpp       | 2 +-
+ 3 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/src/base/bittorrent/resumedatastorage.cpp b/src/base/bittorrent/resumedatastorage.cpp
+index 0b640a95e..6e67a5b58 100644
+--- a/src/base/bittorrent/resumedatastorage.cpp
++++ b/src/base/bittorrent/resumedatastorage.cpp
+@@ -33,6 +33,7 @@
+ #include <QMetaObject>
+ #include <QMutexLocker>
+ #include <QThread>
++#include <QVector>
+ 
+ const int TORRENTIDLIST_TYPEID = qRegisterMetaType<QVector<BitTorrent::TorrentID>>();
+ 
+@@ -59,11 +60,11 @@ void BitTorrent::ResumeDataStorage::loadAll() const
+     loadingThread->start();
+ }
+ 
+-QVector<BitTorrent::LoadedResumeData> BitTorrent::ResumeDataStorage::fetchLoadedResumeData() const
++QList<BitTorrent::LoadedResumeData> BitTorrent::ResumeDataStorage::fetchLoadedResumeData() const
+ {
+     const QMutexLocker locker {&m_loadedResumeDataMutex};
+ 
+-    const QVector<BitTorrent::LoadedResumeData> loadedResumeData = m_loadedResumeData;
++    const QList<BitTorrent::LoadedResumeData> loadedResumeData = m_loadedResumeData;
+     m_loadedResumeData.clear();
+ 
+     return loadedResumeData;
+diff --git a/src/base/bittorrent/resumedatastorage.h b/src/base/bittorrent/resumedatastorage.h
+index 3faf63494..b583da60a 100644
+--- a/src/base/bittorrent/resumedatastorage.h
++++ b/src/base/bittorrent/resumedatastorage.h
+@@ -29,9 +29,9 @@
+ #pragma once
+ 
+ #include <QtContainerFwd>
++#include <QList>
+ #include <QMutex>
+ #include <QObject>
+-#include <QVector>
+ 
+ #include "base/3rdparty/expected.hpp"
+ #include "base/path.h"
+@@ -65,7 +65,7 @@ namespace BitTorrent
+         virtual void storeQueue(const QVector<TorrentID> &queue) const = 0;
+ 
+         void loadAll() const;
+-        QVector<LoadedResumeData> fetchLoadedResumeData() const;
++        QList<LoadedResumeData> fetchLoadedResumeData() const;
+ 
+     signals:
+         void loadStarted(const QVector<BitTorrent::TorrentID> &torrents);
+@@ -78,7 +78,7 @@ namespace BitTorrent
+         virtual void doLoadAll() const = 0;
+ 
+         const Path m_path;
+-        mutable QVector<LoadedResumeData> m_loadedResumeData;
++        mutable QList<LoadedResumeData> m_loadedResumeData;
+         mutable QMutex m_loadedResumeDataMutex;
+     };
+ }
+diff --git a/src/base/bittorrent/sessionimpl.cpp b/src/base/bittorrent/sessionimpl.cpp
+index 75feae1cb..25a8adfa5 100644
+--- a/src/base/bittorrent/sessionimpl.cpp
++++ b/src/base/bittorrent/sessionimpl.cpp
+@@ -322,7 +322,7 @@ struct BitTorrent::SessionImpl::ResumeSessionContext final : public QObject
+ 
+     ResumeDataStorage *startupStorage = nullptr;
+     ResumeDataStorageType currentStorageType = ResumeDataStorageType::Legacy;
+-    QVector<LoadedResumeData> loadedResumeData;
++    QList<LoadedResumeData> loadedResumeData;
+     int processingResumeDataCount = 0;
+     int64_t totalResumeDataCount = 0;
+     int64_t finishedResumeDataCount = 0;
+-- 
+2.34.1
+
+
+From 904bcc14d5220769b2b13bd9941567cab839873e Mon Sep 17 00:00:00 2001
+From: Vladimir Golovnev <glassez@yandex.ru>
+Date: Sun, 22 Jan 2023 16:48:58 +0300
+Subject: [PATCH 26/26] Reload system tray icon to replace menu
+
+PR #18250.
+Closes #18074.
+---
+ src/app/application.cpp        |  3 ---
+ src/gui/desktopintegration.cpp | 32 +++++++++++++++++++++++++++++++-
+ src/gui/desktopintegration.h   |  1 +
+ src/gui/mainwindow.cpp         |  3 +--
+ 4 files changed, 33 insertions(+), 6 deletions(-)
+
+diff --git a/src/app/application.cpp b/src/app/application.cpp
+index 5b3124a45..988543098 100644
+--- a/src/app/application.cpp
++++ b/src/app/application.cpp
+@@ -793,12 +793,9 @@ try
+         });
+ 
+         disconnect(m_desktopIntegration, &DesktopIntegration::activationRequested, this, &Application::createStartupProgressDialog);
+-        // we must not delete menu while it is used by DesktopIntegration
+-        auto *oldMenu = m_desktopIntegration->menu();
+         const MainWindow::State windowState = (!m_startupProgressDialog || (m_startupProgressDialog->windowState() & Qt::WindowMinimized))
+                 ? MainWindow::Minimized : MainWindow::Normal;
+         m_window = new MainWindow(this, windowState);
+-        delete oldMenu;
+         delete m_startupProgressDialog;
+ #ifdef Q_OS_WIN
+         auto *pref = Preferences::instance();
+diff --git a/src/gui/desktopintegration.cpp b/src/gui/desktopintegration.cpp
+index ee0950924..ae28c494f 100644
+--- a/src/gui/desktopintegration.cpp
++++ b/src/gui/desktopintegration.cpp
+@@ -99,6 +99,12 @@ DesktopIntegration::DesktopIntegration(QObject *parent)
+     connect(Preferences::instance(), &Preferences::changed, this, &DesktopIntegration::onPreferencesChanged);
+ }
+ 
++DesktopIntegration::~DesktopIntegration()
++{
++    if (m_menu)
++        delete m_menu;
++}
++
+ bool DesktopIntegration::isActive() const
+ {
+ #ifdef Q_OS_MACOS
+@@ -135,12 +141,36 @@ void DesktopIntegration::setMenu(QMenu *menu)
+     if (menu == m_menu)
+         return;
+ 
++#if defined Q_OS_MACOS
++    if (m_menu)
++        delete m_menu;
++
+     m_menu = menu;
+ 
+-#ifdef Q_OS_MACOS
+     if (m_menu)
+         m_menu->setAsDockMenu();
++#elif defined Q_OS_UNIX
++    const bool systemTrayEnabled = m_systrayIcon;
++    if (m_menu)
++    {
++        if (m_systrayIcon)
++        {
++            delete m_systrayIcon;
++            m_systrayIcon = nullptr;
++        }
++        delete m_menu;
++    }
++
++    m_menu = menu;
++
++    if (systemTrayEnabled && !m_systrayIcon)
++        createTrayIcon();
+ #else
++    if (m_menu)
++        delete m_menu;
++
++    m_menu = menu;
++
+     if (m_systrayIcon)
+         m_systrayIcon->setContextMenu(m_menu);
+ #endif
+diff --git a/src/gui/desktopintegration.h b/src/gui/desktopintegration.h
+index 2c2b7f9a3..726165c96 100644
+--- a/src/gui/desktopintegration.h
++++ b/src/gui/desktopintegration.h
+@@ -49,6 +49,7 @@ class DesktopIntegration final : public QObject
+ 
+ public:
+     explicit DesktopIntegration(QObject *parent = nullptr);
++    ~DesktopIntegration() override;
+ 
+     bool isActive() const;
+ 
+diff --git a/src/gui/mainwindow.cpp b/src/gui/mainwindow.cpp
+index 2150b6f1b..ad781f3a9 100644
+--- a/src/gui/mainwindow.cpp
++++ b/src/gui/mainwindow.cpp
+@@ -463,7 +463,6 @@ MainWindow::MainWindow(IGUIApplication *app, const State initialState)
+ 
+ MainWindow::~MainWindow()
+ {
+-    app()->desktopIntegration()->setMenu(nullptr);
+     delete m_ui;
+ }
+ 
+@@ -1573,7 +1572,7 @@ void MainWindow::downloadFromURLList(const QStringList &urlList)
+ 
+ QMenu *MainWindow::createDesktopIntegrationMenu()
+ {
+-    auto *menu = new QMenu(this);
++    auto *menu = new QMenu;
+ 
+ #ifndef Q_OS_MACOS
+     connect(menu, &QMenu::aboutToShow, this, [this]()
+-- 
+2.34.1
+
