@@ -124,6 +124,8 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     needs: build
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     strategy:
