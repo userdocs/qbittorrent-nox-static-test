@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -49,12 +49,14 @@ jobs:
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
-          echo "qbt_build_tool=${{ matrix.build_tool }}" > env.custom
-          echo "qbt_cross_name=${{ matrix.arch_type  }}" >> env.custom
-          echo "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" >> env.custom
+          echo "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
           echo "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
+          echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
+          echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
+          echo "qbt_patches_url=${{ github.repository }}" >> env.custom
           echo "qbt_workflow_files=yes" >> env.custom
           echo "qbt_libtorrent_master_jamfile=no" >> env.custom
+          echo "qbt_optimise_strip=yes" >> env.custom
           echo "qbt_build_debug=yes" >> env.custom
 
       - name: Host - Create docker multiarch container ${{ github.event.inputs.distinct_id }}
@@ -122,7 +124,9 @@ jobs:
           path: "${{ env.build_dir }}/completed/*.png"
 
   release:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: build
     if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     strategy:
