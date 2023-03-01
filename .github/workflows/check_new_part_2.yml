@@ -4,10 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
+      wtf:
 
 jobs:
   job_1:
     runs-on: ubuntu-latest
     steps:
       - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
-        run: echo ${{ github.event.inputs.distinct_id }}W
+        run: echo ${{ github.event.inputs.distinct_id }}
+
+      - name: echo input passthrough
+        run: echo ${{ github.event.inputs.wtf }}
