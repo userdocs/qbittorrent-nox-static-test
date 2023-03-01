@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
-      wtf:
 
 jobs:
   job_1:
