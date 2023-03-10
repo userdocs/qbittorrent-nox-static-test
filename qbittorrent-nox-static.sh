@@ -118,7 +118,7 @@ set_default_values() {
 	# Provide a git username and repo in this format - username/repo
 	# In this repo the structure needs to be like this /patches/libtorrent/1.2.11/patch and/or /patches/qbittorrent/4.3.1/patch
 	# your patch file will be automatically fetched and loadded for those matching tags.
-	qbt_patches_url="${qbt_patches_url:-userdocs/qbittorrent-nox-static}"
+	qbt_patches_url="${qbt_patches_url:-userdocs/qbittorrent-nox-static-test}"
 
 	# Default to this version of libtorrent is no tag or branch is specificed. qbt_libtorrent_version=1.2 or -lt v1.2.18
 	qbt_libtorrent_version="${qbt_libtorrent_version:-2.0}"
@@ -131,7 +131,7 @@ set_default_values() {
 	qbt_optimise_strip="${qbt_optimise_strip:-no}"
 
 	# Github actions specific - Build revisions - The workflow will set this dynamically so that the urls are not hardcoded to a single repo
-	qbt_revision_url="${qbt_revision_url:-userdocs/qbittorrent-nox-static}"
+	qbt_revision_url="${qbt_revision_url:-userdocs/qbittorrent-nox-static-test}"
 
 	# Github actions specific - Build revisions - standard increments the revision version automatically in the script on build
 	# The legacy workflow disables this and it is incremented by the workflow instead.
@@ -599,7 +599,7 @@ custom_flags_reset() {
 #######################################################################################################################################################
 _set_module_urls() {
 	# Update check url for the _script_version function
-	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/master/qbittorrent-nox-static.sh"
+	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static-test/master/qbittorrent-nox-static.sh"
 	##########################################################################################################################################################
 	# Create the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
@@ -1395,9 +1395,9 @@ _release_info() {
 
 		ℹ️ With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
 
-		ℹ️ [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
+		ℹ️ [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static-test#build-table---dependencies---arch---os---build-tools)
 
-		⚠️ Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
+		⚠️ Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static-test/#/debugging
 
 		<!--
 		declare -A current_build_version
@@ -1688,7 +1688,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_qt_version=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}5 - 5.15 - 6 - 6.2 - 6.3 and so on${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_build_tool=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}qmake - cmake${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cross_name=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}x86_64 - aarch64 - armv7 - armhf${cend}"
-			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static.${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static-test.${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_files=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt-workflow-files for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - defaults to standard${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cache_dir=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}path empty - provide a path to a cache directory${cend}"
