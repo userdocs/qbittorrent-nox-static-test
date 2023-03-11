@@ -74,7 +74,7 @@ jobs:
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
-      - name: Docker - Test - Download release asset to
+      - name: Docker - Test - Download release asset
         run: |
           docker exec -w /root multiarch mkdir -p "${{ env.build_dir }}/completed/${{ matrix.libtorrent_version }}"
           docker exec -w /root multiarch curl -sL https://github.com/userdocs/qbittorrent-nox-static/releases/download/$(cat ${{ env.build_dir }}/release_info/tag.md)/${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox -o ${{ env.build_dir }}/completed/qbittorrent-nox
@@ -145,11 +145,22 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         if: matrix.libtorrent_version == '1.2'
-        run: paste -d '\n' ${{ matrix.libtorrent_version }}/dependency-version.json 2.0/dependency-version.json | uniq > dependency-version.json
+        run: |
+          paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
+
+          cat ${{ matrix.libtorrent_version }}/dependency-version.json
+
+          paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
+          paste -d '\n' ${{ matrix.libtorrent_version }}/dependency-version.json 2.0/dependency-version.json | uniq > dependency-version.json
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         if: matrix.libtorrent_version == '2.0'
-        run: paste -d '\n' 1.2/dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json | uniq > dependency-version.json
+        run: |
+          paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
+
+          cat ${{ matrix.libtorrent_version }}/dependency-version.json
+          paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
+          paste -d '\n' 1.2/dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json | uniq > dependency-version.json
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: echo "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
