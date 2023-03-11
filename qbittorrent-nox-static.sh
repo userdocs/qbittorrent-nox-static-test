@@ -231,7 +231,8 @@ set_default_values() {
 	# if Alpine then delete modules we don't use and set the required packages array
 	if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 		delete+=("bison" "gawk" "glibc")
-		qbt_required_pkgs=("bash" "bash-completion" "build-base" "curl" "pkgconf" "autoconf" "automake" "libtool" "git" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
+		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("coreutils" "gpg")
+		qbt_required_pkgs=("autoconf" "automake" "bash" "bash-completion" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
 	fi
 
 	# if debian based then set the required packages array
@@ -391,15 +392,6 @@ while (("${#}")); do
 			qbt_build_tool="cmake"
 			shift
 			;;
-		-cd | --cache-directory)
-			qbt_cache_dir="${2%/}"
-			if [[ -n "${3}" ]]; then
-				qbt_cache_dir_options="${3%/}"
-				shift 3
-			else
-				shift 2
-			fi
-			;;
 		-d | --debug)
 			qbt_build_debug="yes"
 			shift
@@ -411,6 +403,16 @@ while (("${#}")); do
 		-dma | --debian-mode-alternate)
 			qbt_debian_mode="alternate"
 			shift
+			;;
+
+		-cd | --cache-directory)
+			qbt_cache_dir="${2%/}"
+			if [[ -n "${3}" ]]; then
+				qbt_cache_dir_options="${3}"
+				shift 3
+			else
+				shift 2
+			fi
 			;;
 		-i | --icu)
 			qbt_skip_icu="no"
@@ -803,6 +805,7 @@ _installation_modules() {
 		else
 			for module in "${@}"; do
 				eval "skip_${module}=no"
+				qbt_modules=("all" "${module}")
 			done
 		fi
 
@@ -967,7 +970,8 @@ _cache_dirs() {
 		case "${qbt_cache_dir_options}" in
 			rm)
 				[[ -d ${qbt_cache_dir} ]] && rm -rf "${qbt_cache_dir}"
-				qbt_cache_dir_remove="yes"
+				printf '\n%b\n\n' " ${urc} ${clc}${qbt_cache_dir}${cend} removed"
+				exit
 				;;
 			bs)
 				qbt_cache_dir_bootstrap="yes"
@@ -976,7 +980,7 @@ _cache_dirs() {
 			*)
 				printf '\n%b\n' " ${urc} ${cly}Unregonsied qbt_cache_dir_options used: ${cend}"
 				printf '\n%b\n' "   Valid options you can use as a singular additon to the path"
-				printf '\n%b\n' "   ${clb}-cd PATH rm${cend} : Delete the cache dir, dowload cahce files and continue the installation"
+				printf '\n%b\n' "   ${clb}-cd PATH rm${cend} : Delete the cache dir"
 				printf '\n%b\n\n' "   ${clb}-cd PATH bs${cend} : Download the cache file but do not continue the installation"
 				exit
 				;;
@@ -990,7 +994,7 @@ _cache_dirs() {
 
 			_application_name "${module}"
 
-			if [[ "${!app_name_skip}" == "no" ]]; then
+			if [[ "${qbt_cache_dir_bootstrap}" == 'yes' || "${!app_name_skip:-yes}" == "no" ]]; then
 
 				# If the modules folder exists then most into them and get the tag if present or alternativley, the branch name - set it to cached_module_tag
 				if [[ -d "${qbt_cache_dir}/${module}" ]]; then
@@ -1112,13 +1116,7 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 		fi
 
 		mkdir -p "${qbt_install_dir}/${1}${subdir}"
-
-		[[ -d "${qbt_install_dir}/${1}${subdir}" ]] && _pushd "${qbt_install_dir}/${1}${subdir}"
-
-		[[ "${qbt_cache_dir_bootstrap}" == "yes" ]] && {
-			printf '\n'
-			exit
-		}
+		_pushd "${qbt_install_dir}/${1}${subdir}"
 	else
 		printf '\n%b\n' "You must provide a tag name for the function - download_folder"
 		printf '%b\n' "It creates the tag from the app_name_github_tag variable set in the URL section"
