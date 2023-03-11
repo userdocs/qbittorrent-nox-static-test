@@ -76,8 +76,10 @@ jobs:
 
       - name: Release - qt${{ matrix.qbt_qt_version }} info ${{ github.event.inputs.distinct_id }}
         run: |
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv release.md qt${{ matrix.qbt_qt_version }}-release.md
+          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv -f dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
+          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv -f release.md qt${{ matrix.qbt_qt_version }}-release.md
+          docker exec -w /root/${{ env.build_dir }}/release_info multiarch cat qt${{ matrix.qbt_qt_version }}-dependency-version.json
+          docker exec -w /root/${{ env.build_dir }}/release_info multiarch cat qt${{ matrix.qbt_qt_version }}-release.md
 
       - name: Docker - Test - Download release asset
         run: |
