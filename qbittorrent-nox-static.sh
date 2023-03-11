@@ -404,6 +404,10 @@ while (("${#}")); do
 			qbt_build_debug="yes"
 			shift
 			;;
+		-sdu | --scripts-debug-urls)
+			script_debug_urls="yes"
+			shift
+			;;
 		-dma | --debian-mode-alternate)
 			qbt_debian_mode="alternate"
 			shift
@@ -680,10 +684,10 @@ _set_module_urls() {
 		source_archive_url[gawk]="https://ftp.gnu.org/gnu/gawk/$(grep -Eo 'gawk-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(curl https://ftp.gnu.org/gnu/gawk/) | sort -V | tail -1)"
 		source_archive_url[glibc]="https://ftp.gnu.org/gnu/libc/${github_tag[glibc]}.tar.gz"
 	fi
-	source_archive_url[zlib]=""
+	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	source_archive_url[iconv]="https://ftp.gnu.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(curl https://ftp.gnu.org/gnu/libiconv/) | sort -V | tail -1)"
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${github_tag[icu]/-/_}-src.tgz"
-	source_archive_url[double_conversion]=""
+	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
 	source_archive_url[openssl]="https://github.com/openssl/openssl/archive/${github_tag[openssl]}.tar.gz"
 	source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${github_tag[boost]/boost-/}/source/${github_tag[boost]//[-\.]/_}.tar.gz"
 	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
@@ -699,7 +703,7 @@ _set_module_urls() {
 		source_archive_url[qttools]="https://download.qt.io/official_releases/qt/${qt_version_short}/${app_version[qttools]}/submodules/qttools-everywhere-opensource-src-${app_version[qttools]}.tar.xz"
 	fi
 
-	source_archive_url[qbittorrent]=""
+	source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
 	##########################################################################################################################################################
 	# Create the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
@@ -731,7 +735,7 @@ _set_module_urls() {
 # Debug stuff
 #######################################################################################################################################################
 _debug() {
-	if [[ "${*}" =~ debug-urls ]]; then
+	if [[ "${script_debug_urls}" == "yes" ]]; then
 		mapfile -t github_url_sorted < <(printf '%s\n' "${!github_url[@]}" | sort)
 		printf '\n%b\n\n' " ${umc} ${cly}github_url${cend}"
 		for n in "${github_url_sorted[@]}"; do
@@ -1073,6 +1077,10 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	if [[ -n "${1}" ]]; then
 		[[ -n "${2}" ]] && subdir="/${2}" || subdir=""
 
+		mkdir -p "${qbt_install_dir}/logs"
+		printf '%s' "${github_url[${1}]}" > "${qbt_install_dir}/logs/github_url_${1}.log"
+		git_git config --global advice.detachedHead false
+
 		if [[ -n "${qbt_cache_dir}" ]]; then
 			folder_name="${qbt_cache_dir}/${1}"
 			folder_inc="${qbt_cache_dir}/include/${1}"
@@ -1084,17 +1092,11 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 		[[ -z "${qbt_cache_dir}" && -d "${folder_name}" ]] && rm -rf "${folder_name}"
 		[[ "${1}" == 'libtorrent' && -d "${folder_inc}" ]] && rm -rf "${folder_inc}"
 
-		[[ -n "${qbt_cache_dir}" ]] && mkdir -p "${qbt_install_dir}/logs"
-
-		git_git config --global advice.detachedHead false
-
 		if [[ -n "${qbt_cache_dir}" && -d "${folder_name}" ]]; then
 			printf "\n%b\n\n" " ${uplus}${cg} Installing ${1}${cend} -${clc} ${qbt_cache_dir}/${1}${cend} from ${cly}${github_url[${1}]}${cend} using tag${cly} ${github_tag[${1}]}${cend}"
 		else
 			printf "\n%b\n\n" " ${uplus}${cg} Installing ${1}${cend} - ${cly}${github_url[${1}]}${cend} using tag${cly} ${github_tag[${1}]}${cend}"
 		fi
-
-		printf '%s' "${github_url[${1}]}" > "${qbt_install_dir}/logs/github_url_${1}.log"
 
 		if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${1}" ]]; then
 			cp -rf "${qbt_cache_dir}/${1}"/. "${qbt_install_dir}/${1}"
@@ -1324,7 +1326,7 @@ _multi_arch() {
 _release_info() {
 	_error_tag
 
-	printf '\n%b\n' "${ugc}${cly} Release boot-strapped${cend}"
+	printf '\n%b\n' " ${ugc} ${cly}Release boot-strapped${cend}"
 
 	release_info_dir="${qbt_install_dir}/release_info"
 
@@ -1395,9 +1397,9 @@ _release_info() {
 
 		ℹ️ With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
 
-		ℹ️ [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static-test#build-table---dependencies---arch---os---build-tools)
+		ℹ️ [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
 
-		⚠️ Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static-test/#/debugging
+		⚠️ Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 
 		<!--
 		declare -A current_build_version
@@ -1688,7 +1690,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_qt_version=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}5 - 5.15 - 6 - 6.2 - 6.3 and so on${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_build_tool=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}qmake - cmake${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cross_name=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}x86_64 - aarch64 - armv7 - armhf${cend}"
-			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static-test.${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static.${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_files=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt-workflow-files for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - defaults to standard${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cache_dir=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}path empty - provide a path to a cache directory${cend}"
