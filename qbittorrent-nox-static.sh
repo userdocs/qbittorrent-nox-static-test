@@ -725,6 +725,25 @@ _set_module_urls() {
 	qbt_workflow_archive_url[qtbase]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qt${qbt_qt_version:0:1}base.tar.xz"
 	qbt_workflow_archive_url[qttools]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qt${qbt_qt_version:0:1}tools.tar.xz"
 	qbt_workflow_archive_url[qbittorrent]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qbittorrent.tar.xz"
+	##########################################################################################################################################################
+	# Workflow override options
+	##########################################################################################################################################################
+	declare -gA qbt_workflow_override
+	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+		qbt_workflow_override[bison]="no"
+		qbt_workflow_override[gawk]="no"
+		qbt_workflow_override[glibc]="no"
+	fi
+	qbt_workflow_override[zlib]="no"
+	qbt_workflow_override[iconv]="no"
+	qbt_workflow_override[icu]="no"
+	qbt_workflow_override[double_conversion]="no"
+	qbt_workflow_override[openssl]="no"
+	qbt_workflow_override[boost]="no"
+	qbt_workflow_override[libtorrent]="no"
+	qbt_workflow_override[qtbase]="no"
+	qbt_workflow_override[qttools]="no"
+	qbt_workflow_override[qbittorrent]="no"
 	###################################################################################################################################################
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
@@ -1033,6 +1052,7 @@ _cache_dirs() {
 # This function is for downloading source code archives
 #######################################################################################################################################################
 download_file() {
+	set -x
 	if [[ -n "${1}" ]]; then
 		[[ -n "${2}" ]] && subdir="/${2}" || subdir=""
 
@@ -1045,7 +1065,7 @@ download_file() {
 			printf '\n%b\n\n' " ${uplus}${cg} Installing ${1}${cend} source files - ${cly}${1}${cend} - ${cly}${source_url}${cend}"
 		fi
 
-		if [[ "${qbt_workflow_files}" == "yes" ]]; then
+		if [[ "${qbt_workflow_override[${1}]}" == "no" && "${qbt_workflow_files}" == "yes" ]]; then
 			source_url="${qbt_workflow_archive_url[${1}]}"
 			printf '\n%b\n\n' " ${uplus}${cg} Installing ${1}${cend} workflows files - ${cly}${1}${cend} - ${cly}${source_url}${cend}"
 		fi
@@ -1058,7 +1078,7 @@ download_file() {
 				post_command
 				rm -rf {"${qbt_install_dir:?}/$(tar tf "${file_name}" | grep -Eom1 "(.*)[^/]")","${file_name}"}
 			fi
-			curl "${qbt_workflow_archive_url[${1}]}" -o "${file_name}"
+			curl "${source_url}" -o "${file_name}"
 		fi
 
 		printf '%b\n' "${source_url}" > "${qbt_install_dir}/logs/${1}_file_url.log"
@@ -1575,8 +1595,8 @@ while (("${#}")); do
 			github_tag[boost]="$(git "${github_url[boost]}" -t "boost-$2")"
 			app_version[boost]="${github_tag[boost]#boost-}"
 			source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/$2/source/boost_${2//\./_}.tar.gz"
+			qbt_workflow_override[boost]="yes"
 			_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
-			override_workflow="yes"
 			shift 2
 			;;
 		-n | --no-delete)
@@ -1586,27 +1606,26 @@ while (("${#}")); do
 		-m | --master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
-
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+			qbt_workflow_override[qbittorrent]="yes"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
-
-			override_workflow="yes"
 			shift
 			;;
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
-			override_workflow="yes"
 			shift
 			;;
 		-lt | --libtorrent-tag)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "$2")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
-			override_workflow="yes"
 			shift 2
 			;;
 		-pr | --patch-repo)
@@ -1623,15 +1642,15 @@ while (("${#}")); do
 		-qm | --qbittorrent-master)
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+			qbt_workflow_override[qbittorrent]="yes"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
-			override_workflow="yes"
 			shift
 			;;
 		-qt | --qbittorrent-tag)
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "$2")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+			qbt_workflow_override[qbittorrent]="yes"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
-			override_workflow="yes"
 			shift 2
 			;;
 		-h | --help)
