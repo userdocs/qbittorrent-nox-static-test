@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# cSpell:includeRegExp #.*
+
 # Copyright 2020 by userdocs and contributors
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -71,7 +73,7 @@ what_version_codename="$(source /etc/os-release && printf "%s" "${VERSION_CODENA
 # Get the version number for this codename, for example: 10, 20.04, 3.12.4
 what_version_id="$(source /etc/os-release && printf "%s" "${VERSION_ID%_*}")"
 
-# Account for varation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
+# Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
 [[ "$(wc -w <<< "${what_version_id//\./ }")" -eq "2" ]] && alpline_min_version="310"
 
 # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
@@ -99,13 +101,13 @@ set_default_values() {
 	# The default build configuration is qmake + qt5, qbt_build_tool=cmake or -c will make qt6 and cmake default
 	qbt_build_tool="${qbt_build_tool:-qmake}"
 
-	# Default to empty to use host native build tools. This way we can build on native arch on a supported OS and skip crossbuild toolchains
+	# Default to empty to use host native build tools. This way we can build on native arch on a supported OS and skip cross build toolchains
 	qbt_cross_name="${qbt_cross_name:-}"
 
 	# Default to host - we are not really using this for anything other than what it defaults to so no need to set it.
 	qbt_cross_target="${qbt_cross_target:-${what_id}}"
 
-	# yes to create debug build to use with gdb - disables stripping - for some reason liborrent b2 builds are 200MB or larger. qbt_build_debug=yes or -d
+	# yes to create debug build to use with gdb - disables stripping - for some reason libtorrent b2 builds are 200MB or larger. qbt_build_debug=yes or -d
 	qbt_build_debug="${qbt_build_debug:-no}"
 
 	# github actions workflows - use https://github.com/userdocs/qbt-workflow-files/releases/latest instead of direct downloads from various source locations.
@@ -117,10 +119,10 @@ set_default_values() {
 
 	# Provide a git username and repo in this format - username/repo
 	# In this repo the structure needs to be like this /patches/libtorrent/1.2.11/patch and/or /patches/qbittorrent/4.3.1/patch
-	# your patch file will be automatically fetched and loadded for those matching tags.
+	# your patch file will be automatically fetched and loaded for those matching tags.
 	qbt_patches_url="${qbt_patches_url:-userdocs/qbittorrent-nox-static-test}"
 
-	# Default to this version of libtorrent is no tag or branch is specificed. qbt_libtorrent_version=1.2 or -lt v1.2.18
+	# Default to this version of libtorrent is no tag or branch is specified. qbt_libtorrent_version=1.2 or -lt v1.2.18
 	qbt_libtorrent_version="${qbt_libtorrent_version:-2.0}"
 
 	# Use release Jamfile unless we need a specific fix from the relevant RC branch.
@@ -140,7 +142,7 @@ set_default_values() {
 	# In standard mode gawk and bison are installed via apt-get as system dependencies. In alternate mode they are built from source.
 	qbt_debian_mode="${qbt_debian_mode:-standard}"
 
-	# Provide a path to check for cached local git repos and use those instead. Priority over worflow files.
+	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
@@ -220,7 +222,7 @@ set_default_values() {
 			;;
 	esac
 
-	# If we are crossbuilding then bootstrap the crossbuild tools we ned for the target arch else set native arch and remove the debian crossbuild tools
+	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
 	if [[ ${qbt_cross_name} =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		_multi_arch bootstrap
 	else
@@ -296,7 +298,7 @@ check_dependencies() {
 	# Rebuild array to sort index from 0
 	qbt_required_pkgs=("${qbt_required_pkgs[@]}")
 
-	# This checks over the qbt_required_pkgs array for the OS specificed dependencies to see if they are installed
+	# This checks over the qbt_required_pkgs array for the OS specified dependencies to see if they are installed
 	for pkg in "${qbt_required_pkgs[@]}"; do
 
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
@@ -407,7 +409,7 @@ while (("${#}")); do
 
 		-cd | --cache-directory)
 			qbt_cache_dir="${2%/}"
-			if [[ -n "${3}" ]]; then
+			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
 				qbt_cache_dir_options="${3}"
 				shift 3
 			else
@@ -820,7 +822,7 @@ _installation_modules() {
 			for module in "${qbt_modules[@]:1}"; do
 				eval "skip_${module}=no"
 			done
-			# Only activate the module passed as a param and leave the rest defauled to skip
+			# Only activate the module passed as a param and leave the rest defaulted to skip
 		else
 			for module in "${@}"; do
 				eval "skip_${module}=no"
@@ -904,12 +906,12 @@ apply_patches() {
 		if [[ -f "${patch_file}" ]]; then
 			[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
 			printf '%b\n'" ${utick}${cr} Using ${!patch_tag} existing patch file${cend} - ${patch_file}"
-			[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely comsetic
+			[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
 		else
 			if curl_curl "${patch_file_url}" -o "${patch_file}"; then
 				[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
 				printf '%b\n' " ${utick}${cr} Using ${!patch_tag} downloaded patch file${cend} - ${patch_file_url}"
-				[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely comsetic
+				[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
 			fi
 		fi
 
@@ -934,7 +936,7 @@ apply_patches() {
 	fi
 }
 #######################################################################################################################################################
-# This function is to test a directory exists before attemtping to cd and fail with and exit code if it doesn't.
+# This function is to test a directory exists before attempting to cd and fail with and exit code if it doesn't.
 #######################################################################################################################################################
 _pushd() {
 	if ! pushd "$@" &> /dev/null; then
@@ -1015,7 +1017,7 @@ _cache_dirs() {
 
 			if [[ "${qbt_cache_dir_bootstrap}" == 'yes' || "${!app_name_skip:-yes}" == "no" ]]; then
 
-				# If the modules folder exists then most into them and get the tag if present or alternativley, the branch name - set it to cached_module_tag
+				# If the modules folder exists then most into them and get the tag if present or alternatively, the branch name - set it to cached_module_tag
 				if [[ -d "${qbt_cache_dir}/${module}" ]]; then
 					_pushd "${qbt_cache_dir}/${module}"
 					if [[ -z "$(git tag)" ]]; then
@@ -1476,7 +1478,7 @@ _cmake() {
 	fi
 }
 #######################################################################################################################################################
-# static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the statric lib e.g. libdl.a
+# static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the static lib e.g. libdl.a
 #######################################################################################################################################################
 _fix_static_links() {
 	log_name="$1"
@@ -1605,10 +1607,12 @@ while (("${#}")); do
 		-m | --master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/archive/refs/heads/${github_tag[libtorrent]}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+			source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
 			qbt_workflow_override[qbittorrent]="yes"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			shift
@@ -1616,6 +1620,7 @@ while (("${#}")); do
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			source_archive_url[qbittorrent]="https://github.com/arvidn/libtorrent/archive/refs/heads/${github_tag[libtorrent]}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			shift
@@ -1623,6 +1628,7 @@ while (("${#}")); do
 		-lt | --libtorrent-tag)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "$2")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 			shift 2
@@ -1642,12 +1648,14 @@ while (("${#}")); do
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
 			qbt_workflow_override[qbittorrent]="yes"
+			source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			shift
 			;;
 		-qt | --qbittorrent-tag)
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "$2")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+			source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
 			qbt_workflow_override[qbittorrent]="yes"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
 			shift 2
