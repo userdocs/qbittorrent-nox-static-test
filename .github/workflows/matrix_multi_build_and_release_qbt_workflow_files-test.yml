@@ -150,7 +150,7 @@ jobs:
           cat ${{ matrix.libtorrent_version }}/qt6-dependency-version.json
 
           echo "dependency-version.json 3"
-          cat dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json
+          cat ${{ matrix.libtorrent_version }}/dependency-version.json
 
           echo "release.md 1"
           cat ${{ matrix.libtorrent_version }}/qt5-release.md
@@ -189,7 +189,7 @@ jobs:
           cat ${{ matrix.libtorrent_version }}/qt6-dependency-version.json
 
           echo "dependency-version.json 3"
-          cat dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json
+          cat ${{ matrix.libtorrent_version }}/dependency-version.json
 
           echo "release.md 1"
           cat ${{ matrix.libtorrent_version }}/qt5-release.md
