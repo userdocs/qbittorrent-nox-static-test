@@ -79,13 +79,12 @@ jobs:
           docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
           docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv release.md qt${{ matrix.qbt_qt_version }}-release.md
 
-      # - name: Docker - Test - Download release asset
-      #   run: |
-      #     docker exec -w /root multiarch mkdir -p "${{ env.build_dir }}/completed/${{ matrix.libtorrent_version }}"
-      #     docker exec -w /root multiarch curl -sL https://github.com/userdocs/qbittorrent-nox-static/releases/download/$(cat ${{ env.build_dir }}/release_info/tag.md)/${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox -o ${{ env.build_dir }}/completed/qbittorrent-nox
-
-      - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root/${{ env.build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+      - name: Docker - Test - Download release asset
+        run: |
+          docker exec -w /root multiarch mkdir -p "${{ env.build_dir }}/completed/${{ matrix.libtorrent_version }}"
+      #    docker exec -w /root multiarch curl -sL https://github.com/userdocs/qbittorrent-nox-static/releases/download/$(cat ${{ env.build_dir }}/release_info/tag.md)/${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox -o ${{ env.build_dir }}/completed/qbittorrent-nox
+      # - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root/${{ env.build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
       - name: Docker - Release Info ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root/${{ env.build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.build_dir }}/completed''
