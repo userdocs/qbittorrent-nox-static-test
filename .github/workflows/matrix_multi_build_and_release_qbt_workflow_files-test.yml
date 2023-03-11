@@ -124,7 +124,6 @@ jobs:
         run: |
           pandoc_git_tag="$(git ls-remote -q -t --refs https://github.com/jgm/pandoc.git | awk '/tags\/[0-9]/{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
           curl -sLo- "https://github.com/jgm/pandoc/releases/latest/download/pandoc-${pandoc_git_tag}-linux-amd64.tar.gz" | tar xzf - --strip-components 2 -C "$(pwd)" --exclude="share"
-          ls
 
       - name: Host - Download qbittorrent-nox artifacts ${{ github.event.inputs.distinct_id }}
         uses: actions/download-artifact@v3
@@ -144,17 +143,9 @@ jobs:
           done
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
-        if: matrix.libtorrent_version == '1.2'
         run: |
-          paste -d '\n' 1.2/qt5-release.md 1.2/qt6-release.md 2.0/qt5-release.md | uniq > tmp-release.md
-          paste -d '\n' 1.2/qt5-dependency-version.json 1.2/qt6-dependency-version.json 2.0/qt5-dependency-version.json | uniq > dependency-version.json
-          ./pandoc -f gfm tmp-release.md -t gfm -o release.md
-
-      - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
-        if: matrix.libtorrent_version == '2.0'
-        run: |
-          paste -d '\n' 2.0/qt5-release.md 2.0/qt6-release.md 1.2/qt5-release.md | uniq > tmp-release.md
-          paste -d '\n' 2.0/qt5-dependency-version.json 2.0/qt6-dependency-version.json 1.2/qt5-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' 1.2/qt5-release.md 2.0/qt6-release.md | uniq > tmp-release.md
+          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
           ./pandoc -f gfm tmp-release.md -t gfm -o release.md
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
