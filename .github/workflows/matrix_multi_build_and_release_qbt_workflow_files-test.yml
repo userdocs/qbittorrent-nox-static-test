@@ -153,13 +153,16 @@ jobs:
         run: |
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
+
           paste -d '\n' ${{ matrix.libtorrent_version }}/dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' ${{ matrix.libtorrent_version }}/release.md 2.0/qt6-release.md | uniq > release.md
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         if: matrix.libtorrent_version == '2.0'
         run: |
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
+
           paste -d '\n' 1.2/qt6-dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json | uniq > dependency-version.json
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
@@ -176,6 +179,6 @@ jobs:
           replacesArtifacts: true
           tag: "${{ env.release_tag }}"
           name: "${{ env.release_title }}"
-          bodyFile: "${{ matrix.libtorrent_version }}/release.md"
+          bodyFile: "release.md"
           allowUpdates: true
           token: "${{ secrets.GITHUB_TOKEN }}"
