@@ -556,7 +556,7 @@ git() {
 	fi
 }
 
-test_git_ouput() {
+_test_git_ouput() {
 	if [[ "${1}" == 'error_tag' ]]; then
 		printf '\n%b\n' "${cy} Sorry, the provided ${2} tag ${cr}${3}${cend}${cy} is not valid${cend}"
 	fi
@@ -1496,7 +1496,7 @@ _error_url() {
 }
 #
 _error_tag() {
-	[[ "${github_tag[libtorrent]}" == "error_tag" || "${github_tag[qbittorrent]}" == "error_tag" ]] && {
+	[[ "${github_tag[*]}" =~ error_tag ]] && {
 		printf '\n'
 		exit
 	}
@@ -1572,14 +1572,12 @@ while (("${#}")); do
 			shift
 			;;
 		-bv | --boost-version)
-			if [[ -n "${2}" ]]; then
-				app_version[boost]="${2}"
-				shift
-			else
-				printf '\n%b\n\n' " ${ulrc} You must provide a valid arch option when using${cend} ${clb}-bv${cend}"
-				exit 1
-			fi
-			shift
+			github_tag[boost]="$(git "${github_url[boost]}" -t "boost-$2")"
+			app_version[boost]="${github_tag[boost]#boost-}"
+			source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/$2/source/boost_${2//\./_}.tar.gz"
+			_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
+			override_workflow="yes"
+			shift 2
 			;;
 		-n | --no-delete)
 			qbt_skip_delete="yes"
@@ -1588,11 +1586,11 @@ while (("${#}")); do
 		-m | --master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
-			test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
+			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-			test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
+			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 
 			override_workflow="yes"
 			shift
@@ -1600,14 +1598,14 @@ while (("${#}")); do
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
-			test_git_ouput "${github_url[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
+			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			override_workflow="yes"
 			shift
 			;;
 		-lt | --libtorrent-tag)
 			github_tag[libtorrent]="$(git "${github_url[libtorrent]}" -t "$2")"
 			app_version[libtorrent]="${github_tag[libtorrent]#v}"
-			test_git_ouput "${github_url[libtorrent]}" "libtorrent" "$2"
+			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 			override_workflow="yes"
 			shift 2
 			;;
@@ -1625,14 +1623,14 @@ while (("${#}")); do
 		-qm | --qbittorrent-master)
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-			test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
+			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			override_workflow="yes"
 			shift
 			;;
 		-qt | --qbittorrent-tag)
 			github_tag[qbittorrent]="$(git "${github_url[qbittorrent]}" -t "$2")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-			test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
+			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
 			override_workflow="yes"
 			shift 2
 			;;
