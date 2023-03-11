@@ -143,20 +143,36 @@ jobs:
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
 
-          echo 1
-          cat dependency-version.json 2.0/qt6-dependency-version.json
-          echo 2
+          echo "dependency-version.json 1"
+          cat ${{ matrix.libtorrent_version }}/qt5-dependency-version.json
+
+          echo "dependency-version.json 2"
+          cat ${{ matrix.libtorrent_version }}/qt6-dependency-version.json
+
+          echo "dependency-version.json 3"
           cat dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json
 
-          echo 1
-          cat 2.0/qt6-release.md
-          echo 2
+          echo "release.md 1"
+          cat ${{ matrix.libtorrent_version }}/qt5-release.md
+
+          echo "release.md 2"
+          cat ${{ matrix.libtorrent_version }}/qt6-release.md
+
+          echo release.md 3"
           cat ${{ matrix.libtorrent_version }}/release.md
 
           paste -d '\n' 2.0/qt6-dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json | uniq > dependency-version.json
           paste -d '\n' 2.0/qt6-release.md ${{ matrix.libtorrent_version }}/release.md | uniq > release.md
 
+          echo "dependency-version.json 4"
+          cat 2.0/qt6-dependency-version.json
+
+          echo "dependency-version.json 5"
           cat dependency-version.json
+
+          echo release.md 4"
+          cat 2.0/qt6-release.md
+          echo release.md 5"
           cat release.md
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
@@ -165,20 +181,36 @@ jobs:
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-dependency-version.json ${{ matrix.libtorrent_version }}/qt6-dependency-version.json | uniq > ${{ matrix.libtorrent_version }}/dependency-version.json
           paste -d '\n' ${{ matrix.libtorrent_version }}/qt5-release.md ${{ matrix.libtorrent_version }}/qt6-release.md | uniq > ${{ matrix.libtorrent_version }}/release.md
 
-          echo 1
-          cat dependency-version.json 2.0/qt6-dependency-version.json
-          echo 2
+          echo "dependency-version.json 1"
+          cat ${{ matrix.libtorrent_version }}/qt5-dependency-version.json
+
+          echo "dependency-version.json 2"
+          cat ${{ matrix.libtorrent_version }}/qt6-dependency-version.json
+
+          echo "dependency-version.json 3"
           cat dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json
 
-          echo 1
-          cat 2.0/qt6-release.md
-          echo 2
+          echo "release.md 1"
+          cat ${{ matrix.libtorrent_version }}/qt5-release.md
+
+          echo "release.md 2"
+          cat ${{ matrix.libtorrent_version }}/qt6-release.md
+
+          echo release.md 3"
           cat ${{ matrix.libtorrent_version }}/release.md
 
           paste -d '\n' 1.2/qt6-dependency-version.json ${{ matrix.libtorrent_version }}/dependency-version.json | uniq > dependency-version.json
           paste -d '\n' 1.2/qt6-release.md ${{ matrix.libtorrent_version }}/release.md | uniq > release.md
 
+          echo "dependency-version.json 4"
+          cat 1.2/qt6-dependency-version.json
+
+          echo "dependency-version.json 5"
           cat dependency-version.json
+
+          echo release.md 4"
+          cat 1.2/qt6-release.md
+          echo release.md 5"
           cat release.md
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
