@@ -2200,7 +2200,7 @@ if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
 	else
 		custom_flags_set
 
-		if [[ "${override_workflow}" != "yes" ]] && [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" ]]; then
+		if [[ "${qbt_workflow_override[${app_name}]}" != "yes" ]] && [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" ]]; then
 			download_file "${app_name}"
 		else
 			_download_folder "${app_name}"
@@ -2461,7 +2461,7 @@ if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
 	else
 		custom_flags_set
 
-		if [[ "${override_workflow}" != "yes" ]] && [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" ]]; then
+		if [[ "${qbt_workflow_override[${app_name}]}" != "yes" ]] && [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" ]]; then
 			download_file "${app_name}"
 		else
 			_download_folder "${app_name}"
