@@ -743,6 +743,26 @@ _set_module_urls() {
 	qbt_workflow_override[qtbase]="no"
 	qbt_workflow_override[qttools]="no"
 	qbt_workflow_override[qbittorrent]="no"
+
+	##########################################################################################################################################################
+	# The default source type we use for the download function
+	##########################################################################################################################################################
+	declare -gA source_default
+	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+		source_default[bison]="file"
+		source_default[gawk]="file"
+		source_default[glibc]="file"
+	fi
+	source_default[zlib]="folder"
+	source_default[iconv]="file"
+	source_default[icu]="file"
+	source_default[double_conversion]="folder"
+	source_default[openssl]="file"
+	source_default[boost]="file"
+	source_default[libtorrent]="folder"
+	source_default[qtbase]="file"
+	source_default[qttools]="file"
+	source_default[qbittorrent]="folder"
 	###################################################################################################################################################
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
@@ -978,7 +998,14 @@ _application_skip() {
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
+	# Some modules require moving into specific source directory subdir to build, like glibc and icu
 	[[ -n "${1}" ]] && subdir="/${1}"
+
+	if [[ -n "${qbt_cache_dir}" ]]; then
+		qbt_dl_dir="${qbt_cache_dir}/${app_name}"
+	else
+		qbt_dl_dir="${qbt_install_dir}/${app_name}"
+	fi
 
 	if [[ "${qbt_workflow_files}" == "no" || "${qbt_workflow_override[${app_name}]}" == "yes" ]]; then
 		qbt_dl_source_url="${source_archive_url[${app_name}]}"
@@ -993,20 +1020,51 @@ _download() {
 		[[ "${qbt_workflow_artifacts}" == "yes" ]] && source_type="artifact"
 	fi
 
-	qbt_dl_dir="${qbt_install_dir}/${app_name}"
 	qbt_dl_file_path="${qbt_install_dir}/${qbt_dl_file_name}"
+	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
 
-	qbt_dl_app_version="${app_version[${app_name}]}"
+	# qbt_dl_app_version="${app_version[${app_name}]}"
 
 	# _cache_dirs
 	# cache urls- folders
 
-	_download_file
+	# We use and associative array in the _set_module_urls functions to set source type defaults
+	# workflow and artifacts can only ever be file types via archives
+	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
 
-	qbt_dl_github_url="${github_url[${app_name}]}"
+	[[ "${source_default[${app_name}]}" == "folder" ]] && _download_folder
+}
+#######################################################################################################################################################
+# This function is for downloading git releases based on their tag.
+#######################################################################################################################################################
+_download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}"
+	printf '%s' "${github_url[${app_name}]}" > "${qbt_install_dir}/logs/github_url_${app_name}.log"
 
-	# _download_folder
-	# git urls - folders
+	# Set this to avoid some warning when cloning some modules
+	_git_git config --global advice.detachedHead false
+
+	[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
+	[[ -d "${qbt_dl_folder_path}/include/${app_name}" ]] && rm -rf "${qbt_dl_folder_path}/include/${app_name}"
+
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}" ]]; then
+		printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} - ${clc}${qbt_dl_dir}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		cp -rf "${qbt_dl_dir}"/. "${qbt_dl_folder_path}"
+	else
+		printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
+			_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}"
+			_pushd "${qbt_dl_dir}"
+			git submodule update --force --recursive --init --remote --depth=1 --single-branch
+			_popd
+		else
+			_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}"
+		fi
+	fi
+
+	mkdir -p "${qbt_dl_folder_path}${subdir}"
+	_pushd "${qbt_dl_folder_path}${subdir}"
+
+	return
 }
 #######################################################################################################################################################
 # This function is for downloading source code archives
@@ -1041,54 +1099,6 @@ _download_file() {
 	[[ "${app_name}" != 'boost' ]] && _pushd "${qbt_dl_source_dir}${subdir}"
 
 	return
-}
-#######################################################################################################################################################
-# This function is for downloading git releases based on their tag.
-#######################################################################################################################################################
-_download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}"
-	if [[ -n "${app_name}" ]]; then
-		[[ -n "${2}" ]] && subdir="/${2}" || subdir=""
-
-		mkdir -p "${qbt_install_dir}/logs"
-		printf '%s' "${github_url[${app_name}]}" > "${qbt_install_dir}/logs/github_url_${app_name}.log"
-		_git_git config --global advice.detachedHead false
-
-		_cache_dirs
-
-		if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
-			folder_name="${qbt_cache_dir}/${app_name}"
-			folder_inc="${qbt_cache_dir}/include/${app_name}"
-		else
-			folder_name="${qbt_install_dir}/${app_name}"
-			folder_inc="${qbt_install_dir}/include/${app_name}"
-		fi
-
-		[[ -d "${qbt_install_dir}/${app_name}" ]] && rm -rf "${folder_name}"
-
-		[[ "${app_name}" == 'libtorrent' && -d "${folder_inc}" ]] && rm -rf "${folder_inc}"
-
-		if [[ -n "${qbt_cache_dir}" && -d "${folder_name}" ]]; then
-			printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} -${clc} ${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
-		else
-			printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
-		fi
-
-		if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
-			cp -rf "${qbt_cache_dir}/${app_name}"/. "${qbt_install_dir}/${app_name}"
-		else
-			if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
-				_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${folder_name}"
-				_pushd "${folder_name}"
-				git submodule update --force --recursive --init --remote --depth=1 --single-branch
-				_popd
-			else
-				_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${folder_name}"
-			fi
-		fi
-
-		mkdir -p "${qbt_install_dir}/${app_name}${subdir}"
-		_pushd "${qbt_install_dir}/${app_name}${subdir}"
-	fi
 }
 #######################################################################################################################################################
 #
@@ -1149,7 +1159,7 @@ _cache_dirs() {
 #######################################################################################################################################################
 _delete_function() {
 	if [[ -n "${1}" ]]; then
-		if [[ -z "${qbt_skip_delete}" ]]; then
+		if [[ "${qbt_skip_delete}" != "yes" ]]; then
 			if [[ "$2" == 'last' ]]; then
 				printf '\n%b\n\n' " ${utick}${clr} Deleting ${1} installation files and folders${cend}"
 			else
@@ -1158,6 +1168,7 @@ _delete_function() {
 
 			[[ -f "${qbt_dl_file_path}" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
 			[[ -d "${qbt_dl_source_dir}" ]] && rm -rf "${qbt_dl_source_dir}"
+			[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
 
 			_pushd "${qbt_working_dir}"
 		else
