@@ -846,10 +846,12 @@ _installation_modules() {
 
 		if [[ "${*}" =~ ([[:space:]]|^)all([[:space:]]|$) ]]; then
 			# If all is passed as a module then once it teh params check passed has triggered this condition, remove ot from the qbt_modules array to leave only the modules to be activated
-			unset 'qbt_modules[all]'
+			unset 'qbt_modules[0]'
 			# Rebuild the qbt_modules array so it is indexed starting from 0 after we have modified and removed items from it previously.
 			qbt_modules=("${qbt_modules[@]}")
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
+			unset 'qbt_modules[0]'
+			read -ra qbt_modules_skipped <<< "${qbt_modules[@]/${@}/}"
 			qbt_modules=("${@}")
 		fi
 
@@ -988,59 +990,30 @@ _tee() {
 	command tee "$@"
 }
 #######################################################################################################################################################
-# This function sets the name of the application to be used with the functions download_file/folder and _delete_function
-#######################################################################################################################################################
-_application_name() {
-	app_name="${1}"
-	app_name_skip="skip_${app_name}"
-}
-#######################################################################################################################################################
-# This function skips the deletion of the -n flag is supplied
-#######################################################################################################################################################
-_application_skip() {
-	if [[ "${1}" == 'last' ]]; then
-		printf '\n%b\n\n' " ${uyc} Skipping ${clm}${app_name}${cend} module installation"
-	else
-		printf '\n%b\n' " ${uyc} Skipping ${clm}${app_name}${cend} module installation"
-	fi
-}
-#######################################################################################################################################################
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
-	if [[ -n "${qbt_cache_dir}" ]]; then
-		# If the directory provided was relative then prepend pwd to it to get a full path.
-		if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
-			qbt_dl_dir="$(pwd)/${qbt_cache_dir}"
-		else
-			qbt_dl_dir="${qbt_cache_dir}"
-		fi
+	# The location we download source archives and folders to
+	qbt_dl_dir="${qbt_install_dir}"
 
-	else
-		qbt_dl_dir="${qbt_install_dir}"
-	fi
-
-	if [[ "${qbt_workflow_files}" == "no" || "${qbt_workflow_override[${app_name}]}" == "yes" ]]; then
+	if [[ "${qbt_workflow_files}" == "no" ]] || [[ "${qbt_workflow_override[${app_name}]}" == "yes" ]]; then
 		qbt_dl_source_url="${source_archive_url[${app_name}]}"
-		qbt_dl_file_name="${qbt_dl_source_url##*/}"
+		qbt_dl_file_name="${source_archive_url[${app_name}]##*/}"
 		source_type="source"
 	fi
 
-	if [[ "${qbt_workflow_override[${app_name}]}" == "no" && "${qbt_workflow_files}" == "yes" ]] || [[ "${qbt_workflow_artifacts}" == 'yes' ]]; then
+	if [[ "${qbt_workflow_files}" == "yes" && "${qbt_workflow_override[${app_name}]}" == "no" ]] || [[ "${qbt_workflow_artifacts}" == 'yes' ]]; then
 		qbt_dl_source_url="${qbt_workflow_archive_url[${app_name}]}"
-		qbt_dl_file_name="${qbt_dl_source_url##*/}"
+		qbt_dl_file_name="${qbt_workflow_archive_url[${app_name}]##*/}"
 		[[ "${qbt_workflow_files}" == "yes" ]] && source_type="workflow"
 		[[ "${qbt_workflow_artifacts}" == "yes" ]] && source_type="artifact"
 	fi
 
-	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
-	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
-	# qbt_dl_app_version="${app_version[${app_name}]}"
-
 	[[ -n "${qbt_cache_dir}" ]] && _cache_dirs
 
-	# We use and associative array in the _set_module_urls functions to set source type defaults
-	# workflow and artifacts can only ever be file types via archives
+	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
+	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
+
 	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
 
 	[[ "${source_default[${app_name}]}" == "folder" ]] && _download_folder
@@ -1049,6 +1022,11 @@ _download() {
 #
 #######################################################################################################################################################
 _cache_dirs() {
+	if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
+		qbt_dl_dir="$(pwd)/${qbt_cache_dir}"
+	else
+		qbt_dl_dir="${qbt_cache_dir}"
+	fi
 
 	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
 		qbt_cache_dir_bootstrap="yes"
@@ -1076,14 +1054,15 @@ _cache_dirs() {
 	else
 		# If the tag or branch is different then start the download process.
 		if [[ -d "${qbt_cache_dir}/${module}" ]]; then
-			_pushd "${qbt_cache_dir}"
 			# back up the old folder by moving and renaming it.
-			[[ -d "${module}" ]] && mv -f "${module}" "${module}-$(date +'%j-%R:%S')"
+			[[ -d "${qbt_cache_dir}/${module}}" ]] && mv -f "${qbt_cache_dir}/${module}" "${qbt_cache_dir}/${module}-$(date +'%j-%R:%S')"
 			printf '\n%b\n' " ${ugc} ${clb}${module}${cend} - caching to directory ${clc}${qbt_cache_dir}${cend}"
 		fi
 	fi
 
-	source_default["${app_name}"]="folder"
+	[[ "${qbt_cache_dir_bootstrap}" == 'yes' || -d "${qbt_dl_dir}/${app_name}" ]] && source_default["${app_name}"]="folder"
+
+	return
 }
 #######################################################################################################################################################
 # This function is for downloading git releases based on their tag.
@@ -1095,7 +1074,7 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	_git_git config --global advice.detachedHead false
 
 	[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
-	[[ -d "${qbt_dl_folder_path}/include/${app_name}" ]] && rm -rf "${qbt_dl_folder_path}/include/${app_name}"
+	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
 		printf "\n%b\n\n" " ${uplus}${cg} Copying ${app_name}${cend} from cache - ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
@@ -1114,8 +1093,8 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 
 	[[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]] && cp -rf "${qbt_dl_dir}/${app_name}"/. "${qbt_dl_folder_path}"
 
-	mkdir -p "${qbt_dl_folder_path}${subdir}"
-	_pushd "${qbt_dl_folder_path}${subdir}"
+	mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+	_pushd "${qbt_dl_folder_path}${sub_dir}"
 
 	return
 }
@@ -1130,26 +1109,22 @@ _download_file() {
 		if [[ -f "${qbt_dl_file_path}" ]]; then
 			# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
 			_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
-
 			# delete any existing extracted archives and archives
 			rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
 		fi
-
 		# download the remote source file using curl
 		_curl "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
 	fi
 
 	# Set the extracted dir name to a var to easily use or remove it
-	qbt_dl_source_dir="${qbt_install_dir}/$(tar tf "${qbt_dl_file_path}" | head -1 | cut -f1 -d"/")"
-
+	qbt_dl_folder_path="${qbt_install_dir}/$(tar tf "${qbt_dl_file_path}" | head -1 | cut -f1 -d"/")"
 	printf '%b\n' "${qbt_dl_source_url}" > "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log"
-
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
-
-	mkdir -p "${qbt_dl_source_dir}"
-
 	# we don't need to cd into the boost if we download it via source archives
-	[[ "${app_name}" != 'boost' ]] && _pushd "${qbt_dl_source_dir}"
+	if [[ "${app_name}" != 'boost' ]]; then
+		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+		_pushd "${qbt_dl_folder_path}${sub_dir}"
+	fi
 
 	return
 }
@@ -1157,31 +1132,13 @@ _download_file() {
 # This function is for removing files and folders we no longer need
 #######################################################################################################################################################
 _delete_function() {
-	if [[ -n "${1}" ]]; then
-		if [[ "${qbt_skip_delete}" != "yes" ]]; then
-			if [[ "$2" == 'last' ]]; then
-				printf '\n%b\n\n' " ${utick}${clr} Deleting ${1} installation files and folders${cend}"
-			else
-				printf '\n%b\n' " ${utick}${clr} Deleting ${1} installation files and folders${cend}"
-			fi
-
-			[[ -f "${qbt_dl_file_path}" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
-			[[ -d "${qbt_dl_source_dir}" ]] && rm -rf "${qbt_dl_source_dir}"
-			[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
-
-			_pushd "${qbt_working_dir}"
-		else
-			if [[ "${2}" == 'last' ]]; then
-				printf '\n%b\n\n' " ${uyc}${clr} Skipping ${1} deletion${cend}"
-			else
-				printf '\n%b\n' " ${uyc}${clr} Skipping ${1} deletion${cend}"
-			fi
-		fi
+	if [[ "${qbt_skip_delete}" != "yes" ]]; then
+		printf '\n%b\n' " ${utick}${clr} Deleting ${app_name} installation files and folders${cend}"
+		[[ -f "${qbt_dl_file_path}" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
+		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
+		_pushd "${qbt_working_dir}"
 	else
-		printf '\n%b\n' "The _delete_function works in tandem with the application_name function"
-		printf '%b\n' "Set the app_name using the application_name function then use this function."
-		printf '\n%b\n\n' "_delete_function app_name"
-		exit
+		printf '\n%b\n' " ${uyc}${clr} Skipping ${app_name} deletion${cend}"
 	fi
 }
 #######################################################################################################################################################
@@ -1498,7 +1455,7 @@ _cmake() {
 # static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the static lib e.g. libdl.a
 #######################################################################################################################################################
 _fix_static_links() {
-	log_name="$1"
+	log_name="${app_name}"
 	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
 	for file in "${library_list[@]}"; do
 		if [[ "$(readlink "${lib_dir}/${file}.so")" != "${file}.a" ]]; then
@@ -1510,7 +1467,7 @@ _fix_static_links() {
 }
 _fix_multiarch_static_links() {
 	if [[ -d "${qbt_install_dir}/${qbt_cross_host}" ]]; then
-		log_name="$1"
+		log_name="${app_name}"
 		multiarch_lib_dir="${qbt_install_dir}/${qbt_cross_host}/lib"
 		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
 		for file in "${library_list[@]}"; do
@@ -1953,105 +1910,42 @@ _cmake # see functions
 
 _multi_arch # see functions
 #######################################################################################################################################################
-# bison installation
-#######################################################################################################################################################
-_application_name bison
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_bison() {
 	./configure "${multi_bison[@]}" --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
 	_post_command build
 
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# gawk installation
-#######################################################################################################################################################
-_application_name gawk
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_gawk() {
 	./configure "${multi_gawk[@]}" --prefix="$qbt_install_dir" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
 	_post_command build
 
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# glibc installation
-#######################################################################################################################################################
-_application_name glibc
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_reset
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
-	mkdir BUILD
-	_pushd BUILD
-
-	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd --srcdir="${qbt_dl_source_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+# shellcheck disable=SC2317
+__glibc_bootstrap() {
+	sub_dir="/BUILD"
+}
+# shellcheck disable=SC2317
+_glibc() {
+	"${qbt_dl_folder_path}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd --srcdir="${qbt_dl_folder_path}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
 
 	_post_command build
 
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# zlib installation
-#######################################################################################################################################################
-_application_name zlib
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_version[zlib]}"
 
@@ -2083,66 +1977,36 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# iconv installation
-#######################################################################################################################################################
-_application_name iconv
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_reset
-	############################
+# shellcheck disable=SC2317
+_iconv() {
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
-		_download_folder "${app_name}"
 		./gitsub.sh pull --depth 1
 		./autogen.sh
-	else
-		download_file "${app_name}"
 	fi
-	############################
-	_apply_patches
-	############################
 
 	./configure "${multi_iconv[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_fix_static_links "${app_name}"
-
-	_post_command build
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# icu installation
+# shellcheck disable=SC2317
+_icu_bootsrap() {
+	if [[ -n "${qbt_cache_dir}" ]]; then
+		sub_dir="/icu4c/source"
+	else
+		sub_dir="/source"
+	fi
+}
 #######################################################################################################################################################
-_application_name icu
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_reset
-	############################
+# shellcheck disable=SC2317
+_icu() {
 	if [[ -n "${qbt_cache_dir}" ]]; then
 		_download "/icu4c/source"
 	else
 		_download "/source"
 	fi
-	############################
-	_apply_patches
-	############################
 
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
@@ -2153,188 +2017,110 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	fi
 
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 	_post_command build
-
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# openssl installation
-#######################################################################################################################################################
-_application_name openssl
-#
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_openssl() {
 	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 	_post_command build
-
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# boost install
+# shellcheck disable=SC2317
+_boost_bootstrap() {
+	# If using source files and jfrog fails, default to git, if we are not using workflows sources.
+	if [[ "${boost_url_status}" =~ (403|404) && "${qbt_workflow_files}" == "no" && "${qbt_workflow_artifacts}" == "no" ]]; then
+		source_default["${app_name}"]="folder"
+	fi
+}
 #######################################################################################################################################################
-_application_name boost
-#
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-
-	[[ -d "${qbt_install_dir}/boost" ]] && _delete_function "${app_name}"
-
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]] || [[ "${boost_url_status}" =~ (403|404) ]]; then
-		_download_folder "${app_name}"
-	elif [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" || "${boost_url_status}" =~ (200) ]]; then
-		_download_file "${app_name}"
-		mv -f "${qbt_install_dir}/boost_${app_version[boost]//./_}/" "${qbt_install_dir}/boost"
+# shellcheck disable=SC2317
+_boost() {
+	if [[ "${source_default["${app_name}"]}" == "file" ]]; then
+		mv -f "${qbt_install_dir}/boost_${app_version["${app_name}"]//./_}/" "${qbt_install_dir}/boost"
 		_pushd "${qbt_install_dir}/boost"
 	fi
 
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]] || [[ "${qbt_build_tool}" != 'cmake' ]]; then
+	if [[ "${qbt_build_tool}" != 'cmake' ]]; then
 		"${qbt_install_dir}/boost/bootstrap.sh" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		ln -s "${qbt_install_dir}/boost/boost" "${qbt_install_dir}/boost/include"
 	else
 		printf '%b\n' " ${uyc} Skipping b2 as we are using cmake"
 	fi
 
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]] || [[ "${boost_url_status}" =~ (403|404) ]]; then
+	if [[ "${source_default["${app_name}"]}" == "folder" ]]; then
 		"${qbt_install_dir}/boost/b2" headers |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	fi
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# libtorrent installation
-#######################################################################################################################################################
-_application_name libtorrent
+# shellcheck disable=SC2317
+_libtorrent() {
+	BOOST_ROOT="${qbt_install_dir}/boost"
+	BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
+	BOOST_BUILD_PATH="${qbt_install_dir}/boost"
 
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-	if [[ ! -d "${qbt_install_dir}/boost" ]]; then
-		printf '\n%b\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost libtorrent${cend}"
+	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
+		mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot" -G Ninja -B build \
+			"${multi_libtorrent[@]}" \
+			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
+			-D CMAKE_BUILD_TYPE="Release" \
+			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
+			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
+			-D BUILD_SHARED_LIBS=OFF \
+			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
+			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		_post_command build
+		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot"
 	else
-
-		############################
-		_custom_flags_set
-		############################
-		_download
-		############################
-		_apply_patches
-		############################
-
-		BOOST_ROOT="${qbt_install_dir}/boost"
-		BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
-		BOOST_BUILD_PATH="${qbt_install_dir}/boost"
-
-		if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-			mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
-			cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot" -G Ninja -B build \
-				"${multi_libtorrent[@]}" \
-				-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
-				-D CMAKE_BUILD_TYPE="Release" \
-				-D CMAKE_CXX_STANDARD="${standard}" \
-				-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
-				-D Boost_NO_BOOST_CMAKE=TRUE \
-				-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
-				-D BUILD_SHARED_LIBS=OFF \
-				-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
-				-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-			cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-			_post_command build
-
-			cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-			dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot"
+		[[ ${qbt_cross_name} =~ ^(armhf|armv7)$ ]] && arm_libatomic="-l:libatomic.a"
+		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2 or RC_2_0 when a custom pr branch was used. This will always give an accurate result.
+		libtorrent_version_hpp="$(sed -rn 's|(.*)LIBTORRENT_VERSION "(.*)"|\2|p' include/libtorrent/version.hpp)"
+		if [[ "${libtorrent_version_hpp}" =~ ^1\.1\. ]]; then
+			libtorrent_library_filename="libtorrent.a"
 		else
-			[[ ${qbt_cross_name} =~ ^(armhf|armv7)$ ]] && arm_libatomic="-l:libatomic.a"
-
-			# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2 or RC_2_0 when a custom pr branch was used. This will always give an accurate result.
-			libtorrent_version_hpp="$(sed -rn 's|(.*)LIBTORRENT_VERSION "(.*)"|\2|p' include/libtorrent/version.hpp)"
-
-			if [[ "${libtorrent_version_hpp}" =~ ^1\.1\. ]]; then
-				libtorrent_library_filename="libtorrent.a"
-			else
-				libtorrent_library_filename="libtorrent-rasterbar.a"
-			fi
-
-			if [[ "${libtorrent_version_hpp}" =~ ^2\. ]]; then
-				lt_version_options=()
-				libtorrent_libs="-l:libboost_system.a -l:${libtorrent_library_filename} -l:libtry_signal.a ${arm_libatomic}"
-				lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_SSL_PEERS -DBOOST_ASIO_NO_DEPRECATED"
-			else
-				lt_version_options=("iconv=on")
-				libtorrent_libs="-l:libboost_system.a -l:${libtorrent_library_filename} ${arm_libatomic} -l:libiconv.a"
-				lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
-			fi
-			#
-			"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="$(getconf LONG_BIT)" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-			#
-			_post_command build
-			#
-			libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
-			#
-			cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
-				prefix=${qbt_install_dir}
-				libdir=\${prefix}/lib
-				includedir=\${prefix}/include
-
-				Name: libtorrent-rasterbar
-				Description: The libtorrent-rasterbar libraries
-				Version: ${libtorrent_strings_version#*/}
-
-				Requires:
-				Libs: -L\${libdir} ${libtorrent_libs}
-				Cflags: -I\${includedir} -I${BOOST_ROOT} ${lt_cmake_flags}
-			LIBTORRENT_PKG_CONFIG
+			libtorrent_library_filename="libtorrent-rasterbar.a"
 		fi
-		#
-		_fix_static_links "${app_name}"
-		#
-		_delete_function "${app_name}"
+
+		if [[ "${libtorrent_version_hpp}" =~ ^2\. ]]; then
+			lt_version_options=()
+			libtorrent_libs="-l:libboost_system.a -l:${libtorrent_library_filename} -l:libtry_signal.a ${arm_libatomic}"
+			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_SSL_PEERS -DBOOST_ASIO_NO_DEPRECATED"
+		else
+			lt_version_options=("iconv=on")
+			libtorrent_libs="-l:libboost_system.a -l:${libtorrent_library_filename} ${arm_libatomic} -l:libiconv.a"
+			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
+		fi
+
+		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="$(getconf LONG_BIT)" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		_post_command build
+		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
+		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
+			prefix=${qbt_install_dir}
+			libdir=\${prefix}/lib
+			includedir=\${prefix}/include
+
+			Name: libtorrent-rasterbar
+			Description: The libtorrent-rasterbar libraries
+			Version: ${libtorrent_strings_version#*/}
+
+			Requires:
+			Libs: -L\${libdir} ${libtorrent_libs}
+			Cflags: -I\${includedir} -I${BOOST_ROOT} ${lt_cmake_flags}
+		LIBTORRENT_PKG_CONFIG
 	fi
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# double conversion installation
-#######################################################################################################################################################
-_application_name double_conversion
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_double_conversion() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[double_conversion]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
@@ -2349,27 +2135,10 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 		_post_command build
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[double_conversion]}/dep-graph.dot"
 	fi
-
-	_fix_static_links "${app_name}"
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# qtbase installation
-#######################################################################################################################################################
-_application_name qtbase
-
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_qtbase() {
 	case "${qbt_cross_name}" in
 		armhf | armv7)
 			sed "s|arm-linux-gnueabi|${qbt_cross_host}|g" -i "mkspecs/linux-arm-gnueabi-g++/qmake.conf"
@@ -2396,11 +2165,8 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[qtbase]}/dep-graph.dot"
 	elif [[ "${qbt_qt_version}" =~ ^5 ]]; then
 		if [[ "${qbt_skip_icu}" == "no" ]]; then
@@ -2408,50 +2174,27 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 		else
 			icu=("-no-icu" "-iconv" "QMAKE_CXXFLAGS=-w -fpermissive")
 		fi
-
 		# Fix 5.15.4 to build on gcc 11
 		sed '/^#  include <utility>/a #  include <limits>' -i "src/corelib/global/qglobal.h"
-
 		# Don't strip by default by disabling these options. We will set it as off by default and use it with a switch
 		printf '%b\n' "CONFIG                 += ${qbt_strip_qmake}" >> "mkspecs/common/linux.conf"
-
 		./configure "${multi_qtbase[@]}" -prefix "${qbt_install_dir}" "${icu[@]}" -opensource -confirm-license -release \
 			-openssl-linked -static -c++std "${cxx_standard}" -qt-pcre \
 			-no-feature-glib -no-feature-opengl -no-feature-dbus -no-feature-gui -no-feature-widgets -no-feature-testlib -no-compile-examples \
 			-skip tests -nomake tests -skip examples -nomake examples \
 			-I "${include_dir}" -L "${lib_dir}" QMAKE_LFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${urc} Please use a correct qt and build tool combination"
 		printf '\n%b\n\n' " ${urc} ${utick} qt5 + qmake ${utick} qt6 + cmake ${ucross} qt5 + cmake ${ucross} qt6 + qmake"
 		exit 1
 	fi
-
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# qttools installation
-#######################################################################################################################################################
-_application_name qttools
-#
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-
-	############################
-	_custom_flags_set
-	############################
-	_download
-	############################
-	_apply_patches
-	############################
-
+# shellcheck disable=SC2317
+_qttools() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[qttools]}/dep-graph.dot" -G Ninja -B build \
@@ -2465,99 +2208,95 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[qttools]}/dep-graph.dot"
 	elif [[ "${qbt_qt_version}" =~ ^5 ]]; then
 		"${qbt_install_dir}/bin/qmake" -set prefix "${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 
 		"${qbt_install_dir}/bin/qmake" QMAKE_CXXFLAGS="-std=${cxx_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${urc} Please use a correct qt and build tool combination"
 		printf '\n%b\n' " ${urc} ${utick} qt5 + qmake ${utick} qt6 + cmake ${ucross} qt5 + cmake ${ucross} qt6 + qmake"
 		exit 1
 	fi
-	_fix_static_links "${app_name}"
-
-	_delete_function "${app_name}"
-else
-	_application_skip
-fi
+}
 #######################################################################################################################################################
-# qBittorrent installation
-#######################################################################################################################################################
-_application_name qbittorrent
+# shellcheck disable=SC2317
+_qbittorrent() {
+	[[ "${what_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
 
-if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-	if [[ ! -d "${qbt_install_dir}/boost" ]]; then
+	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
+		mkdir -p "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot" -G Ninja -B build \
+			"${multi_qbittorrent[@]}" \
+			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
+			-D CMAKE_BUILD_TYPE="release" \
+			-D QT6="${qbt_use_qt6}" \
+			-D STACKTRACE="${stacktrace:-ON}" \
+			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
+			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
+			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
+			-D GUI=OFF \
+			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		_post_command build
+		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot"
+	else
+		./bootstrap.sh |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		./configure \
+			QT_QMAKE="${qbt_install_dir}/bin" \
+			--prefix="${qbt_install_dir}" \
+			"${multi_qbittorrent[@]}" \
+			"${qbt_qbittorrent_debug}" \
+			--disable-gui \
+			CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
+			--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		_post_command build
+		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	fi
+
+	[[ -f "${qbt_install_dir}/bin/qbittorrent-nox" ]] && cp -f "${qbt_install_dir}/bin/qbittorrent-nox" "${qbt_install_dir}/completed/qbittorrent-nox"
+}
+#######################################################################################################################################################
+# A module installer loop. This will loop through the activated modules and install them via their corresponding functions
+#######################################################################################################################################################
+for install_modules in "${qbt_modules[@]}"; do
+	app_name="${install_modules}"
+	if [[ ! -d "${qbt_install_dir}/boost" && "${install_modules}" =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost qbittorrent${cend}"
 	else
-
-		############################
-		_custom_flags_set
-		############################
-		_download
-		############################
-		_apply_patches
-		############################
-
-		[[ "${what_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
-
-		if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-			mkdir -p "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}"
-			cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot" -G Ninja -B build \
-				"${multi_qbittorrent[@]}" \
-				-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
-				-D CMAKE_BUILD_TYPE="release" \
-				-D QT6="${qbt_use_qt6}" \
-				-D STACKTRACE="${stacktrace:-ON}" \
-				-D CMAKE_CXX_STANDARD="${standard}" \
-				-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
-				-D Boost_NO_BOOST_CMAKE=TRUE \
-				-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
-				-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
-				-D GUI=OFF \
-				-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-			cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-			_post_command build
-
-			cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-			dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot"
-		else
-			./bootstrap.sh |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-			./configure \
-				QT_QMAKE="${qbt_install_dir}/bin" \
-				--prefix="${qbt_install_dir}" \
-				"${multi_qbittorrent[@]}" \
-				"${qbt_qbittorrent_debug}" \
-				--disable-gui \
-				CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
-				--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-			make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
-			_post_command build
-
-			make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
+			############################################################
+			if command -v "_${install_modules}_bootstrap"; then
+				"_${install_modules}_bootstrap"
+			fi
+			########################################################
+			if [[ "${install_modules}" =~ (glibc|iconv|icu) ]]; then
+				_custom_flags_reset
+			else
+				_custom_flags_set
+			fi
+			############################################################
+			_download && sub_dir=""
+			############################################################
+			_apply_patches
+			############################################################
+			"_${install_modules}"
+			############################################################
+			_fix_static_links
+			_delete_function
 		fi
-
-		[[ -f "${qbt_install_dir}/bin/qbittorrent-nox" ]] && cp -f "${qbt_install_dir}/bin/qbittorrent-nox" "${qbt_install_dir}/completed/qbittorrent-nox"
-
-		_application_name boost && _delete_function boost
-		_application_name "${app_name}" && _delete_function "${app_name}" last
+		[[ "${#qbt_modules_skipped[@]}" -gt '0' ]] && printf '\n%b\n\n' " ${ulbc} Modules skipped: ${clm}${qbt_modules_skipped[*]}${cend}"
 	fi
-else
-	_application_skip last
-fi
+done
 #######################################################################################################################################################
 # We are all done so now exit
 #######################################################################################################################################################
