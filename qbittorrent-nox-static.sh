@@ -1008,9 +1008,6 @@ _application_skip() {
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
-	# Some modules require moving into specific source directory subdir to build, like glibc and icu
-	[[ -n "${1}" ]] && subdir="/${1}"
-
 	if [[ -n "${qbt_cache_dir}" ]]; then
 		# If the directory provided was relative then prepend pwd to it to get a full path.
 		if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
@@ -1149,10 +1146,10 @@ _download_file() {
 
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
 
-	mkdir -p "${qbt_dl_source_dir}${subdir}"
+	mkdir -p "${qbt_dl_source_dir}"
 
 	# we don't need to cd into the boost if we download it via source archives
-	[[ "${app_name}" != 'boost' ]] && _pushd "${qbt_dl_source_dir}${subdir}"
+	[[ "${app_name}" != 'boost' ]] && _pushd "${qbt_dl_source_dir}"
 
 	return
 }
@@ -1952,8 +1949,6 @@ _debug "${@}" # see functions
 
 _installation_modules "${@}" # see functions
 
-_cache_dirs "${@}" # see functions
-
 _cmake # see functions
 
 _multi_arch # see functions
@@ -2021,10 +2016,13 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_custom_flags_reset
 	############################
-	_download build
+	_download
 	############################
 	_apply_patches
 	############################
+
+	mkdir BUILD
+	_pushd BUILD
 
 	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd --srcdir="${qbt_dl_source_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
