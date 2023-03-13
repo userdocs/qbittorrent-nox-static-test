@@ -1036,7 +1036,7 @@ _download() {
 		[[ "${qbt_workflow_artifacts}" == "yes" ]] && source_type="artifact"
 	fi
 
-	qbt_dl_file_path="${qbt_install_dir}/${qbt_dl_file_name}"
+	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
 	# qbt_dl_app_version="${app_version[${app_name}]}"
 
@@ -1952,6 +1952,8 @@ _debug "${@}" # see functions
 
 _installation_modules "${@}" # see functions
 
+_cache_dirs "${@}" # see functions
+
 _cmake # see functions
 
 _multi_arch # see functions
@@ -1986,7 +1988,7 @@ fi
 #######################################################################################################################################################
 _application_name gawk
 
-if [[ "${skip_modules["${app_name}"]}" == "no" || "$1" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 
 	############################
 	_custom_flags_set
@@ -2024,7 +2026,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_apply_patches
 	############################
 
-	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd --srcdir="${qbt_dl_source_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
 
 	_post_command build
@@ -2100,13 +2102,16 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_custom_flags_reset
 	############################
-	_download
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+		_download_folder "${app_name}"
+		./gitsub.sh pull --depth 1
+		./autogen.sh
+	else
+		download_file "${app_name}"
+	fi
 	############################
 	_apply_patches
 	############################
-
-	./gitsub.sh pull --depth 1
-	./autogen.sh
 
 	./configure "${multi_iconv[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 
@@ -2128,7 +2133,6 @@ fi
 _application_name icu
 
 if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
-	_custom_flags_reset
 
 	############################
 	_custom_flags_reset
@@ -2198,7 +2202,10 @@ fi
 _application_name boost
 #
 if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
+
+	############################
 	_custom_flags_set
+	############################
 
 	[[ -d "${qbt_install_dir}/boost" ]] && _delete_function "${app_name}"
 
