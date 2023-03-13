@@ -241,8 +241,8 @@ _set_default_values() {
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		[[ "${qbt_debian_mode}" == 'alternate' ]] && delete_pkgs+=("gawk" "bison")
 		[[ "${qbt_debian_mode}" == 'standard' ]] && delete+=("bison" "gawk")
-		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("autopoint")
-		qbt_required_pkgs=("autopoint" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
+		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("autopoint" "gperf")
+		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
 	fi
 
 	# remove this module by default unless provided as a first argument to the script.
