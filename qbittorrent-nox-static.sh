@@ -1967,7 +1967,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	./configure "${multi_bison[@]}" --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -1993,7 +1993,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" || "$1" == "${app_name}" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	./configure "${multi_gawk[@]}" --prefix="$qbt_install_dir" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -2019,9 +2019,9 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_custom_flags_reset
 	############################
-	_download
+	_download build
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -2049,7 +2049,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
@@ -2102,7 +2102,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	./gitsub.sh pull --depth 1
@@ -2139,7 +2139,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 		_download "/source"
 	fi
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
@@ -2176,7 +2176,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -2238,7 +2238,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 		############################
 		_download
 		############################
-		_apply_patches "${app_name}"
+		_apply_patches
 		############################
 
 		BOOST_ROOT="${qbt_install_dir}/boost"
@@ -2327,7 +2327,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
@@ -2362,7 +2362,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	case "${qbt_cross_name}" in
@@ -2444,7 +2444,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	############################
 	_download
 	############################
-	_apply_patches "${app_name}"
+	_apply_patches
 	############################
 
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
@@ -2501,7 +2501,7 @@ if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 		############################
 		_download
 		############################
-		_apply_patches "${app_name}"
+		_apply_patches
 		############################
 
 		[[ "${what_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
