@@ -841,21 +841,21 @@ _installation_modules() {
 
 	# If the param all is passed then activate all validated modules for installation by setting the skip_${module}=no using eval
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
+
+		declare -gA skip_modules
+
 		if [[ "${*}" =~ ([[:space:]]|^)all([[:space:]]|$) ]]; then
 			# If all is passed as a module then once it teh params check passed has triggered this condition, remove ot from the qbt_modules array to leave only the modules to be activated
 			unset 'qbt_modules[all]'
 			# Rebuild the qbt_modules array so it is indexed starting from 0 after we have modified and removed items from it previously.
 			qbt_modules=("${qbt_modules[@]}")
-
-			# Activate all modules
-			for module in "${qbt_modules[@]}"; do
-				eval "skip_${module}=no"
-			done
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
-			for module in "${@}"; do
-				eval "skip_${module}=no"
-			done
+			qbt_modules=("${@}")
 		fi
+
+		for module in "${qbt_modules[@]}"; do
+			skip_modules["${module}"]="no"
+		done
 
 		# Create the directories we need.
 		mkdir -p "${qbt_install_dir}/logs"
@@ -1960,7 +1960,7 @@ _multi_arch # see functions
 #######################################################################################################################################################
 _application_name bison
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	_download
@@ -1981,7 +1981,7 @@ fi
 #######################################################################################################################################################
 _application_name gawk
 
-if [[ "${!app_name_skip:-yes}" == "no" || "$1" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" || "$1" == "${app_name}" ]]; then
 	_custom_flags_set
 
 	_download
@@ -2004,12 +2004,12 @@ fi
 #######################################################################################################################################################
 _application_name glibc
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_reset
 
 	_download build
 
-	"${qbt_install_dir}/${app_name}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${qbt_dl_source_dir}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
 
 	_post_command build
@@ -2027,7 +2027,7 @@ fi
 #######################################################################################################################################################
 _application_name zlib
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 
 	#######################
 	_custom_flags_set
@@ -2078,7 +2078,7 @@ fi
 #######################################################################################################################################################
 _application_name iconv
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_reset
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
@@ -2108,7 +2108,7 @@ fi
 #######################################################################################################################################################
 _application_name icu
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_reset
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
@@ -2144,7 +2144,7 @@ fi
 #######################################################################################################################################################
 _application_name openssl
 #
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
@@ -2171,7 +2171,7 @@ fi
 #######################################################################################################################################################
 _application_name boost
 #
-if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	[[ -d "${qbt_install_dir}/boost" ]] && _delete_function "${app_name}"
@@ -2202,7 +2202,7 @@ fi
 #######################################################################################################################################################
 _application_name libtorrent
 
-if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	if [[ ! -d "${qbt_install_dir}/boost" ]]; then
 		printf '\n%b\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost libtorrent${cend}"
 	else
@@ -2295,7 +2295,7 @@ fi
 #######################################################################################################################################################
 _application_name double_conversion
 
-if [[ "${!app_name_skip:-yes}" == "no" || "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	if [[ "${qbt_workflow_files}" == "yes" || "${qbt_workflow_artifacts}" == "yes" ]]; then
@@ -2329,7 +2329,7 @@ fi
 #######################################################################################################################################################
 _application_name qtbase
 
-if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
@@ -2410,7 +2410,7 @@ fi
 #######################################################################################################################################################
 _application_name qttools
 #
-if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	_custom_flags_set
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
@@ -2463,7 +2463,7 @@ fi
 #######################################################################################################################################################
 _application_name qbittorrent
 
-if [[ "${!app_name_skip:-yes}" == "no" ]] || [[ "${1}" == "${app_name}" ]]; then
+if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 	if [[ ! -d "${qbt_install_dir}/boost" ]]; then
 		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost qbittorrent${cend}"
 	else
