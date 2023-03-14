@@ -615,13 +615,14 @@ _set_module_urls() {
 	# Create the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA github_url
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds.git"
 		github_url[bison]="https://git.savannah.gnu.org/git/bison.git"
 		github_url[gawk]="https://git.savannah.gnu.org/git/gawk.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
+	else
+		github_url[ninja]="https://github.com/ninja-build/ninja.git"
 	fi
-	github_url[ninja]="https://github.com/ninja-build/ninja.git"
 	github_url[zlib]="https://github.com/zlib-ng/zlib-ng.git"
 	github_url[iconv]="https://git.savannah.gnu.org/git/libiconv.git"
 	github_url[icu]="https://github.com/unicode-org/icu.git"
@@ -636,7 +637,7 @@ _set_module_urls() {
 	# Create the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
 	##########################################################################################################################################################
 	declare -gA github_tag
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 		github_tag[bison]="$(_git_git ls-remote -q -t --refs "${github_url[bison]}" | awk '/\/v/{sub("refs/tags/", "");sub("(.*)((-|_)[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 		github_tag[gawk]="$(_git_git ls-remote -q -t --refs "${github_url[gawk]}" | awk '/\/tags\/gawk/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
@@ -663,14 +664,16 @@ _set_module_urls() {
 	# Create the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
 	##########################################################################################################################################################
 	declare -gA app_version
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
 		app_version[bison]="${github_tag[bison]#v}"
 		app_version[gawk]="${github_tag[gawk]#gawk-}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
+	else
+		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(-r)", ""); print $1 }')"
+		app_version[ninja]="$(_curl "https://raw.githubusercontent.com/ninja-build/ninja/master/src/version.cc" | sed -rn 's|const char\* kNinjaVersion = "(.*)";|\1|p' | sed 's/\.git//g')"
 	fi
-	app_version[ninja]="$(_curl "https://raw.githubusercontent.com/ninja-build/ninja/master/src/version.cc" | sed -rn 's|const char\* kNinjaVersion = "(.*)";|\1|p' | sed 's/\.git//g')"
 	app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
 	app_version[iconv]="${github_tag[iconv]#v}"
 	app_version[icu]="${github_tag[icu]#release-}"
@@ -685,13 +688,14 @@ _set_module_urls() {
 	# Create the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA source_archive_url
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
 		source_archive_url[bison]="https://ftp.gnu.org/gnu/bison/$(grep -Eo 'bison-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/bison/) | sort -V | tail -1)"
 		source_archive_url[gawk]="https://ftp.gnu.org/gnu/gawk/$(grep -Eo 'gawk-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/gawk/) | sort -V | tail -1)"
 		source_archive_url[glibc]="https://ftp.gnu.org/gnu/libc/${github_tag[glibc]}.tar.gz"
+	else
+		source_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
 	fi
-	source_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	source_archive_url[iconv]="https://ftp.gnu.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/libiconv/) | sort -V | tail -1)"
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
@@ -716,7 +720,7 @@ _set_module_urls() {
 	# Create the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_archive_url
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_archive_url[bison]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/bison.tar.xz"
 		qbt_workflow_archive_url[gawk]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/gawk.tar.xz"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
@@ -735,7 +739,7 @@ _set_module_urls() {
 	# Workflow override options
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_override
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_override[bison]="no"
 		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
@@ -755,12 +759,13 @@ _set_module_urls() {
 	# The default source type we use for the download function
 	##########################################################################################################################################################
 	declare -gA source_default
-	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_default[bison]="file"
 		source_default[gawk]="file"
 		source_default[glibc]="file"
+	else
+		source_default[ninja]="file"
 	fi
-	source_default[ninja]="file"
 	source_default[zlib]="file"
 	source_default[iconv]="file"
 	source_default[icu]="file"
