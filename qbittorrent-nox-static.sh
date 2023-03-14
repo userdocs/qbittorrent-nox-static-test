@@ -851,7 +851,12 @@ _installation_modules() {
 			qbt_modules=("${qbt_modules[@]}")
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
 			unset 'qbt_modules[0]'
-			read -ra qbt_modules_skipped <<< "${qbt_modules[@]/${@}/}"
+			read -ra qbt_modules_skipped <<< "${qbt_modules[@]}"
+			for selected in "${@}"; do
+				for full_list in "${!qbt_modules_skipped[@]}"; do
+					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]=${clm}${selected}${cend}
+				done
+			done
 			qbt_modules=("${@}")
 		fi
 
@@ -2275,7 +2280,7 @@ for install_modules in "${qbt_modules[@]}"; do
 	else
 		if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			############################################################
-			if command -v "_${install_modules}_bootstrap"; then
+			if command -v "_${install_modules}_bootstrap" &> /dev/null; then
 				"_${install_modules}_bootstrap"
 			fi
 			########################################################
@@ -2294,7 +2299,14 @@ for install_modules in "${qbt_modules[@]}"; do
 			_fix_static_links
 			_delete_function
 		fi
-		[[ "${#qbt_modules_skipped[@]}" -gt '0' ]] && printf '\n%b\n\n' " ${ulbc} Modules skipped: ${clm}${qbt_modules_skipped[*]}${cend}"
+		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
+			printf '\n'
+			printf '%b' " ${ubc}"
+			for yolo in "${qbt_modules_skipped[@]}"; do
+				printf '%b' " ${clc}${yolo}${cend}"
+			done
+			printf '\n\n'
+		fi
 	fi
 done
 #######################################################################################################################################################
