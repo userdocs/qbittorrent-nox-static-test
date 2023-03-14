@@ -1080,17 +1080,13 @@ _cache_dirs() {
 		qbt_dl_dir="${qbt_cache_dir}"
 	fi
 
-	if [[ -d "${qbt_dl_dir}/${app_name}" ]]; then
-		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
-	fi
-
 	if [[ ! -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
 		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
 	fi
 
 	# If the module's folder exists then move into it and get the tag, if present or alternatively, the branch name - set it to cached_module_tag
-	if [[ -d "${qbt_dl_dir}/${app_name}" ]]; then
-
+	if [[ -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
+		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
 		_pushd "${qbt_dl_dir}/${app_name}"
 		if [[ -z $(git tag | sed 's/help//') ]]; then
 			_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
@@ -1120,9 +1116,9 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
-		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus}${cg} Copying ${app_name}${cend} from cache - ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 	else
-		printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
 			_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
 			_pushd "${qbt_dl_dir}/${app_name}"
