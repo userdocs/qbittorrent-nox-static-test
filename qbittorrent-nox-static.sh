@@ -693,7 +693,7 @@ _set_module_urls() {
 	fi
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	source_archive_url[iconv]="https://ftp.gnu.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/libiconv/) | sort -V | tail -1)"
-	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${github_tag[icu]/-/_}-src.tgz"
+	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
 	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
 	source_archive_url[openssl]="https://github.com/openssl/openssl/archive/${github_tag[openssl]}.tar.gz"
 	source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${github_tag[boost]/boost-/}/source/${github_tag[boost]//[-\.]/_}.tar.gz"
@@ -1100,7 +1100,7 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 
 	mkdir -p "${qbt_dl_folder_path}${sub_dir}"
 	_pushd "${qbt_dl_folder_path}${sub_dir}"
-
+	unset sub_dir
 	return
 }
 #######################################################################################################################################################
@@ -1130,7 +1130,7 @@ _download_file() {
 		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
 		_pushd "${qbt_dl_folder_path}${sub_dir}"
 	fi
-
+	unset sub_dir
 	return
 }
 #######################################################################################################################################################
@@ -1919,9 +1919,7 @@ _multi_arch # see functions
 _bison() {
 	./configure "${multi_bison[@]}" --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 	_post_command build
-
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -1929,9 +1927,7 @@ _bison() {
 _gawk() {
 	./configure "${multi_gawk[@]}" --prefix="$qbt_install_dir" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 	_post_command build
-
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -1943,9 +1939,7 @@ _glibc_bootstrap() {
 _glibc() {
 	"${qbt_dl_folder_path}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-static-nss --disable-nscd --srcdir="${qbt_dl_folder_path}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
-
 	_post_command build
-
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -1953,10 +1947,8 @@ _glibc() {
 _zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_version[zlib]}"
-
 		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does detect the arch correctly.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-x86_64}" >> "${qbt_install_dir}/zlib/cmake/detect-arch.c"
-
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_CXX_STANDARD="${standard}" \
@@ -1965,21 +1957,15 @@ _zlib() {
 			-D ZLIB_COMPAT=ON \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot"
 	else
 		# force set some ARCH when using zlib-ng, configure and musl-cross since it does detect the arch correctly.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-x86_64}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_install_dir}/zlib/configure"
-
 		./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
 		_post_command build
-
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
 }
@@ -1997,7 +1983,7 @@ _iconv() {
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317
-_icu_bootsrap() {
+_icu_bootstrap() {
 	if [[ -n "${qbt_cache_dir}" ]]; then
 		sub_dir="/icu4c/source"
 	else
@@ -2273,32 +2259,33 @@ _qbittorrent() {
 #######################################################################################################################################################
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
-for install_modules in "${qbt_modules[@]}"; do
-	app_name="${install_modules}"
-	if [[ ! -d "${qbt_install_dir}/boost" && "${install_modules}" =~ (libtorrent|qbittorrent) ]]; then
+for app_name in "${qbt_modules[@]}"; do
+
+	if [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost qbittorrent${cend}"
 	else
 		if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			############################################################
-			if command -v "_${install_modules}_bootstrap" &> /dev/null; then
-				"_${install_modules}_bootstrap"
+			if command -v "_${app_name}_bootstrap" &> /dev/null; then
+				"_${app_name}_bootstrap"
 			fi
 			########################################################
-			if [[ "${install_modules}" =~ (glibc|iconv|icu) ]]; then
+			if [[ "${app_name}" =~ (glibc|iconv|icu) ]]; then
 				_custom_flags_reset
 			else
 				_custom_flags_set
 			fi
 			############################################################
-			_download && sub_dir=""
+			_download
 			############################################################
 			_apply_patches
 			############################################################
-			"_${install_modules}"
+			"_${app_name}"
 			############################################################
 			_fix_static_links
 			_delete_function
 		fi
+
 		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
 			printf '\n'
 			printf '%b' " ${ubc}"
