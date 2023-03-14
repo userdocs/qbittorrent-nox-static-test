@@ -996,6 +996,26 @@ _apply_patches() {
 	fi
 }
 #######################################################################################################################################################
+# This is a command test function: _cmd exit 1
+#######################################################################################################################################################
+_cmd() {
+	if ! "${@}"; then
+		printf '\n%b\n\n' " The command: ${clr}${*}${cend} failed"
+		exit 1
+	fi
+}
+#######################################################################################################################################################
+# This is a command test function to test build commands for failure
+#######################################################################################################################################################
+_post_command() {
+	outcome=("${PIPESTATUS[@]}")
+	[[ -n "${1}" ]] && command_type="${1}"
+	if [[ "${outcome[*]}" =~ [1-9] ]]; then
+		printf '\n%b\n\n' " ${urc}${clr} Error: The ${command_type:-tested} command produced an exit code greater than 0 - Check the logs${cend}"
+		exit 1
+	fi
+}
+#######################################################################################################################################################
 # This function is to test a directory exists before attempting to cd and fail with and exit code if it doesn't.
 #######################################################################################################################################################
 _pushd() {
@@ -1072,14 +1092,13 @@ _cache_dirs() {
 	if [[ -d "${qbt_dl_dir}/${app_name}" ]]; then
 
 		_pushd "${qbt_dl_dir}/${app_name}"
-
 		if [[ -z $(git tag | sed 's/help//') ]]; then
 			_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
 		else
 			_git fetch origin tag "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
 		fi
-
 		_git checkout "${github_tag[${app_name}]}"
+		_popd
 	fi
 
 	if [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_dl_dir}/${app_name}" ]]; then
@@ -1188,26 +1207,6 @@ _install_qbittorrent() {
 		printf '\n%b\n' "${cg}${qbt_install_dir_short}/completed${cend}"
 		printf '\n%b\n\n' "Please build it using the script first then install"
 		exit
-	fi
-}
-#######################################################################################################################################################
-# This is a command test function: _cmd exit 1
-#######################################################################################################################################################
-_cmd() {
-	if ! "${@}"; then
-		printf '\n%b\n\n' " The command: ${clr}${*}${cend} failed"
-		exit 1
-	fi
-}
-#######################################################################################################################################################
-# This is a command test function to test build commands for failure
-#######################################################################################################################################################
-_post_command() {
-	outcome=("${PIPESTATUS[@]}")
-	[[ -n "${1}" ]] && command_type="${1}"
-	if [[ "${outcome[*]}" =~ [1-9] ]]; then
-		printf '\n%b\n\n' " ${urc}${clr} Error: The ${command_type:-tested} command produced an exit code greater than 0 - Check the logs${cend}"
-		exit 1
 	fi
 }
 #######################################################################################################################################################
@@ -2003,7 +2002,7 @@ _iconv() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu_bootstrap() {
-	if [[ -n "${qbt_cache_dir}" ]]; then
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
 		sub_dir="/icu4c/source"
 	else
 		sub_dir="/source"
@@ -2311,6 +2310,7 @@ for app_name in "${qbt_modules[@]}"; do
 		skipped_false=$((skipped_false + 1))
 		[[ "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 	fi
+	_pushd "${qbt_working_dir}"
 done
 #######################################################################################################################################################
 # We are all done so now exit
