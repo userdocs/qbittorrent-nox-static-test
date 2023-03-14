@@ -1994,9 +1994,9 @@ _icu_bootstrap() {
 # shellcheck disable=SC2317
 _icu() {
 	if [[ -n "${qbt_cache_dir}" ]]; then
-		_download "/icu4c/source"
+		sub_dir="/icu4c/source"
 	else
-		_download "/source"
+		sub_dir="/source"
 	fi
 
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
@@ -2292,8 +2292,10 @@ for app_name in "${qbt_modules[@]}"; do
 			for yolo in "${qbt_modules_skipped[@]}"; do
 				printf '%b' " ${clc}${yolo}${cend}"
 			done
-			printf '\n\n'
+			printf '\n'
 		fi
+		not_skipped=$((not_skipped + 1))
+		[[ "${not_skipped}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 	fi
 done
 #######################################################################################################################################################
