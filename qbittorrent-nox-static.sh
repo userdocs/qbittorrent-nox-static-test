@@ -463,7 +463,11 @@ while (("${#}")); do
 			printf '\n%b\n' " This will let you set a path of a directory that contains cached github repos of modules"
 			printf '\n%b\n' " ${uyc} Cached apps folder names must match the module name. Case and spelling"
 			printf '\n%b\n' " For example: ${clc}~/cache_dir/qbittorrent${cend}"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
+			printf '\n%b\n' " Additonal flags supported: ${clc}rm${cend} - remove the cache directory and exit"
+			printf '\n%b\n' " Additonal flags supported: ${clc}bs${cend} - download cache for all activated modules then exit"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
 			exit
 			;;
 		-h-dma | --help-debian-mode-alternate)
@@ -489,6 +493,19 @@ while (("${#}")); do
 			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
 			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
 			[[ -n "${qbt_curl_proxy}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy}${tn}${cend}"
+			exit
+			;;
+		-h-sdu | --help-script-debug-urls)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${ulbc} This will print out all the ${cly}_set_module_urls${cend} array info to check"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-sdu${cend}"
+			exit
+			;;
+		-h-wf | --help-work-flow)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${uyc} Use archives from ${clc}https://github.com/userdocs/qbt-workflow-files/releases/latest${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} If you set a custom version for supported modules it will override and disable workflows as a source for that module"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-wf${cend}"
 			exit
 			;;
 		--) # end argument parsing
@@ -1042,8 +1059,8 @@ _cache_dirs() {
 
 	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
 		qbt_cache_dir_bootstrap="yes"
-		printf '\n%b\n\n' " ${ubc} Bootstrapping cache dirs for modules:"
-		printf '\n%b\n\n' " ${clm}${qbt_modules[*]} ${cend}"
+		printf '\n%b\n' " ${ubc} Bootstrapping cache dirs for modules:"
+		printf '\n%b\n' " ${ulmc} ${clm}${qbt_modules[*]} ${cend}"
 	fi
 
 	# If the modules folder exists then most into them and get the tag if present or alternatively, the branch name - set it to cached_module_tag
@@ -1103,10 +1120,11 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 		fi
 	fi
 
-	[[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]] && cp -rf "${qbt_dl_dir}/${app_name}"/. "${qbt_dl_folder_path}"
-
-	mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-	_pushd "${qbt_dl_folder_path}${sub_dir}"
+	if [[ "${qbt_cache_dir_bootstrap}" != 'yes' && -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
+		cp -rf "${qbt_dl_dir}/${app_name}"/. "${qbt_dl_folder_path}"
+		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+		_pushd "${qbt_dl_folder_path}${sub_dir}"
+	fi
 	unset sub_dir
 	return
 }
@@ -2276,6 +2294,8 @@ for app_name in "${qbt_modules[@]}"; do
 			fi
 			############################################################
 			_download
+
+			[[ "${qbt_cache_dir_bootstrap}" == 'yes' ]] && continue
 			############################################################
 			_apply_patches
 			############################################################
