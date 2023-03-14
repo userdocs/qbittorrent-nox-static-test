@@ -691,6 +691,7 @@ _set_module_urls() {
 		source_archive_url[gawk]="https://ftp.gnu.org/gnu/gawk/$(grep -Eo 'gawk-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/gawk/) | sort -V | tail -1)"
 		source_archive_url[glibc]="https://ftp.gnu.org/gnu/libc/${github_tag[glibc]}.tar.gz"
 	fi
+	source_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	source_archive_url[iconv]="https://ftp.gnu.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/libiconv/) | sort -V | tail -1)"
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
@@ -759,6 +760,7 @@ _set_module_urls() {
 		source_default[gawk]="file"
 		source_default[glibc]="file"
 	fi
+	source_default[ninja]="file"
 	source_default[zlib]="file"
 	source_default[iconv]="file"
 	source_default[icu]="file"
@@ -998,6 +1000,7 @@ _tee() {
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
+	[[ -n "${1}" ]] && app_name="${1}"
 	# The location we download source archives and folders to
 	qbt_dl_dir="${qbt_install_dir}"
 
@@ -1438,7 +1441,7 @@ _cmake() {
 
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null)" != "${app_version[ninja]}" ]]; then
-				_download_folder ninja
+				_download ninja
 				cmake -Wno-dev -Wno-deprecated -B build \
 					-D CMAKE_BUILD_TYPE="release" \
 					-D CMAKE_CXX_STANDARD="${standard}" \
