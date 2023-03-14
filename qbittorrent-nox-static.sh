@@ -258,7 +258,7 @@ _set_default_values() {
 		delete+=("icu")
 	fi
 
-	# Configure default dependencies and modules if cmake is not specificed
+	# Configure default dependencies and modules if cmake is not specified
 	if [[ "${qbt_build_tool}" != 'cmake' ]]; then
 		delete+=("double_conversion")
 		delete_pkgs+=("unzip" "ttf-freefont" "graphviz" "cmake" "re2c")
@@ -855,6 +855,7 @@ _installation_modules() {
 			[[ "${qbt_modules[${deactivated}]}" == "${target}" ]] && unset 'qbt_modules[${deactivated}]'
 		done
 	done
+	unset target deactivated
 
 	# For any modules params passed, test that they exist in the qbt_modules array or set qbt_modules_test to fail
 	for passed_params in "${@}"; do
@@ -862,8 +863,8 @@ _installation_modules() {
 			qbt_modules_test="fail"
 		fi
 	done
+	unset passed_params
 
-	# If the param all is passed then activate all validated modules for installation by setting the skip_${module}=no using eval
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
 
 		if [[ "${1}" == "all" ]]; then
@@ -880,12 +881,14 @@ _installation_modules() {
 					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]="${clm}${selected}${cend}"
 				done
 			done
+			unset selected
 			qbt_modules=("${@}")
 		fi
 
-		for module in "${qbt_modules[@]}"; do
-			skip_modules["${module}"]="no"
+		for modules_skip in "${qbt_modules[@]}"; do
+			skip_modules["${modules_skip}"]="no"
 		done
+		unset modules_skip
 
 		# Create the directories we need.
 		mkdir -p "${qbt_install_dir}/logs"
@@ -1060,12 +1063,11 @@ _cache_dirs() {
 	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
 		qbt_cache_dir_bootstrap="yes"
 		printf '\n%b\n' " ${ubc} Bootstrapping cache dirs for modules:"
-		printf '\n%b\n' " ${ulmc} ${clm}${qbt_modules[*]} ${cend}"
 	fi
 
 	# If the modules folder exists then most into them and get the tag if present or alternatively, the branch name - set it to cached_module_tag
-	if [[ -d "${qbt_cache_dir}/${module}" ]]; then
-		_pushd "${qbt_cache_dir}/${module}"
+	if [[ -d "${qbt_cache_dir}/${app_name}" ]]; then
+		_pushd "${qbt_cache_dir}/${app_name}"
 		if [[ -z "$(_git tag)" ]]; then
 			cached_module_tag=$(_git branch --show-current)
 		else
@@ -1074,18 +1076,18 @@ _cache_dirs() {
 		_popd
 	fi
 
-	# If the tag or branches matches the github_tag[${module}] then update the git repo.
-	if [[ "${cached_module_tag}" == "${github_tag[${module}]}" && -d "${qbt_cache_dir}/${module}" ]]; then
-		_pushd "${qbt_cache_dir}/${module}"
-		printf '\n%b\n\n' " ${ugc} ${clb}${module}${cend} - Updating directory ${clc}${qbt_cache_dir}/${module}${cend}"
+	# If the tag or branches matches the github_tag[${app_name}] then update the git repo.
+	if [[ "${cached_module_tag}" == "${github_tag[${app_name}]}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+		_pushd "${qbt_cache_dir}/${app_name}"
+		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
 		_git pull --all -p
 		_popd
 	else
 		# If the tag or branch is different then start the download process.
-		if [[ -d "${qbt_cache_dir}/${module}" ]]; then
+		if [[ -d "${qbt_cache_dir}/${app_name}" ]]; then
 			# back up the old folder by moving and renaming it.
-			[[ -d "${qbt_cache_dir}/${module}}" ]] && mv -f "${qbt_cache_dir}/${module}" "${qbt_cache_dir}/${module}-$(date +'%j-%R:%S')"
-			printf '\n%b\n' " ${ugc} ${clb}${module}${cend} - caching to directory ${clc}${qbt_cache_dir}${cend}"
+			[[ -d "${qbt_cache_dir}/${app_name}}" ]] && mv -f "${qbt_cache_dir}/${app_name}" "${qbt_cache_dir}/${app_name}-$(date +'%j-%R:%S')"
+			printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_cache_dir}${cend}"
 		fi
 	fi
 
@@ -1106,7 +1108,7 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
 
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
-		printf "\n%b\n\n" " ${uplus}${cg} Copying ${app_name}${cend} from cache - ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		[[ "${qbt_cache_dir_bootstrap}" != 'yes' ]] && printf "\n%b\n\n" " ${uplus}${cg} Copying ${app_name}${cend} from cache - ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 	else
 		printf "\n%b\n\n" " ${uplus}${cg} Installing ${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
@@ -2278,8 +2280,8 @@ _qbittorrent() {
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
 for app_name in "${qbt_modules[@]}"; do
-	if [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
-		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost qbittorrent${cend}"
+	if [[ "${qbt_cache_dir_bootstrap}" != 'yes' ]] && [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
+		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost ${app_name}${cend}"
 	else
 		if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			############################################################
