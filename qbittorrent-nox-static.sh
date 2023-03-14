@@ -2297,7 +2297,7 @@ for app_name in "${qbt_modules[@]}"; do
 			"_${app_name}"
 			############################################################
 			_fix_static_links
-			_delete_function
+			[[ "${app_name}" != "boost" ]] && _delete_function
 		fi
 
 		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
