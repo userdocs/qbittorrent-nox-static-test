@@ -1061,7 +1061,7 @@ _cache_dirs() {
 	fi
 
 	if [[ -d "${qbt_dl_dir}/${app_name}" ]]; then
-		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
+		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
 	fi
 
 	if [[ ! -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
@@ -1069,9 +1069,9 @@ _cache_dirs() {
 	fi
 
 	# If the module's folder exists then move into it and get the tag, if present or alternatively, the branch name - set it to cached_module_tag
-	if [[ -d "${qbt_cache_dir}/${app_name}" ]]; then
+	if [[ -d "${qbt_dl_dir}/${app_name}" ]]; then
 
-		_pushd "${qbt_cache_dir}/${app_name}"
+		_pushd "${qbt_dl_dir}/${app_name}"
 
 		if [[ -z $(git tag | sed 's/help//') ]]; then
 			_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
@@ -1991,7 +1991,7 @@ _zlib() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _iconv() {
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
 		./gitsub.sh pull --depth 1
 		./autogen.sh
 	fi
