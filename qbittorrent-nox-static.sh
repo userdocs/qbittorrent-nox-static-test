@@ -832,16 +832,14 @@ _debug() {
 # This function verifies the module names from the array qbt_modules in the default values function.
 #######################################################################################################################################################
 _installation_modules() {
-	# remove modules from the delete array from the qbt_modules array
+	# Delete modules - using the the delete array to unset them from the qbt_modules array
 	for target in "${delete[@]}"; do
 		for deactivated in "${!qbt_modules[@]}"; do
-			if [[ "${qbt_modules[${deactivated}]}" == "${target}" ]]; then
-				unset 'qbt_modules[${deactivated}]'
-			fi
+			[[ "${qbt_modules[${deactivated}]}" == "${target}" ]] && unset 'qbt_modules[${deactivated}]'
 		done
 	done
 
-	# For all modules params pass test that they exist in the qbt_modules array or set qbt_modules_test to fail
+	# For any modules params passed, test that they exist in the qbt_modules array or set qbt_modules_test to fail
 	for passed_params in "${@}"; do
 		if [[ ! "${qbt_modules[*]}" =~ ${passed_params} ]]; then
 			qbt_modules_test="fail"
@@ -851,19 +849,18 @@ _installation_modules() {
 	# If the param all is passed then activate all validated modules for installation by setting the skip_${module}=no using eval
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
 
-		declare -gA skip_modules
-
-		if [[ "${*}" =~ ([[:space:]]|^)all([[:space:]]|$) ]]; then
-			# If all is passed as a module then once it teh params check passed has triggered this condition, remove ot from the qbt_modules array to leave only the modules to be activated
+		if [[ "${1}" == "all" ]]; then
+			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules array to leave only the modules to be activated
 			unset 'qbt_modules[0]'
 			# Rebuild the qbt_modules array so it is indexed starting from 0 after we have modified and removed items from it previously.
 			qbt_modules=("${qbt_modules[@]}")
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
 			unset 'qbt_modules[0]'
 			read -ra qbt_modules_skipped <<< "${qbt_modules[@]}"
+			declare -gA skip_modules
 			for selected in "${@}"; do
 				for full_list in "${!qbt_modules_skipped[@]}"; do
-					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]=${clm}${selected}${cend}
+					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]="${clm}${selected}${cend}"
 				done
 			done
 			qbt_modules=("${@}")
@@ -1807,7 +1804,7 @@ while (("${#}")); do
 		-h-m | --help-master)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n' " Always use the master branch for ${cg}libtorrent RC_${qbt_libtorrent_version//./_}${cend}"
-			printf '\n%b\n' " Always use the master branch for ${cg}qBittorrent ${github_tag[qbittorrent]/release-/}${cend}"
+			printf '\n%b\n' " Always use the master branch for ${cg}qBittorrent"
 			printf '\n%b\n' " ${td}This flag is provided with no arguments.${cend}"
 			printf '\n%b\n\n' " ${clb}-lm${cend}"
 			exit
@@ -1832,15 +1829,15 @@ while (("${#}")); do
 			exit
 			;;
 		-h-lt | --help-libtorrent-tag)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " Use a provided libtorrent tag when cloning from github."
-			printf '\n%b\n' " ${cy}You can use this flag with this help command to see the value if called before the help option.${cend}"
-			printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -lt ${clc}${github_tag[libtorrent]}${cend} ${clb}-h-lt${cend}"
 			if [[ ! "${github_tag[libtorrent]}" =~ (error_tag|error_22) ]]; then
-				printf '\n%b\n' " ${td}This is tag that will be used is: ${cg}${github_tag[libtorrent]}${cend}"
+				printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+				printf '\n%b\n' " Use a provided libtorrent tag when cloning from github."
+				printf '\n%b\n' " ${cy}You can use this flag with this help command to see the value if called before the help option.${cend}"
+				printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -lt ${clc}${github_tag[libtorrent]}${cend} ${clb}-h-lt${cend}"
+				printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
+				printf '\n%b\n' " ${clb}-lt${cend} ${clc}${github_tag[libtorrent]}${cend}"
 			fi
-			printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
-			printf '\n%b\n\n' " ${clb}-lt${cend} ${clc}${github_tag[libtorrent]}${cend}"
+			printf '\n'
 			exit
 			;;
 		-h-pr | --help-patch-repo)
@@ -1865,16 +1862,15 @@ while (("${#}")); do
 			exit
 			;;
 		-h-qt | --help-qbittorrent-tag)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " Use a provided qBittorrent tag when cloning from github."
-			printf '\n%b\n' " ${cy}You can use this flag with this help command to see the value if called before the help option.${cend}"
-			printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -qt ${clc}${github_tag[qbittorrent]}${cend} ${clb}-h-qt${cend}"
-			#
 			if [[ ! "${github_tag[qbittorrent]}" =~ (error_tag|error_22) ]]; then
-				printf '\n%b\n' " ${td}This tag that will be used is: ${cg}${github_tag[qbittorrent]}${cend}"
+				printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+				printf '\n%b\n' " Use a provided qBittorrent tag when cloning from github."
+				printf '\n%b\n' " ${cy}You can use this flag with this help command to see the value if called before the help option.${cend}"
+				printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -qt ${clc}${github_tag[qbittorrent]}${cend} ${clb}-h-qt${cend}"
+				printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
+				printf '\n%b\n' " ${clb}-qt${cend} ${clc}${github_tag[qbittorrent]}${cend}"
 			fi
-			printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
-			printf '\n%b\n\n' " ${clb}-qt${cend} ${clc}${github_tag[qbittorrent]}${cend}"
+			printf '\n'
 			exit
 			;;
 		-h-s | --help-strip)
@@ -1891,7 +1887,7 @@ while (("${#}")); do
 			break
 			;;
 		-*) # unsupported flags
-			printf '\n%b\n' " Error: Unsupported flag ${cr}${1}${cend} - use ${cg}-h${cend} or ${cg}--help${cend} to see the valid options$" >&2
+			printf '\n%b\n\n' " ${ulrc} Error: Unsupported flag ${clr}${1}${cend} - use ${clg}-h${cend} or ${clg}--help${cend} to see the valid options${cend}" >&2
 			exit 1
 			;;
 		*) # preserve positional arguments
@@ -1905,7 +1901,7 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 #######################################################################################################################################################
 # Functions part 2: Use some of our functions
 #######################################################################################################################################################
-[[ "${*}" =~ ([[:space:]]|^)"install"([[:space:]]|$) ]] && _install_qbittorrent "${@}" # see functions
+[[ "${1}" == "install" ]] && _install_qbittorrent "${@}" # see functions
 #######################################################################################################################################################
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
@@ -2264,7 +2260,6 @@ _qbittorrent() {
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
 for app_name in "${qbt_modules[@]}"; do
-
 	if [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${urc}${clr} Warning${cend} This module depends on the boost module. Use them together: ${clm}boost qbittorrent${cend}"
 	else
@@ -2292,14 +2287,14 @@ for app_name in "${qbt_modules[@]}"; do
 
 		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
 			printf '\n'
-			printf '%b' " ${ubc}"
-			for yolo in "${qbt_modules_skipped[@]}"; do
-				printf '%b' " ${clc}${yolo}${cend}"
+			printf '%b' " ${ulmc} Activated:"
+			for skipped_true in "${qbt_modules_skipped[@]}"; do
+				printf '%b' " ${clc}${skipped_true}${cend}"
 			done
 			printf '\n'
 		fi
-		not_skipped=$((not_skipped + 1))
-		[[ "${not_skipped}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
+		skipped_false=$((skipped_false + 1))
+		[[ "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 	fi
 done
 #######################################################################################################################################################
