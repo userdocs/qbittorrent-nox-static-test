@@ -663,7 +663,6 @@ _set_module_urls() {
 	# Create the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
 	##########################################################################################################################################################
 	declare -gA app_version
-	app_version[ninja]="$(_curl "https://raw.githubusercontent.com/ninja-build/ninja/master/src/version.cc" | sed -rn 's|const char\* kNinjaVersion = "(.*)";|\1|p' | sed 's/\.git//g')"
 	if [[ ! "${what_id}" =~ ^(alpine)$ ]]; then
 		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
@@ -671,6 +670,7 @@ _set_module_urls() {
 		app_version[gawk]="${github_tag[gawk]#gawk-}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
 	fi
+	app_version[ninja]="$(_curl "https://raw.githubusercontent.com/ninja-build/ninja/master/src/version.cc" | sed -rn 's|const char\* kNinjaVersion = "(.*)";|\1|p' | sed 's/\.git//g')"
 	app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
 	app_version[iconv]="${github_tag[iconv]#v}"
 	app_version[icu]="${github_tag[icu]#release-}"
@@ -1429,10 +1429,10 @@ _cmake() {
 				rm -f "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
 
 				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[cmake_ninja]}"
+				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
 			else
-				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[cmake_ninja]}"
+				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake]}"
+				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja]}"
 			fi
 		fi
 
@@ -1993,12 +1993,6 @@ _icu_bootstrap() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu() {
-	if [[ -n "${qbt_cache_dir}" ]]; then
-		sub_dir="/icu4c/source"
-	else
-		sub_dir="/source"
-	fi
-
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
