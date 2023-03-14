@@ -1439,8 +1439,8 @@ _cmake() {
 				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
 			else
-				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake]}"
-				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja]}"
+				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
+				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
 			fi
 		fi
 
