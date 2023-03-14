@@ -743,6 +743,8 @@ _set_module_urls() {
 		qbt_workflow_override[bison]="no"
 		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
+	else
+		qbt_workflow_override[ninja]="yes"
 	fi
 	qbt_workflow_override[zlib]="no"
 	qbt_workflow_override[iconv]="no"
