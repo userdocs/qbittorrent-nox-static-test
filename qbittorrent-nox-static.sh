@@ -955,16 +955,12 @@ _apply_patches() {
 		done
 		unset module_patch
 
-		printf '\n%b\n' " ${uyc} Using the defaults, these directories have been created:${cend}"
+		printf '\n%b\n\n' " ${uyc} Using the defaults, these directories have been created:${cend}"
 
-		printf '\n'
 		for patch_info in "${qbt_modules[@]}"; do
-			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${clc} ${qbt_install_dir}/patches/${patch_info}/${app_version["${patch_info}"]}${cend}"
+			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${clc} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${cend}"
 		done
-		printf '\n'
 		unset patch_info
-
-		exit
 
 		printf '\n%b\n' " ${ucc} If a patch file, named ${clc}patch${cend} is found in these directories it will be applied to the relevant module with a matching tag."
 	else
