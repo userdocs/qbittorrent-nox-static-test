@@ -1549,7 +1549,7 @@ _script_version # see functions
 
 _set_build_directory # see functions
 
-_set_module_urls "$@" # see functions
+_set_module_urls "${@}" # see functions
 
 _installation_modules "${@}" # see functions
 #######################################################################################################################################################
