@@ -605,10 +605,11 @@ _git() {
 	if [[ "${2}" == '-t' ]]; then
 		git_test_cmd=("${1}" "${2}" "${3}")
 	else
-		git_test_cmd=("${11}") # 11th place in our download folder function
+		[[ "${9}" =~ https:// ]] && git_test_cmd=("${9}")   # 9th place in our download folder function for qttools
+		[[ "${11}" =~ https:// ]] && git_test_cmd=("${11}") # 11th place in our download folder function
 	fi
 
-	if ! _curl -IL "${git_test_cmd[@]%\.git}" &> /dev/null; then
+	if ! _curl -fIL "${git_test_cmd[@]}" &> /dev/null; then
 		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
 		exit
 	fi
@@ -1145,12 +1146,12 @@ _cache_dirs() {
 	if [[ -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
 		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
 		_pushd "${qbt_dl_dir}/${app_name}"
-		if [[ -z $(git tag | sed 's/help//') ]]; then
-			_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
+		if [[ -z $(_git_git tag | sed 's/help//') ]]; then
+			_git_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
 		else
-			_git fetch origin tag "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
+			_git_git fetch origin tag "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
 		fi
-		_git checkout "${github_tag[${app_name}]}"
+		_git_git checkout "${github_tag[${app_name}]}"
 		_popd
 	fi
 
@@ -1177,13 +1178,14 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	else
 		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
-			_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
+
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
 			_pushd "${qbt_dl_dir}/${app_name}"
 			git submodule update --force --recursive --init --remote --depth=1 --single-branch
 			[[ "${app_name}" == "bison" ]] && ./bootstrap
 			_popd
 		else
-			_cmd _git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
 		fi
 	fi
 
@@ -1273,14 +1275,14 @@ _cmake() {
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
 		printf '\n%b\n' " ${ulbc}${clr} Checking if cmake and ninja need to be installed${cend}"
 		mkdir -p "${qbt_install_dir}/bin"
-		_pushd "${qbt_install_dir}"
 
 		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
-				_curl "${source_archive_url[cmake_ninja]}" > "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
+
+				_curl "${source_archive_url[cmake_ninja]}" > "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
 				_post_command "Debian cmake and ninja installation"
-				tar xf "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-				rm -f "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
+				tar xf "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+				rm -f "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
 
 				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
@@ -1293,19 +1295,22 @@ _cmake() {
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null)" != "${app_version[ninja]}" ]]; then
 				_download ninja
-				cmake -Wno-dev -Wno-deprecated -B build \
-					-D CMAKE_BUILD_TYPE="release" \
-					-D CMAKE_CXX_STANDARD="${standard}" \
-					-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
-					-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/ninja.log"
-				cmake --build build -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/ninja.log"
 
-				_post_command build
+				if [[ "${qbt_cache_dir_options}" != 'bs' ]]; then
+					cmake -Wno-dev -Wno-deprecated -B build \
+						-D CMAKE_BUILD_TYPE="release" \
+						-D CMAKE_CXX_STANDARD="${standard}" \
+						-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
+						-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/ninja.log"
+					cmake --build build -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/ninja.log"
 
-				cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-				[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja"
-				[[ -d "${qbt_install_dir}/ninja-master" ]] && rm -rf "${qbt_install_dir}/ninja-master"
-				[[ -f "${qbt_install_dir}/ninja.tar.xz" ]] && rm -f "${qbt_install_dir}/ninja.tar.xz"
+					_post_command build
+
+					cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
+					[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja"
+					[[ -d "${qbt_install_dir}/ninja-master" ]] && rm -rf "${qbt_install_dir}/ninja-master"
+					[[ -f "${qbt_install_dir}/ninja.tar.xz" ]] && rm -f "${qbt_install_dir}/ninja.tar.xz"
+				fi
 			fi
 		fi
 
