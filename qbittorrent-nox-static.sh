@@ -1023,80 +1023,75 @@ _installation_modules() {
 # This function will test to see if a Jamfile patch file exists via the variable patches_github_url for the tag used.
 #######################################################################################################################################################
 _apply_patches() {
-	patch_app_name="${1}"
-	# Libtorrent has two tag formats libtorrent-1_2_11 and the newer v1.2.11. Moving forward v1.2.11 is the standard format. Make sure we always get the same outcome for either
-	[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && libtorrent_patch_tag="${github_tag[libtorrent]}"
-	[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && libtorrent_patch_tag="${github_tag[libtorrent]#libtorrent-}" && libtorrent_patch_tag="${libtorrent_patch_tag//_/\.}"
-	[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && libtorrent_patch_tag="${github_tag[libtorrent]#v}"
+	[[ -n ${1} ]] && app_name="${1}"
+	# echo "1: ${app_version[libtorrent]}"#
+	# "${app_version[${app_name}]}" # qbittorrent has a consistent tag format of release-4.3.1.
 
-	# Start to define the default master branch we will use by transforming the libtorrent_patch_tag variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
-	default_jamfile="${libtorrent_patch_tag//./\_}"
+	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
+	default_jamfile="${app_version[libtorrent]//./\_}"
 
 	# Remove everything after second underscore. Occasionally the tag will be short, like v2.0 so we need to make sure not remove the underscore if there is only one present.
-	if [[ $(grep -o '_' <<< "$default_jamfile" | wc -l) -le 1 ]]; then
+	if [[ $(grep -o '_' <<< "${default_jamfile}" | wc -l) -le 1 ]]; then
 		default_jamfile="RC_${default_jamfile}"
-	elif [[ $(grep -o '_' <<< "$default_jamfile" | wc -l) -ge 2 ]]; then
+	elif [[ $(grep -o '_' <<< "${default_jamfile}" | wc -l) -ge 2 ]]; then
 		default_jamfile="RC_${default_jamfile%_*}"
 	fi
 
-	qbittorrent_patch_tag="${app_version[qbittorrent]}" # qbittorrent has a consistent tag format of release-4.3.1.
-
-	if [[ "${patch_app_name}" == 'bootstrap-help' ]]; then # All the core variables we need for the help command are set so we can exit this function now.
+	if [[ "${app_name}" == 'bootstrap-help' ]]; then # All the core variables we need for the help command are set so we can exit this function now.
 		return
 	fi
 
-	if [[ "${patch_app_name}" == 'bootstrap' ]]; then
-
+	if [[ "${app_name}" == 'bootstrap' ]]; then
 		for module_patch in "${qbt_modules[@]}"; do
-			mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}"
+			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}"
 		done
 		unset module_patch
-
 		printf '\n%b\n\n' " ${uyc} Using the defaults, these directories have been created:${cend}"
 
 		for patch_info in "${qbt_modules[@]}"; do
 			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${clc} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${cend}"
 		done
 		unset patch_info
-
 		printf '\n%b\n' " ${ucc} If a patch file, named ${clc}patch${cend} is found in these directories it will be applied to the relevant module with a matching tag."
 	else
-		patch_tag="${patch_app_name}_patch_tag"
-		patch_dir="${qbt_install_dir}/patches/${patch_app_name}/${!patch_tag}"
+		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
 		patch_file="${patch_dir}/patch"
-		patch_file_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${patch_app_name}/${!patch_tag}/patch"
-		patch_jamfile="Jamfile"
-		patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${patch_app_name}/${!patch_tag}/Jamfile"
+		patch_file_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/patch"
 
-		[[ ! -d "${patch_dir}" ]] && mkdir -p "${patch_dir}"
+		patch_jamfile="${patch_dir}/Jamfile"
+		patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 
+		# [[ ${qbt_workflow_files} == "no" ]] && printf '\n's
+		# [[ "${app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
+		# [[ ! -d "${patch_dir}" ]] && mkdir -p "${patch_dir}"
+
+		# If the patch file exists in the module version folder matching the build configuration then use this.
 		if [[ -f "${patch_file}" ]]; then
-			[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
-			printf '%b\n'" ${utick}${cr} Using ${!patch_tag} existing patch file${cend} - ${patch_file}"
-			[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
+			printf '%b\n\n' " ${utick} ${cr}Patching${cend} ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
 		else
-			if _curl_curl "${patch_file_url}" -o "${patch_file}"; then
-				[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
-				printf '%b\n' " ${utick}${cr} Using ${!patch_tag} downloaded patch file${cend} - ${patch_file_url}"
-				[[ "${patch_app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
+			# Else check that if there is a remotely host patch file available in the patch repo
+			if _curl --create-dirs "${patch_file_url}" -o "${patch_file}"; then
+				printf '%b\n' " ${utick}${cr} Using ${app_version[${app_name}]} downloaded patch file${cend} - ${patch_file_url}"
 			fi
 		fi
 
-		if [[ "${patch_app_name}" == 'libtorrent' ]]; then
-			if [[ -f "${patch_dir}/Jamfile" ]]; then
-				cp -f "${patch_dir}/Jamfile" "${patch_jamfile}"
-				[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
-				printf '%b\n\n' " ${utick}${cr} Using existing custom Jamfile file${cend}"
-			elif _curl_curl "${patch_jamfile_url}" -o "${patch_jamfile}"; then
-				[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
-				printf '%b\n\n' " ${utick}${cr} Using downloaded custom Jamfile file${cend}"
-			elif [[ "${qbt_libtorrent_master_jamfile}" == "yes" ]]; then
-				[[ ${qbt_workflow_files} == "no" ]] && printf '\n'
-				_curl_curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${patch_jamfile}"
+		# Libtorrent specific stuff
+		if [[ "${app_name}" == 'libtorrent' ]]; then
+
+			if [[ "${qbt_libtorrent_master_jamfile}" == "yes" ]]; then
+				_curl --create-dirs "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"
 				printf '%b\n\n' " ${utick}${cr} Using libtorrent branch master Jamfile file${cend}"
+			elif [[ -f "${patch_dir}/Jamfile" ]]; then
+				cp -f "${patch_dir}/Jamfile" "${qbt_dl_folder_path}/${patch_jamfile##*/}"
+				printf '%b\n\n' " ${utick}${cr} Using existing custom Jamfile file${cend}"
 			else
-				printf '\n%b\n\n' " ${utick}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
+				if _curl --create-dirs "${patch_jamfile_url}" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"; then
+					printf '%b\n\n' " ${utick}${cr} Using downloaded custom Jamfile file${cend}"
+				else
+					printf '\n%b\n\n' " ${utick}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
+				fi
 			fi
+
 		fi
 
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
@@ -1204,7 +1199,7 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 # This function is for downloading source code archives
 #######################################################################################################################################################
 _download_file() {
-	printf '\n%b\n\n' " ${uplus}${cg} Installing ${app_name}${cend} using ${source_type} files - ${cly}${app_name}${cend} - ${cly}${qbt_dl_source_url}${cend}"
+	printf '\n%b\n\n' " ${uplus} Installing ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
 		# delete the archive if it exists
@@ -1641,14 +1636,12 @@ while (("${#}")); do
 				github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "$2")"
 				[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]}"
 				[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent-}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
+				[[ "${github_tag[libtorrent]}" =~ ^libtorrent_ ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent_}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
 				[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && app_version[libtorrent]="${github_tag[libtorrent]#v}"
-
 				source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
-
 				if ! _curl "${source_archive_url[libtorrent]}" &> /dev/null; then
 					source_default[libtorrent]="folder"
 				fi
-
 				qbt_workflow_override[libtorrent]="yes"
 				_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 				shift 2
@@ -1773,8 +1766,8 @@ while (("${#}")); do
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n' " Creates dirs in this structure: ${cc}${qbt_install_dir_short}/patches/app_name/tag/patch${cend}"
 			printf '\n%b\n' " Add your patches there, for example."
-			printf '\n%b\n' " ${cc}${qbt_install_dir_short}/patches/libtorrent/${libtorrent_patch_tag}/patch${cend}"
-			printf '\n%b\n\n' " ${cc}${qbt_install_dir_short}/patches/qbittorrent/${qbittorrent_patch_tag}/patch${cend}"
+			printf '\n%b\n' " ${cc}${qbt_install_dir_short}/patches/libtorrent/${app_version[libtorrent]}/patch${cend}"
+			printf '\n%b\n\n' " ${cc}${qbt_install_dir_short}/patches/qbittorrent/${app_name}/patch${cend}"
 			exit
 			;;
 		-h-bs-c | --help-boot-cmake)
@@ -1894,9 +1887,9 @@ while (("${#}")); do
 			printf '\n%b\n' " Specify a username and repo to use patches hosted on github${cend}"
 			printf '\n%b\n' " ${cg}${ulbc} Usage example:${cend} ${clb}-pr${cend} ${clc}usnerame/repo${cend}"
 			printf '\n%b\n' " ${cy}There is a specific github directory format you need to use with this flag${cend}"
-			printf '\n%b\n' " ${clc}patches/libtorrent/$libtorrent_patch_tag/patch${cend}"
-			printf '%b\n' " ${clc}patches/libtorrent/$libtorrent_patch_tag/Jamfile${cend} ${clr}(defaults to branch master)${cend}"
-			printf '\n%b\n' " ${clc}patches/qbittorrent/$qbittorrent_patch_tag/patch${cend}"
+			printf '\n%b\n' " ${clc}patches/libtorrent/${app_version[libtorrent]}/patch${cend}"
+			printf '%b\n' " ${clc}patches/libtorrent/${app_version[libtorrent]}/Jamfile${cend} ${clr}(defaults to branch master)${cend}"
+			printf '\n%b\n' " ${clc}patches/qbittorrent/${app_name}/patch${cend}"
 			printf '\n%b\n' " ${cy}If an installation tag matches a hosted tag patch file, it will be automaticlaly used.${cend}"
 			printf '\n%b\n\n' " The tag name will alway be an abbreviated version of the default or specificed tag.${cend}"
 			exit
@@ -2007,7 +2000,7 @@ _zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_version[zlib]}"
 		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does detect the arch correctly.
-		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-x86_64}" >> "${qbt_install_dir}/zlib/cmake/detect-arch.c"
+		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-x86_64}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_CXX_STANDARD="${standard}" \
@@ -2021,7 +2014,7 @@ _zlib() {
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot"
 	else
 		# force set some ARCH when using zlib-ng, configure and musl-cross since it does detect the arch correctly.
-		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-x86_64}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_install_dir}/zlib/configure"
+		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-x86_64}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
 		./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
