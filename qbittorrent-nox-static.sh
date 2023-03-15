@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # cSpell:includeRegExp #.*
-
+#
 # Copyright 2020 by userdocs and contributors
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -1309,8 +1309,8 @@ _cmake() {
 
 				cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
 				[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja"
-				[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja-master"
-				[[ -f "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja.tar.xz"
+				[[ -d "${qbt_install_dir}/ninja-master" ]] && rm -rf "${qbt_install_dir}/ninja-master"
+				[[ -f "${qbt_install_dir}/ninja.tar.xz" ]] && rm -f "${qbt_install_dir}/ninja.tar.xz"
 			fi
 		fi
 
@@ -1551,8 +1551,6 @@ _script_version # see functions
 _set_build_directory # see functions
 
 _set_module_urls "${@}" # see functions
-
-_installation_modules "${@}" # see functions
 #######################################################################################################################################################
 # This section controls our flags that we can pass to the script to modify some variables and behavior.
 #######################################################################################################################################################
@@ -1597,7 +1595,13 @@ while (("${#}")); do
 		-bv | --boost-version)
 			github_tag[boost]="$(_git "${github_url[boost]}" -t "boost-$2")"
 			app_version[boost]="${github_tag[boost]#boost-}"
-			source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/$2/source/boost_${2//\./_}.tar.gz"
+
+			if _curl "https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz" &> /dev/null; then
+				source_archive_url[boost]="https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz"
+			else
+				source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${2}/source/boost_${2//\./_}.tar.gz"
+			fi
+
 			qbt_workflow_override[boost]="yes"
 			_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
 			shift 2
@@ -1941,13 +1945,15 @@ if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	exit
 fi
 #######################################################################################################################################################
-# Functions part 3: Use some of our functions
+# Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
 #######################################################################################################################################################
-_debug "${@}" # see functions
+_debug "${@}" # requires shifted params from options block 2
 
-_cmake # see functions
+_installation_modules "${@}" # requires shifted params from options block 2
 
-_multi_arch # see functions
+_cmake
+
+_multi_arch
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _bison() {
@@ -2060,7 +2066,7 @@ _boost_bootstrap() {
 # shellcheck disable=SC2317
 _boost() {
 	if [[ "${source_default["${app_name}"]}" == "file" ]]; then
-		mv -f "${qbt_install_dir}/boost_${app_version["${app_name}"]//./_}/" "${qbt_install_dir}/boost"
+		mv -f "${qbt_dl_folder_path}/" "${qbt_install_dir}/boost"
 		_pushd "${qbt_install_dir}/boost"
 	fi
 
