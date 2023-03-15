@@ -884,6 +884,8 @@ _set_module_urls() {
 		qbt_workflow_archive_url[bison]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/bison.tar.xz"
 		qbt_workflow_archive_url[gawk]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/gawk.tar.xz"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
+	else
+		qbt_workflow_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
 	fi
 	qbt_workflow_archive_url[zlib]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
 	qbt_workflow_archive_url[iconv]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/iconv.tar.xz"
@@ -1167,7 +1169,7 @@ _cache_dirs() {
 # This function is for downloading git releases based on their tag.
 #######################################################################################################################################################
 _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}"
-	printf '%s' "${github_url[${app_name}]}" > "${qbt_install_dir}/logs/github_url_${app_name}.log"
+	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/github_url_${app_name}.log" > /dev/null
 
 	# Set this to avoid some warning when cloning some modules
 	_git_git config --global advice.detachedHead false
@@ -1218,7 +1220,7 @@ _download_file() {
 
 	# Set the extracted dir name to a var to easily use or remove it
 	qbt_dl_folder_path="${qbt_install_dir}/$(tar tf "${qbt_dl_file_path}" | head -1 | cut -f1 -d"/")"
-	printf '%b\n' "${qbt_dl_source_url}" > "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log"
+	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
 	# we don't need to cd into the boost if we download it via source archives
 	if [[ "${app_name}" != 'boost' ]]; then
@@ -1237,7 +1239,7 @@ _fix_static_links() {
 	for file in "${library_list[@]}"; do
 		if [[ "$(readlink "${lib_dir}/${file}.so")" != "${file}.a" ]]; then
 			ln -fsn "${file}.a" "${lib_dir}/${file}.so"
-			printf 's%b\n' "${lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
+			printf 's%b\n' "${lib_dir}${file}.so changed to point to ${file}.a" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 		fi
 	done
 	return
@@ -1250,7 +1252,7 @@ _fix_multiarch_static_links() {
 		for file in "${library_list[@]}"; do
 			if [[ "$(readlink "${multiarch_lib_dir}/${file}.so")" != "${file}.a" ]]; then
 				ln -fsn "${file}.a" "${multiarch_lib_dir}/${file}.so"
-				printf '%b\n' "${multiarch_lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
+				printf '%b\n' "${multiarch_lib_dir}${file}.so changed to point to ${file}.a" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 			fi
 		done
 		return
@@ -1306,7 +1308,9 @@ _cmake() {
 				_post_command build
 
 				cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-				_pushd "${qbt_install_dir}" && rm -rf "${qbt_install_dir}/ninja"
+				[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja"
+				[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja-master"
+				[[ -f "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja.tar.xz"
 			fi
 		fi
 
