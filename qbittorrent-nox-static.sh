@@ -407,7 +407,6 @@ while (("${#}")); do
 			qbt_debian_mode="alternate"
 			shift
 			;;
-
 		-cd | --cache-directory)
 			qbt_cache_dir="${2%/}"
 			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
@@ -518,9 +517,62 @@ while (("${#}")); do
 			;;
 	esac
 done
-
 # Set positional arguments in their proper place.
 set -- "${params1[@]}"
+#######################################################################################################################################################
+# This is a command test function: _cmd exit 1
+#######################################################################################################################################################
+_cmd() {
+	if ! "${@}"; then
+		printf '\n%b\n\n' " The command: ${clr}${*}${cend} failed"
+		exit 1
+	fi
+}
+#######################################################################################################################################################
+# This is a command test function to test build commands for failure
+#######################################################################################################################################################
+_post_command() {
+	outcome=("${PIPESTATUS[@]}")
+	[[ -n "${1}" ]] && command_type="${1}"
+	if [[ "${outcome[*]}" =~ [1-9] ]]; then
+		printf '\n%b\n\n' " ${urc}${clr} Error: The ${command_type:-tested} command produced an exit code greater than 0 - Check the logs${cend}"
+		exit 1
+	fi
+}
+#######################################################################################################################################################
+# This function is to test a directory exists before attempting to cd and fail with and exit code if it doesn't.
+#######################################################################################################################################################
+_pushd() {
+	if ! pushd "$@" &> /dev/null; then
+		printf '\n%b\n' "This directory does not exist. There is a problem"
+		printf '\n%b\n\n' "${clr}${1}${cend}"
+		exit 1
+	fi
+}
+
+_popd() {
+	if ! popd &> /dev/null; then
+		printf '%b\n' "This directory does not exist. There is a problem"
+		exit 1
+	fi
+}
+#######################################################################################################################################################
+# This function makes sure the log directory and path required exists for tee
+#######################################################################################################################################################
+_tee() {
+	[[ "$#" -eq 1 && "${1%/*}" =~ / ]] && mkdir -p "${1%/*}"
+	[[ "$#" -eq 2 && "${2%/*}" =~ / ]] && mkdir -p "${2%/*}"
+	command tee "$@"
+}
+#######################################################################################################################################################
+# error functions
+#######################################################################################################################################################
+_error_tag() {
+	[[ "${github_tag[*]}" =~ error_tag ]] && {
+		printf '\n'
+		exit
+	}
+}
 #######################################################################################################################################################
 # _curl test download functions - default is no proxy - _curl is a test function and _curl_curl is the command function
 #######################################################################################################################################################
@@ -566,7 +618,7 @@ _git() {
 		printf "%s" "${?}"
 	)"
 
-	if [[ "${2}" == '-t' && "${status}" == '0' ]]; then
+	if [[ "${2}" == '-t' && "${status}" -eq '0' ]]; then
 		printf '%b\n' "${3}"
 	elif [[ "${2}" == '-t' && "${status}" -ge '1' ]]; then
 		printf '%b\n' 'error_tag'
@@ -581,6 +633,111 @@ _git() {
 _test_git_ouput() {
 	if [[ "${1}" == 'error_tag' ]]; then
 		printf '\n%b\n' "${cy} Sorry, the provided ${2} tag ${cr}${3}${cend}${cy} is not valid${cend}"
+	fi
+}
+#######################################################################################################################################################
+# Debug stuff
+#######################################################################################################################################################
+_debug() {
+	if [[ "${script_debug_urls}" == "yes" ]]; then
+		mapfile -t github_url_sorted < <(printf '%s\n' "${!github_url[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}github_url${cend}"
+		for n in "${github_url_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${github_url[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t github_tag_sorted < <(printf '%s\n' "${!github_tag[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}github_tag${cend}"
+		for n in "${github_tag_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${github_tag[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t app_version_sorted < <(printf '%s\n' "${!app_version[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}app_version${cend}"
+		for n in "${app_version_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${app_version[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t source_archive_url_sorted < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}source_archive_url${cend}"
+		for n in "${source_archive_url_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${source_archive_url[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t qbt_workflow_archive_url_sorted < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}qbt_workflow_archive_url${cend}"
+		for n in "${qbt_workflow_archive_url_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${qbt_workflow_archive_url[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t source_default_sorted < <(printf '%s\n' "${!source_default[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}source_default${cend}"
+		for n in "${source_default_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${source_default[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		printf '\n%b\n' " ${umc} ${cly}Tests${cend}"
+		printf '\n%b\n' " ${clg}boost_url_status:${cend} ${clb}${boost_url_status}${cend}"
+
+		printf '\n'
+		exit
+	fi
+}
+#######################################################################################################################################################
+# This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
+#######################################################################################################################################################
+_custom_flags_set() {
+	CXXFLAGS="${optimize/*/$optimize }-std=${cxx_standard} -static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
+	CPPFLAGS="${optimize/*/$optimize }-static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
+	LDFLAGS="${optimize/*/$optimize }-static -L${lib_dir} -pthread"
+}
+
+_custom_flags_reset() {
+	CXXFLAGS="${optimize/*/$optimize } -w -std=${cxx_standard}"
+	CPPFLAGS="${optimize/*/$optimize } -w"
+	LDFLAGS=""
+}
+#######################################################################################################################################################
+# This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
+#######################################################################################################################################################
+_install_qbittorrent() {
+	if [[ -f "${qbt_install_dir}/completed/qbittorrent-nox" ]]; then
+		if [[ "$(id -un)" == 'root' ]]; then
+			mkdir -p "/usr/local/bin"
+			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin"
+		else
+			mkdir -p "${HOME}/bin"
+			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "${LOCAL_USER_HOME}/bin"
+		fi
+
+		printf '\n%b\n' " ${uplus} qbittorrent-nox has been installed!${cend}"
+		printf '\n%b\n\n' " Run it using this command:"
+		[[ "$(id -un)" == 'root' ]] && printf '\n%b\n\n' " ${cg}qbittorrent-nox${cend}" || printf '\n%b\n\n' " ${cg}~/bin/qbittorrent-nox${cend}"
+		exit
+	else
+		printf '\n%b\n\n' " ${ucross} qbittorrent-nox has not been built to the defined install directory:"
+		printf '\n%b\n' "${cg}${qbt_install_dir_short}/completed${cend}"
+		printf '\n%b\n\n' "Please build it using the script first then install"
+		exit
+	fi
+}
+#######################################################################################################################################################
+# Script Version check
+#######################################################################################################################################################
+_script_version() {
+	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
+
+	semantic_version() {
+		local test_array
+		read -ra test_array < <(printf "%s" "${@//./ }")
+		printf "%d%03d%03d%03d" "${test_array[@]}"
+	}
+
+	if [[ "$(semantic_version "${script_version}")" -lt "$(semantic_version "${script_version_remote}")" ]]; then
+		printf '\n%b\n' " ${tbk}${urc}${cend} Script update available! Versions - ${cly}local:${clr}${script_version}${cend} ${cly}remote:${clg}${script_version_remote}${cend}"
+		printf '\n%b\n' " ${ugc} curl -sLo ~/qbittorrent-nox-static.sh https://git.io/qbstatic${cend}"
+	else
+		printf '\n%b\n' " ${ugc} Script version: ${clg}${script_version}${cend}"
 	fi
 }
 #######################################################################################################################################################
@@ -607,20 +764,6 @@ _set_build_directory() {
 	HOME="${qbt_install_dir}"
 	PATH="${qbt_install_dir}/bin${PATH:+:${qbt_local_paths}}"
 	PKG_CONFIG_PATH="${lib_dir}/pkgconfig"
-}
-#######################################################################################################################################################
-# This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
-#######################################################################################################################################################
-_custom_flags_set() {
-	CXXFLAGS="${optimize/*/$optimize }-std=${cxx_standard} -static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	CPPFLAGS="${optimize/*/$optimize }-static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	LDFLAGS="${optimize/*/$optimize }-static -L${lib_dir} -pthread"
-}
-
-_custom_flags_reset() {
-	CXXFLAGS="${optimize/*/$optimize } -w -std=${cxx_standard}"
-	CPPFLAGS="${optimize/*/$optimize } -w"
-	LDFLAGS=""
 }
 #######################################################################################################################################################
 # This function is where we set your URL and github tag info that we use with other functions.
@@ -808,54 +951,6 @@ _set_module_urls() {
 	return
 }
 #######################################################################################################################################################
-# Debug stuff
-#######################################################################################################################################################
-_debug() {
-	if [[ "${script_debug_urls}" == "yes" ]]; then
-		mapfile -t github_url_sorted < <(printf '%s\n' "${!github_url[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}github_url${cend}"
-		for n in "${github_url_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${github_url[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		mapfile -t github_tag_sorted < <(printf '%s\n' "${!github_tag[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}github_tag${cend}"
-		for n in "${github_tag_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${github_tag[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		mapfile -t app_version_sorted < <(printf '%s\n' "${!app_version[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}app_version${cend}"
-		for n in "${app_version_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${app_version[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		mapfile -t source_archive_url_sorted < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}source_archive_url${cend}"
-		for n in "${source_archive_url_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${source_archive_url[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		mapfile -t qbt_workflow_archive_url_sorted < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}qbt_workflow_archive_url${cend}"
-		for n in "${qbt_workflow_archive_url_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${qbt_workflow_archive_url[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		mapfile -t source_default_sorted < <(printf '%s\n' "${!source_default[@]}" | sort)
-		printf '\n%b\n\n' " ${umc} ${cly}source_default${cend}"
-		for n in "${source_default_sorted[@]}"; do
-			printf '%b\n' " ${clg}$n${cend}: ${clb}${source_default[$n]}${cend}" #: ${github_url[$n]}"
-		done
-
-		printf '\n%b\n' " ${umc} ${cly}Tests${cend}"
-		printf '\n%b\n' " ${clg}boost_url_status:${cend} ${clb}${boost_url_status}${cend}"
-
-		printf '\n'
-		exit
-	fi
-}
-#######################################################################################################################################################
 # This function verifies the module names from the array qbt_modules in the default values function.
 #######################################################################################################################################################
 _installation_modules() {
@@ -1006,51 +1101,6 @@ _apply_patches() {
 	fi
 }
 #######################################################################################################################################################
-# This is a command test function: _cmd exit 1
-#######################################################################################################################################################
-_cmd() {
-	if ! "${@}"; then
-		printf '\n%b\n\n' " The command: ${clr}${*}${cend} failed"
-		exit 1
-	fi
-}
-#######################################################################################################################################################
-# This is a command test function to test build commands for failure
-#######################################################################################################################################################
-_post_command() {
-	outcome=("${PIPESTATUS[@]}")
-	[[ -n "${1}" ]] && command_type="${1}"
-	if [[ "${outcome[*]}" =~ [1-9] ]]; then
-		printf '\n%b\n\n' " ${urc}${clr} Error: The ${command_type:-tested} command produced an exit code greater than 0 - Check the logs${cend}"
-		exit 1
-	fi
-}
-#######################################################################################################################################################
-# This function is to test a directory exists before attempting to cd and fail with and exit code if it doesn't.
-#######################################################################################################################################################
-_pushd() {
-	if ! pushd "$@" &> /dev/null; then
-		printf '\n%b\n' "This directory does not exist. There is a problem"
-		printf '\n%b\n\n' "${clr}${1}${cend}"
-		exit 1
-	fi
-}
-
-_popd() {
-	if ! popd &> /dev/null; then
-		printf '%b\n' "This directory does not exist. There is a problem"
-		exit 1
-	fi
-}
-#######################################################################################################################################################
-# This function makes sure the log directory and path required exists for tee
-#######################################################################################################################################################
-_tee() {
-	[[ "$#" -eq 1 && "${1%/*}" =~ / ]] && mkdir -p "${1%/*}"
-	[[ "$#" -eq 2 && "${2%/*}" =~ / ]] && mkdir -p "${2%/*}"
-	command tee "$@"
-}
-#######################################################################################################################################################
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
@@ -1179,6 +1229,34 @@ _download_file() {
 	return
 }
 #######################################################################################################################################################
+# static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the static lib e.g. libdl.a
+#######################################################################################################################################################
+_fix_static_links() {
+	log_name="${app_name}"
+	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
+	for file in "${library_list[@]}"; do
+		if [[ "$(readlink "${lib_dir}/${file}.so")" != "${file}.a" ]]; then
+			ln -fsn "${file}.a" "${lib_dir}/${file}.so"
+			printf 's%b\n' "${lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
+		fi
+	done
+	return
+}
+_fix_multiarch_static_links() {
+	if [[ -d "${qbt_install_dir}/${qbt_cross_host}" ]]; then
+		log_name="${app_name}"
+		multiarch_lib_dir="${qbt_install_dir}/${qbt_cross_host}/lib"
+		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
+		for file in "${library_list[@]}"; do
+			if [[ "$(readlink "${multiarch_lib_dir}/${file}.so")" != "${file}.a" ]]; then
+				ln -fsn "${file}.a" "${multiarch_lib_dir}/${file}.so"
+				printf '%b\n' "${multiarch_lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
+			fi
+		done
+		return
+	fi
+}
+#######################################################################################################################################################
 # This function is for removing files and folders we no longer need
 #######################################################################################################################################################
 _delete_function() {
@@ -1192,27 +1270,47 @@ _delete_function() {
 	fi
 }
 #######################################################################################################################################################
-# This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
+# cmake installation
 #######################################################################################################################################################
-_install_qbittorrent() {
-	if [[ -f "${qbt_install_dir}/completed/qbittorrent-nox" ]]; then
-		if [[ "$(id -un)" == 'root' ]]; then
-			mkdir -p "/usr/local/bin"
-			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin"
-		else
-			mkdir -p "${HOME}/bin"
-			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "${LOCAL_USER_HOME}/bin"
+_cmake() {
+	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
+		printf '\n%b\n' " ${ulbc}${clr} Checking if cmake and ninja need to be installed${cend}"
+		mkdir -p "${qbt_install_dir}/bin"
+		_pushd "${qbt_install_dir}"
+
+		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
+				_curl "${source_archive_url[cmake_ninja]}" > "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
+				_post_command "Debian cmake and ninja installation"
+				tar xf "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+				rm -f "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
+
+				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
+				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
+			else
+				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
+				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
+			fi
 		fi
 
-		printf '\n%b\n' " ${uplus} qbittorrent-nox has been installed!${cend}"
-		printf '\n%b\n\n' " Run it using this command:"
-		[[ "$(id -un)" == 'root' ]] && printf '\n%b\n\n' " ${cg}qbittorrent-nox${cend}" || printf '\n%b\n\n' " ${cg}~/bin/qbittorrent-nox${cend}"
-		exit
-	else
-		printf '\n%b\n\n' " ${ucross} qbittorrent-nox has not been built to the defined install directory:"
-		printf '\n%b\n' "${cg}${qbt_install_dir_short}/completed${cend}"
-		printf '\n%b\n\n' "Please build it using the script first then install"
-		exit
+		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null)" != "${app_version[ninja]}" ]]; then
+				_download ninja
+				cmake -Wno-dev -Wno-deprecated -B build \
+					-D CMAKE_BUILD_TYPE="release" \
+					-D CMAKE_CXX_STANDARD="${standard}" \
+					-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
+					-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/ninja.log"
+				cmake --build build -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/ninja.log"
+
+				_post_command build
+
+				cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
+				_pushd "${qbt_install_dir}" && rm -rf "${qbt_install_dir}/ninja"
+			fi
+		fi
+
+		printf '\n%b\n' " ${ugc}${clr} cmake and ninja are installed and ready to use${cend}"
 	fi
 }
 #######################################################################################################################################################
@@ -1436,107 +1534,6 @@ _release_info() {
 	RELEASE_INFO
 
 	return
-}
-#######################################################################################################################################################
-# cmake installation
-#######################################################################################################################################################
-_cmake() {
-	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-		printf '\n%b\n' " ${ulbc}${clr} Checking if cmake and ninja need to be installed${cend}"
-		mkdir -p "${qbt_install_dir}/bin"
-		_pushd "${qbt_install_dir}"
-
-		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
-			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
-				_curl "${source_archive_url[cmake_ninja]}" > "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
-				_post_command "Debian cmake and ninja installation"
-				tar xf "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-				rm -f "${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
-
-				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
-			else
-				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
-			fi
-		fi
-
-		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
-			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null)" != "${app_version[ninja]}" ]]; then
-				_download ninja
-				cmake -Wno-dev -Wno-deprecated -B build \
-					-D CMAKE_BUILD_TYPE="release" \
-					-D CMAKE_CXX_STANDARD="${standard}" \
-					-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
-					-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/ninja.log"
-				cmake --build build -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-
-				_post_command build
-
-				cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-				_pushd "${qbt_install_dir}" && rm -rf "${qbt_install_dir}/ninja"
-			fi
-		fi
-
-		printf '\n%b\n' " ${ugc}${clr} cmake and ninja are installed and ready to use${cend}"
-	fi
-}
-#######################################################################################################################################################
-# static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the static lib e.g. libdl.a
-#######################################################################################################################################################
-_fix_static_links() {
-	log_name="${app_name}"
-	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
-	for file in "${library_list[@]}"; do
-		if [[ "$(readlink "${lib_dir}/${file}.so")" != "${file}.a" ]]; then
-			ln -fsn "${file}.a" "${lib_dir}/${file}.so"
-			printf 's%b\n' "${lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
-		fi
-	done
-	return
-}
-_fix_multiarch_static_links() {
-	if [[ -d "${qbt_install_dir}/${qbt_cross_host}" ]]; then
-		log_name="${app_name}"
-		multiarch_lib_dir="${qbt_install_dir}/${qbt_cross_host}/lib"
-		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
-		for file in "${library_list[@]}"; do
-			if [[ "$(readlink "${multiarch_lib_dir}/${file}.so")" != "${file}.a" ]]; then
-				ln -fsn "${file}.a" "${multiarch_lib_dir}/${file}.so"
-				printf '%b\n' "${multiarch_lib_dir}${file}.so changed to point to ${file}.a" >> "${qbt_install_dir}/logs/${log_name}-fix-static-links.log"
-			fi
-		done
-		return
-	fi
-}
-
-#######################################################################################################################################################
-# error functions
-#######################################################################################################################################################
-_error_tag() {
-	[[ "${github_tag[*]}" =~ error_tag ]] && {
-		printf '\n'
-		exit
-	}
-}
-#######################################################################################################################################################
-# Script Version check
-#######################################################################################################################################################
-_script_version() {
-	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
-
-	semantic_version() {
-		local test_array
-		read -ra test_array < <(printf "%s" "${@//./ }")
-		printf "%d%03d%03d%03d" "${test_array[@]}"
-	}
-
-	if [[ "$(semantic_version "${script_version}")" -lt "$(semantic_version "${script_version_remote}")" ]]; then
-		printf '\n%b\n' " ${tbk}${urc}${cend} Script update available! Versions - ${cly}local:${clr}${script_version}${cend} ${cly}remote:${clg}${script_version_remote}${cend}"
-		printf '\n%b\n' " ${ugc} curl -sLo ~/qbittorrent-nox-static.sh https://git.io/qbstatic${cend}"
-	else
-		printf '\n%b\n' " ${ugc} Script version: ${clg}${script_version}${cend}"
-	fi
 }
 #######################################################################################################################################################
 # Functions part 1: Use some of our functions
