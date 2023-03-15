@@ -2002,10 +2002,10 @@ _glibc() {
 # shellcheck disable=SC2317
 _zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
-		mkdir -p "${qbt_install_dir}/graphs/${app_version[zlib]}"
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does detect the arch correctly.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-x86_64}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot" -G Ninja -B build \
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_CXX_STANDARD="${standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
@@ -2015,7 +2015,7 @@ _zlib() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[zlib]}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
 		# force set some ARCH when using zlib-ng, configure and musl-cross since it does detect the arch correctly.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-x86_64}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
@@ -2105,8 +2105,8 @@ _libtorrent() {
 	BOOST_BUILD_PATH="${qbt_install_dir}/boost"
 
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-		mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot" -G Ninja -B build \
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="Release" \
@@ -2120,7 +2120,7 @@ _libtorrent() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[libtorrent]}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
 		[[ ${qbt_cross_name} =~ ^(armhf|armv7)$ ]] && arm_libatomic="-l:libatomic.a"
 		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2 or RC_2_0 when a custom pr branch was used. This will always give an accurate result.
@@ -2163,7 +2163,8 @@ _libtorrent() {
 # shellcheck disable=SC2317
 _double_conversion() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[double_conversion]}/dep-graph.dot" -G Ninja -B build \
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
@@ -2174,7 +2175,7 @@ _double_conversion() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[double_conversion]}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	fi
 }
 #######################################################################################################################################################
@@ -2190,8 +2191,8 @@ _qtbase() {
 	esac
 
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
-		mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[qtbase]}/dep-graph.dot" -G Ninja -B build \
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
@@ -2208,7 +2209,7 @@ _qtbase() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[qtbase]}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ "${qbt_qt_version}" =~ ^5 ]]; then
 		if [[ "${qbt_skip_icu}" == "no" ]]; then
 			icu=("-icu" "-no-iconv" "QMAKE_CXXFLAGS=-w -fpermissive")
@@ -2237,8 +2238,8 @@ _qtbase() {
 # shellcheck disable=SC2317
 _qttools() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
-		mkdir -p "${qbt_install_dir}/graphs/${github_tag[libtorrent]}"
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_version[qttools]}/dep-graph.dot" -G Ninja -B build \
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
@@ -2251,7 +2252,7 @@ _qttools() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_version[qttools]}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ "${qbt_qt_version}" =~ ^5 ]]; then
 		"${qbt_install_dir}/bin/qmake" -set prefix "${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 
@@ -2271,8 +2272,8 @@ _qbittorrent() {
 	[[ "${what_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
 
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-		mkdir -p "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}"
-		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot" -G Ninja -B build \
+		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_qbittorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
@@ -2288,7 +2289,7 @@ _qbittorrent() {
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${github_tag[qbittorrent]#release-}/dep-graph.dot"
+		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
 		./bootstrap.sh |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		./configure \
