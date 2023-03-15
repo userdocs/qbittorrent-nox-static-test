@@ -694,7 +694,7 @@ _set_module_urls() {
 	app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
 	app_version[iconv]="${github_tag[iconv]#v}"
 	app_version[icu]="${github_tag[icu]#release-}"
-	app_version[double_conversion]="${github_tag[bison]#v}"
+	app_version[double_conversion]="${github_tag[double_conversion]#v}"
 	app_version[openssl]="${github_tag[openssl]#openssl-}"
 	app_version[boost]="${github_tag[boost]#boost-}"
 	app_version[libtorrent]="${github_tag[libtorrent]#v}"
@@ -920,14 +920,6 @@ _installation_modules() {
 
 		# Some basic help
 		printf '\n%b\n' " ${uyc}${tb} Script help${cend} : ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clb}-h${cend}"
-	else
-		printf '\n%b\n' " ${tbk}${urc}${cend}${tb} One or more of the provided modules are not supported${cend}"
-		printf '\n%b\n' " ${uyc}${tb} Below is a list of supported modules${cend}"
-		printf '\n%b\n' " ${umc}${clm} ${qbt_modules[*]}${cend}"
-
-		_print_env
-
-		exit
 	fi
 }
 #######################################################################################################################################################
@@ -957,11 +949,23 @@ _apply_patches() {
 	fi
 
 	if [[ "${patch_app_name}" == 'bootstrap' ]]; then
-		mkdir -p "${qbt_install_dir}/patches/libtorrent/${libtorrent_patch_tag}"
-		mkdir -p "${qbt_install_dir}/patches/qbittorrent/${qbittorrent_patch_tag}"
+
+		for module_patch in "${qbt_modules[@]}"; do
+			mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}"
+		done
+		unset module_patch
+
 		printf '\n%b\n' " ${uyc} Using the defaults, these directories have been created:${cend}"
-		printf '\n%b\n' " ${clc}  $qbt_install_dir_short/patches/libtorrent/${libtorrent_patch_tag}${cend}"
-		printf '\n%b\n' " ${clc}  $qbt_install_dir_short/patches/qbittorrent/${qbittorrent_patch_tag}${cend}"
+
+		printf '\n'
+		for patch_info in "${qbt_modules[@]}"; do
+			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${clc} ${qbt_install_dir}/patches/${patch_info}/${app_version["${patch_info}"]}${cend}"
+		done
+		printf '\n'
+		unset patch_info
+
+		exit
+
 		printf '\n%b\n' " ${ucc} If a patch file, named ${clc}patch${cend} is found in these directories it will be applied to the relevant module with a matching tag."
 	else
 		patch_tag="${patch_app_name}_patch_tag"
@@ -1545,9 +1549,13 @@ _set_default_values "${@}" # see functions
 
 _check_dependencies # see functions
 
+_script_version # see functions
+
 _set_build_directory # see functions
 
 _set_module_urls "$@" # see functions
+
+_installation_modules "${@}" # see functions
 #######################################################################################################################################################
 # This section controls our flags that we can pass to the script to modify some variables and behavior.
 #######################################################################################################################################################
@@ -1925,14 +1933,20 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
 _error_tag
+
+if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
+	printf '\n%b\n' " ${tbk}${urc}${cend}${tb} One or more of the provided modules are not supported${cend}"
+	printf '\n%b\n' " ${uyc}${tb} Below is a list of supported modules${cend}"
+	printf '\n%b\n' " ${umc}${clm} ${qbt_modules[*]}${cend}"
+
+	_print_env
+
+	exit
+fi
 #######################################################################################################################################################
 # Functions part 3: Use some of our functions
 #######################################################################################################################################################
-_script_version # see functions
-
 _debug "${@}" # see functions
-
-_installation_modules "${@}" # see functions
 
 _cmake # see functions
 
