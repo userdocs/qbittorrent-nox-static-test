@@ -535,7 +535,7 @@ _curl_curl() {
 
 _curl() {
 	if ! _curl_curl "${@}"; then
-		printf '%b\n' 'error_url'
+		return 1
 	fi
 }
 #######################################################################################################################################################
@@ -556,7 +556,7 @@ _git() {
 		git_test_cmd=("${11}") # 11th place in our download folder function
 	fi
 
-	if ! _curl -I "${git_test_cmd[@]%\.git}" &> /dev/null; then
+	if ! _curl -IL "${git_test_cmd[@]%\.git}" &> /dev/null; then
 		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
 		exit
 	fi
@@ -798,8 +798,12 @@ _set_module_urls() {
 	###################################################################################################################################################
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
-	boost_url_status="$(_curl_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
-	url_test="$(_curl -so /dev/null "https://www.google.com")"
+	boost_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
+
+	if ! _curl "https://www.google.com" &> /dev/null; then
+		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
+		exit
+	fi
 
 	return
 }
@@ -836,6 +840,12 @@ _debug() {
 		printf '\n%b\n\n' " ${umc} ${cly}qbt_workflow_archive_url${cend}"
 		for n in "${qbt_workflow_archive_url_sorted[@]}"; do
 			printf '%b\n' " ${clg}$n${cend}: ${clb}${qbt_workflow_archive_url[$n]}${cend}" #: ${github_url[$n]}"
+		done
+
+		mapfile -t source_default_sorted < <(printf '%s\n' "${!source_default[@]}" | sort)
+		printf '\n%b\n\n' " ${umc} ${cly}source_default${cend}"
+		for n in "${source_default_sorted[@]}"; do
+			printf '%b\n' " ${clg}$n${cend}: ${clb}${source_default[$n]}${cend}" #: ${github_url[$n]}"
 		done
 
 		printf '\n%b\n' " ${umc} ${cly}Tests${cend}"
@@ -940,7 +950,7 @@ _apply_patches() {
 		default_jamfile="RC_${default_jamfile%_*}"
 	fi
 
-	qbittorrent_patch_tag="${github_tag[qbittorrent]#release-}" # qbittorrent has a consistent tag format of release-4.3.1.
+	qbittorrent_patch_tag="${app_version[qbittorrent]}" # qbittorrent has a consistent tag format of release-4.3.1.
 
 	if [[ "${patch_app_name}" == 'bootstrap-help' ]]; then # All the core variables we need for the help command are set so we can exit this function now.
 		return
@@ -1503,13 +1513,6 @@ _fix_multiarch_static_links() {
 #######################################################################################################################################################
 # error functions
 #######################################################################################################################################################
-_error_url() {
-	[[ "${url_test}" == "error_url" ]] && {
-		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
-		exit
-	}
-}
-#
 _error_tag() {
 	[[ "${github_tag[*]}" =~ error_tag ]] && {
 		printf '\n'
@@ -1600,7 +1603,7 @@ while (("${#}")); do
 			;;
 		-m | --master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
-			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			app_version[libtorrent]="${github_tag[libtorrent]}"
 			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/archive/refs/heads/${github_tag[libtorrent]}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
@@ -1613,7 +1616,7 @@ while (("${#}")); do
 			;;
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
-			app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			app_version[libtorrent]="${github_tag[libtorrent]}"
 			source_archive_url[qbittorrent]="https://github.com/arvidn/libtorrent/archive/refs/heads/${github_tag[libtorrent]}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
@@ -1621,14 +1624,22 @@ while (("${#}")); do
 			;;
 		-lt | --libtorrent-tag)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "$2")"
-			app_version[libtorrent]="${github_tag[libtorrent]#v}"
-			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
+			[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]}"
+			[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent-}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
+			[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && app_version[libtorrent]="${github_tag[libtorrent]#v}"
+
+			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
+
+			if ! _curl "${source_archive_url[libtorrent]}" &> /dev/null; then
+				source_default[libtorrent]="folder"
+			fi
+
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 			shift 2
 			;;
 		-pr | --patch-repo)
-			if [[ "$(_curl "https://github.com/${2}")" != 'error_url' ]]; then
+			if _curl "https://github.com/${2}" &> /dev/null; then
 				qbt_patches_url="${2}"
 			else
 				printf '\n%b\n' " ${cy}This repo does not exist:${cend}"
@@ -1913,8 +1924,6 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 #######################################################################################################################################################
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
-_error_url
-
 _error_tag
 #######################################################################################################################################################
 # Functions part 3: Use some of our functions
