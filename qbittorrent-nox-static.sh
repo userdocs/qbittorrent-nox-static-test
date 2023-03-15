@@ -1293,7 +1293,7 @@ _cmake() {
 		fi
 
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
-			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null)" != "${app_version[ninja]}" ]]; then
+			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]%\.git}" ]]; then
 				_download ninja
 
 				if [[ "${qbt_cache_dir_options}" != 'bs' ]]; then
@@ -1313,7 +1313,6 @@ _cmake() {
 				fi
 			fi
 		fi
-
 		printf '\n%b\n' " ${ugc}${clr} cmake and ninja are installed and ready to use${cend}"
 	fi
 }
@@ -2087,7 +2086,7 @@ _boost() {
 		_pushd "${qbt_install_dir}/boost"
 	fi
 
-	if [[ "${qbt_build_tool}" != 'cmake' ]]; then
+	if [[ -n "${qbt_cache_dir}" || "${qbt_build_tool}" != 'cmake' ]]; then
 		"${qbt_install_dir}/boost/bootstrap.sh" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		ln -s "${qbt_install_dir}/boost/boost" "${qbt_install_dir}/boost/include"
 	else
