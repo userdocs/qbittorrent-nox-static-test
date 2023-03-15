@@ -1593,18 +1593,23 @@ while (("${#}")); do
 			shift
 			;;
 		-bv | --boost-version)
-			github_tag[boost]="$(_git "${github_url[boost]}" -t "boost-$2")"
-			app_version[boost]="${github_tag[boost]#boost-}"
+			if [[ -n "${2}" ]]; then
+				github_tag[boost]="$(_git "${github_url[boost]}" -t "boost-$2")"
+				app_version[boost]="${github_tag[boost]#boost-}"
 
-			if _curl "https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz" &> /dev/null; then
-				source_archive_url[boost]="https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz"
+				if _curl "https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz" &> /dev/null; then
+					source_archive_url[boost]="https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz"
+				else
+					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${2}/source/boost_${2//\./_}.tar.gz"
+				fi
+
+				qbt_workflow_override[boost]="yes"
+				_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
+				shift 2
 			else
-				source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${2}/source/boost_${2//\./_}.tar.gz"
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
+				exit
 			fi
-
-			qbt_workflow_override[boost]="yes"
-			_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
-			shift 2
 			;;
 		-n | --no-delete)
 			qbt_skip_delete="yes"
@@ -1632,31 +1637,41 @@ while (("${#}")); do
 			shift
 			;;
 		-lt | --libtorrent-tag)
-			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "$2")"
-			[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]}"
-			[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent-}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
-			[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && app_version[libtorrent]="${github_tag[libtorrent]#v}"
+			if [[ -n "${2}" ]]; then
+				github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "$2")"
+				[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]}"
+				[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent-}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
+				[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && app_version[libtorrent]="${github_tag[libtorrent]#v}"
 
-			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
+				source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
 
-			if ! _curl "${source_archive_url[libtorrent]}" &> /dev/null; then
-				source_default[libtorrent]="folder"
-			fi
+				if ! _curl "${source_archive_url[libtorrent]}" &> /dev/null; then
+					source_default[libtorrent]="folder"
+				fi
 
-			qbt_workflow_override[libtorrent]="yes"
-			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
-			shift 2
-			;;
-		-pr | --patch-repo)
-			if _curl "https://github.com/${2}" &> /dev/null; then
-				qbt_patches_url="${2}"
+				qbt_workflow_override[libtorrent]="yes"
+				_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
+				shift 2
 			else
-				printf '\n%b\n' " ${cy}This repo does not exist:${cend}"
-				printf '\n%b\n' " https://github.com/${2}"
-				printf '\n%b\n\n' " ${cy}Please provide a valid username and repo.${cend}"
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
 				exit
 			fi
-			shift 2
+			;;
+		-pr | --patch-repo)
+			if [[ -n "${2}" ]]; then
+				if _curl "https://github.com/${2}" &> /dev/null; then
+					qbt_patches_url="${2}"
+				else
+					printf '\n%b\n' " ${cy}This repo does not exist:${cend}"
+					printf '\n%b\n' " https://github.com/${2}"
+					printf '\n%b\n\n' " ${cy}Please provide a valid username and repo.${cend}"
+					exit
+				fi
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} username/repo ${cend}"
+				exit
+			fi
 			;;
 		-qm | --qbittorrent-master)
 			github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "master")"
@@ -1667,12 +1682,17 @@ while (("${#}")); do
 			shift
 			;;
 		-qt | --qbittorrent-tag)
-			github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "$2")"
-			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-			source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
-			qbt_workflow_override[qbittorrent]="yes"
-			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
-			shift 2
+			if [[ -n "${2}" ]]; then
+				github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "$2")"
+				app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
+				source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
+				qbt_workflow_override[qbittorrent]="yes"
+				_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
+				exit
+			fi
 			;;
 		-h | --help)
 			printf '\n%b\n\n' " ${tb}${tu}Here are a list of available options${cend}"
@@ -1924,7 +1944,6 @@ while (("${#}")); do
 			;;
 	esac
 done
-
 set -- "${params2[@]}" # Set positional arguments in their proper place.
 #######################################################################################################################################################
 # Functions part 2: Use some of our functions
