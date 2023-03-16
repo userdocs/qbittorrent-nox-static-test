@@ -1025,8 +1025,6 @@ _installation_modules() {
 #######################################################################################################################################################
 _apply_patches() {
 	[[ -n ${1} ]] && app_name="${1}"
-	# echo "1: ${app_version[libtorrent]}"#
-	# "${app_version[${app_name}]}" # qbittorrent has a consistent tag format of release-4.3.1.
 
 	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
 	default_jamfile="${app_version[libtorrent]//./\_}"
@@ -1273,7 +1271,7 @@ _delete_function() {
 #######################################################################################################################################################
 _cmake() {
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-		printf '\n%b\n' " ${ulbc}${clr} Checking if cmake and ninja need to be installed${cend}"
+		printf '\n%b\n' " ${uplus} ${clb}Checking if cmake and ninja need to be installed${cend}"
 		mkdir -p "${qbt_install_dir}/bin"
 
 		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
@@ -1313,7 +1311,8 @@ _cmake() {
 				fi
 			fi
 		fi
-		printf '\n%b\n' " ${ugc}${clr} cmake and ninja are installed and ready to use${cend}"
+		printf '\n%b\n' " ${utick} ${clg}cmake and ninja are installed and ready to use${cend}"
+		exit
 	fi
 }
 #######################################################################################################################################################
