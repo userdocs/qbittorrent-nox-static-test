@@ -1203,14 +1203,14 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 _download_file() {
 	printf '\n%b\n\n' " ${uplus} Installing ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
 
-	if [[ -f "${qbt_dl_file_path}" ]]; then
-		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
-		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
-		# delete any existing extracted archives and archives
-		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
-	fi
-
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
+		if [[ -f "${qbt_dl_file_path}" ]]; then
+			# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
+			_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
+			# delete any existing extracted archives and archives
+			rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
+		fi
+
 		# download the remote source file using curl
 		_curl "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
 	fi
@@ -2331,8 +2331,8 @@ for app_name in "${qbt_modules[@]}"; do
 				_custom_flags_set
 			fi
 			############################################################
-			if [[ "${qbt_workflow_artifacts}" == "no" ]]; then _download; else _pushd "${qbt_dl_folder_path}"; fi
-
+			_download
+			############################################################
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
 			_apply_patches
