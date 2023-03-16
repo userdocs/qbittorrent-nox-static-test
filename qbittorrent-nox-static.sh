@@ -2331,7 +2331,7 @@ for app_name in "${qbt_modules[@]}"; do
 				_custom_flags_set
 			fi
 			############################################################
-			_download
+			[[ "${qbt_workflow_artifacts}" == "no" ]] && _download
 
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
