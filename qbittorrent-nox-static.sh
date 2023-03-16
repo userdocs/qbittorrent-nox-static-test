@@ -1122,8 +1122,10 @@ _download() {
 	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
 
-	[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
-	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
+	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
+		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
+		[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
+	fi
 
 	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
 
