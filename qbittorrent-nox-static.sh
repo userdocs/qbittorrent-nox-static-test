@@ -1072,7 +1072,7 @@ _apply_patches() {
 		else
 			# Else check that if there is a remotely host patch file available in the patch repo
 			if _curl --create-dirs "${patch_file_url}" -o "${patch_file}"; then
-				printf '%b\n' " ${utick}${cr} Using ${app_version[${app_name}]} downloaded patch file${cend} - ${patch_file_url}"
+				printf '%b\n\n' " ${utick} ${cr}Patching${cend} ${clr}remote${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_url}${cend}"
 			fi
 		fi
 
