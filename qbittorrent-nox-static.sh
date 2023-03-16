@@ -1122,6 +1122,9 @@ _download() {
 	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
 
+	[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
+	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
+
 	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
 
 	[[ "${source_default[${app_name}]}" == "folder" ]] && _download_folder
@@ -1168,9 +1171,6 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	# Set this to avoid some warning when cloning some modules
 	_git_git config --global advice.detachedHead false
 
-	[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
-	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
-
 	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
 		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 	else
@@ -1201,14 +1201,14 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 _download_file() {
 	printf '\n%b\n\n' " ${uplus} Installing ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
 
+	if [[ -f "${qbt_dl_file_path}" ]]; then
+		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
+		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
+		# delete any existing extracted archives and archives
+		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
+	fi
+
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
-		# delete the archive if it exists
-		if [[ -f "${qbt_dl_file_path}" ]]; then
-			# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
-			_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
-			# delete any existing extracted archives and archives
-			rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
-		fi
 		# download the remote source file using curl
 		_curl "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
 	fi
@@ -1218,10 +1218,10 @@ _download_file() {
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
 	# we don't need to cd into the boost if we download it via source archives
-	if [[ "${app_name}" != 'boost' ]]; then
-		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-		_pushd "${qbt_dl_folder_path}${sub_dir}"
-	fi
+
+	mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+	_pushd "${qbt_dl_folder_path}${sub_dir}"
+
 	unset sub_dir
 	return
 }
@@ -1312,7 +1312,6 @@ _cmake() {
 			fi
 		fi
 		printf '\n%b\n' " ${utick} ${clg}cmake and ninja are installed and ready to use${cend}"
-		exit
 	fi
 }
 #######################################################################################################################################################
@@ -1465,7 +1464,7 @@ _release_info() {
 
 	if _git_git ls-remote --exit-code --tags "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -q '"name": "dependency-version.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
-			until _curl_curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > remote-dependency-version.json; do
+			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > remote-dependency-version.json; do
 				printf '%b\n' "Waiting for dependency-version.json URL."
 				sleep 2
 			done
@@ -1595,10 +1594,15 @@ while (("${#}")); do
 				github_tag[boost]="$(_git "${github_url[boost]}" -t "boost-$2")"
 				app_version[boost]="${github_tag[boost]#boost-}"
 
-				if _curl "https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz" &> /dev/null; then
-					source_archive_url[boost]="https://github.com/boostorg/boost/releases/latest/download/boost-${2}.tar.gz"
+				if [[ "${app_version[boost]}" =~ \.beta ]]; then
+					boost_url="${2//\./_}" boost_url=${boost_url/beta1/b1} boost_url=${boost_url/beta2/b2}
+					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/beta/${2}/source/boost_${boost_url}.tar.gz"
 				else
 					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${2}/source/boost_${2//\./_}.tar.gz"
+				fi
+
+				if ! _curl -I "${source_archive_url[boost]}" &> /dev/null; then
+					source_default[libtorrent]="folder"
 				fi
 
 				qbt_workflow_override[boost]="yes"
