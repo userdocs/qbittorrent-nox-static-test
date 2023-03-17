@@ -31,8 +31,6 @@ jobs:
   build:
     needs: bootstrap
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
