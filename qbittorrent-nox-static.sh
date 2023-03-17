@@ -973,7 +973,6 @@ _installation_modules() {
 	unset passed_params
 
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
-
 		if [[ "${1}" == "all" ]]; then
 			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules array to leave only the modules to be activated
 			unset 'qbt_modules[0]'
@@ -1953,7 +1952,16 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
 _error_tag
+#######################################################################################################################################################
+# Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
+#######################################################################################################################################################
+_debug "${@}" # requires shifted params from options block 2
 
+_installation_modules "${@}" # requires shifted params from options block 2
+
+#######################################################################################################################################################
+# If any modules fail the qbt_modules_test then exit now.
+#######################################################################################################################################################
 if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	printf '\n%b\n' " ${tbk}${urc}${cend}${tb} One or more of the provided modules are not supported${cend}"
 	printf '\n%b\n' " ${uyc}${tb} Below is a list of supported modules${cend}"
@@ -1964,12 +1972,8 @@ if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	exit
 fi
 #######################################################################################################################################################
-# Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
+# Functions part 4:
 #######################################################################################################################################################
-_debug "${@}" # requires shifted params from options block 2
-
-_installation_modules "${@}" # requires shifted params from options block 2
-
 _cmake
 
 _multi_arch
