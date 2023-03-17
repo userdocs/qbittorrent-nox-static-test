@@ -1693,7 +1693,13 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "$2")"
 				app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-				source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
+
+				if [[ "${github_tag[qbittorrent]}" =~ ^release- ]]; then
+					source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
+				else
+					source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
+				fi
+
 				qbt_workflow_override[qbittorrent]="yes"
 				_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
 				shift 2
