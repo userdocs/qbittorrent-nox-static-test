@@ -1074,6 +1074,8 @@ _apply_patches() {
 
 		# Libtorrent specific stuff
 		if [[ "${app_name}" == 'libtorrent' ]]; then
+			# cosmetics
+			[[ "${source_default[libtorrent]}" == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n'
 
 			if [[ "${qbt_libtorrent_master_jamfile}" == "yes" ]]; then
 				_curl --create-dirs "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"
@@ -1085,10 +1087,10 @@ _apply_patches() {
 				if _curl --create-dirs "${patch_jamfile_url}" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"; then
 					printf '%b\n\n' " ${utick}${cr} Using downloaded custom Jamfile file${cend}"
 				else
+
 					printf '%b\n\n' " ${utick}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
 				fi
 			fi
-
 		fi
 
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
@@ -1134,19 +1136,20 @@ _download() {
 #######################################################################################################################################################
 _cache_dirs() {
 	if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
-		qbt_dl_dir="$(pwd)/${qbt_cache_dir}"
-	else
+		qbt_cache_dir="$(pwd)/${qbt_cache_dir}"
+	fi
+
+	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
 		qbt_dl_dir="${qbt_cache_dir}"
 	fi
 
-	if [[ ! -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
-		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
+	if [[ ! -d "${qbt_cache_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
+		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
 	fi
 
-	# If the module's folder exists then move into it and get the tag, if present or alternatively, the branch name - set it to cached_module_tag
-	if [[ -d "${qbt_dl_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
-		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_dir}/${app_name}${cend}"
-		_pushd "${qbt_dl_dir}/${app_name}"
+	if [[ -d "${qbt_cache_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
+		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
+		_pushd "${qbt_cache_dir}/${app_name}"
 		if [[ -z $(_git_git tag | sed 's/help//') ]]; then
 			_git_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
 		else
@@ -1156,7 +1159,7 @@ _cache_dirs() {
 		_popd
 	fi
 
-	if [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_dl_dir}/${app_name}" ]]; then
+	if [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_cache_dir}/${app_name}" ]]; then
 		source_default["${app_name}"]="folder"
 	fi
 
@@ -1166,13 +1169,13 @@ _cache_dirs() {
 # This function is for downloading git releases based on their tag.
 #######################################################################################################################################################
 _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}"
-	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/github_url_${app_name}.log" > /dev/null
+	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/${app_name}_github_url.log" > /dev/null
 
 	# Set this to avoid some warning when cloning some modules
 	_git_git config --global advice.detachedHead false
 
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
-		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_dl_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 	else
 		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
@@ -1186,11 +1189,15 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 		fi
 	fi
 
-	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
-		cp -rf "${qbt_dl_dir}/${app_name}"/. "${qbt_dl_folder_path}"
+	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+		cp -rf "${qbt_cache_dir}/${app_name}"/. "${qbt_dl_folder_path}"
+	fi
+
+	if [[ "${qbt_cache_dir_options}" != "bs" ]]; then
 		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
 		_pushd "${qbt_dl_folder_path}${sub_dir}"
 	fi
+
 	unset sub_dir
 	return
 }
@@ -1214,7 +1221,9 @@ _download_file() {
 
 	# Set the extracted dir name to a var to easily use or remove it
 	qbt_dl_folder_path="${qbt_install_dir}/$(tar tf "${qbt_dl_file_path}" | head -1 | cut -f1 -d"/")"
+
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
+
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
 	# we don't need to cd into the boost if we download it via source archives
 
@@ -1619,13 +1628,13 @@ while (("${#}")); do
 		-m | --master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]}"
-			source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/archive/refs/heads/${github_tag[libtorrent]}.tar.gz"
 			qbt_workflow_override[libtorrent]="yes"
+			source_default[libtorrent]="folder"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "master")"
 			app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-			source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
 			qbt_workflow_override[qbittorrent]="yes"
+			source_default[qbittorrent]="folder"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			shift
 			;;
@@ -1958,7 +1967,6 @@ _error_tag
 _debug "${@}" # requires shifted params from options block 2
 
 _installation_modules "${@}" # requires shifted params from options block 2
-
 #######################################################################################################################################################
 # If any modules fail the qbt_modules_test then exit now.
 #######################################################################################################################################################
@@ -2035,7 +2043,7 @@ _zlib() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _iconv() {
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
 		./gitsub.sh pull --depth 1
 		./autogen.sh
 	fi
@@ -2047,7 +2055,7 @@ _iconv() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu_bootstrap() {
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_dl_dir}/${app_name}" ]]; then
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
 		sub_dir="/icu4c/source"
 	else
 		sub_dir="/source"
