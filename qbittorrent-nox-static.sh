@@ -907,7 +907,7 @@ _set_module_urls() {
 		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
 	else
-		qbt_workflow_override[ninja]="yes"
+		qbt_workflow_override[ninja]="no"
 	fi
 	qbt_workflow_override[zlib]="no"
 	qbt_workflow_override[iconv]="no"
@@ -919,7 +919,6 @@ _set_module_urls() {
 	qbt_workflow_override[qtbase]="no"
 	qbt_workflow_override[qttools]="no"
 	qbt_workflow_override[qbittorrent]="no"
-
 	##########################################################################################################################################################
 	# The default source type we use for the download function
 	##########################################################################################################################################################
