@@ -1177,7 +1177,6 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 	else
 		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
-
 			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
 			_pushd "${qbt_dl_dir}/${app_name}"
 			git submodule update --force --recursive --init --remote --depth=1 --single-branch
