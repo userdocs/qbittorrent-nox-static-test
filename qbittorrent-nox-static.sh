@@ -145,6 +145,12 @@ _set_default_values() {
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
+	qbt_libtorrent_tag="${qbt_libtorrent_tag:-}"
+
+	qbt_qbittorrent_tag="${qbt_qbittorrent_tag:-}"
+
+	qbt_boost_tag="${qbt_boost_tag:-}"
+
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
 
@@ -1100,6 +1106,7 @@ _apply_patches() {
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
+	_pushd "${qbt_install_dir}"
 	[[ -n "${1}" ]] && app_name="${1}"
 	# The location we download source archives and folders to
 	qbt_dl_dir="${qbt_install_dir}"
@@ -1548,6 +1555,10 @@ _release_info() {
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
+
+[[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
+[[ -n "${qbt_qbittorrent_tag}" ]] && set -- -qt "${qbt_qbittorrent_tag}" "${@}"
+[[ -n "${qbt_boost_tag}" ]] && set -- -bv "${qbt_boost_tag}" "${@}"
 
 _check_dependencies # see functions
 
