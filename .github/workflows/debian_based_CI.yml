@@ -50,6 +50,7 @@ jobs:
         qbt_qt_version: ${{ matrix.qbt_qt_version }}
         qbt_build_tool: ${{ matrix.build_tool }}
         qbt_workflow_files: yes
+        qbt_debian_mode: standard
     steps:
       - uses: actions/checkout@v3
 
