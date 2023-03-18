@@ -419,10 +419,14 @@ while (("${#}")); do
 				qbt_cache_dir_options="${3}"
 				if [[ "${3}" == "rm" ]]; then
 					[[ -d "${qbt_cache_dir}" ]] && rm -rf "${qbt_cache_dir}"
-					printf '\n%b\n\n' " ${urc} ${clc}${qbt_cache_dir}${cend} removed"
+					printf '\n%b\n\n' " ${urc} Cache directory removed: ${clc}${qbt_cache_dir}${cend}"
 					exit
 				fi
 				shift 3
+			elif [[ -n "${3}" && ! "${3}" =~ ^- ]]; then
+				printf '\n%b\n' " ${urc} Only ${clb}bs${cend} or ${clb}rm${cend} are supported as conditionals for this switch${cend}"
+				printf '\n%b\n\n' " ${uyc} See ${clb}-h-cd${cend} for more information${cend}"
+				exit
 			else
 				shift 2
 			fi
@@ -621,7 +625,7 @@ _git() {
 	fi
 
 	status="$(
-		_git_git ls-remote --exit-code "${git_test_cmd[@]}" &> /dev/null
+		_git_git ls-remote -qht --refs --exit-code "${git_test_cmd[@]}" &> /dev/null
 		printf "%s" "${?}"
 	)"
 
@@ -1143,9 +1147,8 @@ _download() {
 #######################################################################################################################################################
 _cache_dirs() {
 	if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
-		qbt_cache_dir="$(pwd)/${qbt_cache_dir}"
+		qbt_cache_dir="${qbt_working_dir}/${qbt_cache_dir}"
 	fi
-
 	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
 		qbt_dl_dir="${qbt_cache_dir}"
 	fi
@@ -1157,11 +1160,15 @@ _cache_dirs() {
 	if [[ -d "${qbt_cache_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
 		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
 		_pushd "${qbt_cache_dir}/${app_name}"
-		if [[ -z $(_git_git tag | sed 's/help//') ]]; then
-			_git_git fetch origin "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
-		else
-			_git_git fetch origin tag "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules
+
+		if git ls-remote -qh --refs --exit-code "${github_url[${app_name}]}" "${github_tag[${app_name}]}" &> /dev/null; then
+			_git_git fetch origin "${github_tag[${app_name}]}:${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules --update-head-ok
 		fi
+
+		if git ls-remote -qt --refs --exit-code "${github_url[${app_name}]}" "${github_tag[${app_name}]}" &> /dev/null; then
+			_git_git fetch origin tag "${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules --update-head-ok
+		fi
+
 		_git_git checkout "${github_tag[${app_name}]}"
 		_popd
 	fi
@@ -1477,7 +1484,7 @@ _release_info() {
 		qbittorrent ${app_version[qbittorrent]} libtorrent ${app_version[libtorrent]}
 	TITLE_INFO
 
-	if _git_git ls-remote --exit-code --tags "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
+	if _git_git ls-remote -t --exit-code "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -q '"name": "dependency-version.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
 			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > remote-dependency-version.json; do
 				printf '%b\n' "Waiting for dependency-version.json URL."
@@ -1519,9 +1526,9 @@ _release_info() {
 
 		## Architectures and build info
 
-		These source code files are used for workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)
+		🔵 These source code files are used for workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)
 
-		These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+		🔵 These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
 
 		|  Arch   | Alpine Cross build files | Arch config |
 		| :-----: | :----------------------: | :---------: |
@@ -1530,13 +1537,15 @@ _release_info() {
 		| aarch64 |    aarch64-linux-musl    |   armv8-a   |
 		| x86_64  |    x86_64-linux-musl     |    amd64    |
 
-		## Build matrix for libtorrent ${github_tag[libtorrent]}
+		## Info about the build matrixes for qbittorrent-nox-static
 
-		ℹ️ With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
+		🟡 With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
 
-		ℹ️ [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
+		🟡 Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 
-		⚠️ Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
+		To see the build combinations that the script automates please check the build table.
+
+		🟠 [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
 
 		<!--
 		declare -A current_build_version
