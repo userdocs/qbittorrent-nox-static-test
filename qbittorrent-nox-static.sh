@@ -178,10 +178,14 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_build_tool=\"${clg}${qbt_build_tool}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_cross_name=\"${clg}${qbt_cross_name}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_patches_url=\"${clg}${qbt_patches_url}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_workflow_files=\"${clg}${qbt_workflow_files}${cly}\"${cend}"
-		[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${cly}  qbt_debian_mode=\"${clg}${qbt_debian_mode}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_cache_dir=\"${clg}${qbt_cache_dir}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_master_jamfile=\"${clg}${qbt_libtorrent_master_jamfile}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_libtorrent_tag=\"${clg}${github_tag[libtorrent]}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_qbittorrent_tag=\"${clg}${github_tag[qbittorrent]}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
+		[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${cly}  qbt_debian_mode=\"${clg}${qbt_debian_mode}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_workflow_files=\"${clg}${qbt_workflow_files}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_workflow_artifacts=\"${clg}${qbt_workflow_artifacts}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_cache_dir=\"${clg}${qbt_cache_dir}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_optimise_strip=\"${clg}${qbt_optimise_strip}${cly}\"${cend}"
 		printf '%b\n\n' " ${cly}  qbt_build_debug=\"${clg}${qbt_build_debug}${cly}\"${cend}"
 	}
@@ -1567,7 +1571,7 @@ _set_default_values "${@}" # see functions
 
 [[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n "${qbt_qbittorrent_tag}" ]] && set -- -qt "${qbt_qbittorrent_tag}" "${@}"
-[[ -n "${qbt_boost_tag}" ]] && set -- -bv "${qbt_boost_tag}" "${@}"
+[[ -n "${qbt_boost_tag}" ]] && set -- -bt "${qbt_boost_tag}" "${@}"
 
 _check_dependencies # see functions
 
@@ -1617,16 +1621,16 @@ while (("${#}")); do
 			_multi_arch
 			shift
 			;;
-		-bv | --boost-version)
+		-bt | --boost-version)
 			if [[ -n "${2}" ]]; then
-				github_tag[boost]="$(_git "${github_url[boost]}" -t "boost-$2")"
+				github_tag[boost]="$(_git "${github_url[boost]}" -t "${2}")"
 				app_version[boost]="${github_tag[boost]#boost-}"
 
 				if [[ "${app_version[boost]}" =~ \.beta ]]; then
-					boost_url="${2//\./_}" boost_url=${boost_url/beta1/b1} boost_url=${boost_url/beta2/b2}
-					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/beta/${2}/source/boost_${boost_url}.tar.gz"
+					boost_url="${app_version[boost]//\./_}" boost_url="${boost_url/beta1/b1}" boost_url="${boost_url/beta2/b2}"
+					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/beta/${app_version[boost]}/source/boost_${boost_url}.tar.gz"
 				else
-					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${2}/source/boost_${2//\./_}.tar.gz"
+					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//\./_}.tar.gz"
 				fi
 
 				if ! _curl -I "${source_archive_url[boost]}" &> /dev/null; then
@@ -1634,7 +1638,7 @@ while (("${#}")); do
 				fi
 
 				qbt_workflow_override[boost]="yes"
-				_test_git_ouput "${github_tag[boost]}" "boost" "boost-$2"
+				_test_git_ouput "${github_tag[boost]}" "boost" "${2}"
 				shift 2
 			else
 				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
@@ -1731,7 +1735,7 @@ while (("${#}")); do
 		-h | --help)
 			printf '\n%b\n\n' " ${tb}${tu}Here are a list of available options${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-b${cend}     ${td}or${cend} ${clb}--build-directory${cend}       ${cy}Help:${cend} ${clb}-h-b${cend}     ${td}or${cend} ${clb}--help-build-directory${cend}"
-			printf '%b\n' " ${cg}Use:${cend} ${clb}-bv${cend}    ${td}or${cend} ${clb}--boost-version${cend}         ${cy}Help:${cend} ${clb}-h-bv${cend}    ${td}or${cend} ${clb}--help-boost-version${cend}"
+			printf '%b\n' " ${cg}Use:${cend} ${clb}-bt${cend}    ${td}or${cend} ${clb}--boost-version${cend}         ${cy}Help:${cend} ${clb}-h-bt${cend}    ${td}or${cend} ${clb}--help-boost-version${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-c${cend}     ${td}or${cend} ${clb}--cmake${cend}                 ${cy}Help:${cend} ${clb}-h-c${cend}     ${td}or${cend} ${clb}--help-cmake${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-cd${cend}    ${td}or${cend} ${clb}--cache-directory${cend}       ${cy}Help:${cend} ${clb}-h-cd${cend}    ${td}or${cend} ${clb}--help-cache-directory${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-d${cend}     ${td}or${cend} ${clb}--debug${cend}                 ${cy}Help:${cend} ${clb}-h-d${cend}     ${td}or${cend} ${clb}--help-debug${cend}"
@@ -1780,9 +1784,13 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_qt_version=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}5 - 5.15 - 6 - 6.2 - 6.3 and so on${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_build_tool=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}qmake - cmake${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cross_name=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}x86_64 - aarch64 - armv7 - armhf${cend}"
-			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static.${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_patches_url=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}userdocs/qbittorrent-nox-static.${cend}"WW
+			printf '%b\n' " ${td}${clm}export qbt_libtorrent_tag=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for libtorrent${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_qbittorrent_tag=\"\"${cend} ${td}-----------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for qbittorrent${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_boost_tag=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for boost${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - skip bison gawk or instlal them - defaults to standard${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_files=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt-workflow-files for dependencies${cend}"
-			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - defaults to standard${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_workflow_artifacts=\"\"${cend} ${td}--------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt_workflow_artifacts for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cache_dir=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}path empty - provide a path to a cache directory${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_libtorrent_master_jamfile=\"\"${cend} ${td}-${cend} ${td}${clr}options${cend} ${td}yes no - use RC branch instead of release jamfile${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_optimise_strip=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - strip binaries - cannot be used with debug${cend}"
@@ -1850,10 +1858,11 @@ while (("${#}")); do
 			printf '\n%b\n\n' " And with ${clb}-c${cend} and ${clb}-ma${cend} : ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clb}-bs -bs-c -bs-ma -bs-r ${cend}"
 			exit
 			;;
-		-h-bv | --help-boost-version)
+		-h-bt | --help-boost-version)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n' " This will let you set a specific version of boost to use with older build combos"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-bv 1.76.0${cend}"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-bt boost-1.81.0${cend}"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-bt boost-1.82.0.beta1${cend}"
 			exit
 			;;
 		-h-c | --help-cmake)
