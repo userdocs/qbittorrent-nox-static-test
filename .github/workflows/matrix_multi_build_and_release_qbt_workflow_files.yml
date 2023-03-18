@@ -184,7 +184,7 @@ jobs:
         run: |
           paste -d '\n' 1.2/qt5-release.md 2.0/qt6-release.md | uniq > tmp-release.md
           paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
-          ./pandoc -f gfm tmp-release.md -t gfm -o release.md
+          ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: echo "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
