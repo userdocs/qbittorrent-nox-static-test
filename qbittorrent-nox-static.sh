@@ -282,14 +282,14 @@ _set_default_values() {
 	# Set the working dir to our current location and all things well be relative to this location.
 	qbt_working_dir="$(pwd)"
 
-	# Used with printf. Use the qbt_working_dir variable but the $HOME path is replaced with a literal ~
-	qbt_working_dir_short="${qbt_working_dir/$HOME/\~}"
+	# Used with printf. Use the qbt_working_dir variable but the ${HOME} path is replaced with a literal ~
+	qbt_working_dir_short="${qbt_working_dir/${HOME}/\~}"
 
 	# Install relative to the script location.
 	qbt_install_dir="${qbt_working_dir}/qbt-build"
 
-	# Used with printf. Use the qbt_install_dir variable but the $HOME path is replaced with a literal ~
-	qbt_install_dir_short="${qbt_install_dir/$HOME/\~}"
+	# Used with printf. Use the qbt_install_dir variable but the ${HOME} path is replaced with a literal ~
+	qbt_install_dir_short="${qbt_install_dir/${HOME}/\~}"
 
 	# Get the local users $PATH before we isolate the script by setting HOME to the install dir in the _set_build_directory function.
 	qbt_local_paths="$PATH"
@@ -564,14 +564,14 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CXXFLAGS="${optimize/*/$optimize }-std=${cxx_standard} -static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	CPPFLAGS="${optimize/*/$optimize }-static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	LDFLAGS="${optimize/*/$optimize }-static -L${lib_dir} -pthread"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} -static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
+	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
+	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -L${lib_dir} -pthread"
 }
 
 _custom_flags_reset() {
-	CXXFLAGS="${optimize/*/$optimize } -w -std=${cxx_standard}"
-	CPPFLAGS="${optimize/*/$optimize } -w"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} } -w -std=${cxx_standard}"
+	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} } -w"
 	LDFLAGS=""
 }
 #######################################################################################################################################################
@@ -625,7 +625,7 @@ _set_build_directory() {
 	if [[ -n "${qbt_build_dir}" ]]; then
 		if [[ "${qbt_build_dir}" =~ ^/ ]]; then
 			qbt_install_dir="${qbt_build_dir}"
-			qbt_install_dir_short="${qbt_install_dir/$HOME/\~}"
+			qbt_install_dir_short="${qbt_install_dir/${HOME}/\~}"
 		else
 			qbt_install_dir="${qbt_working_dir}/${qbt_build_dir}"
 			qbt_install_dir_short="${qbt_working_dir_short}/${qbt_build_dir}"
@@ -888,7 +888,7 @@ _installation_modules() {
 		python_short_version="${python_major}.${python_minor}"
 		python_link_version="${python_major}${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${optimize/*/$optimize }-std=${cxx_standard} <cxxflags>${optimize/*/$optimize }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "$HOME/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${uyc}${tb} Install Prefix${cend} : ${clc}${qbt_install_dir_short}${cend}"
@@ -1325,7 +1325,7 @@ _multi_arch() {
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
 				b2_toolset="gcc-arm"
-				printf '%b\n' "using gcc : arm : ${qbt_cross_host}-g++ : <cflags>${optimize/*/$optimize }-std=${cxx_standard} <cxxflags>${optimize/*/$optimize }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "$HOME/user-config.jam"
+				printf '%b\n' "using gcc : arm : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${b2_toolset}")     # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}") # ${multi_qbittorrent[@]}
 			fi
@@ -1532,7 +1532,7 @@ while (("${#}")); do
 			fi
 			;;
 		-o | --optimize)
-			optimize="-march=native"
+			qbt_optimize="-march=native"
 			shift
 			;;
 		-s | --strip)
