@@ -396,147 +396,6 @@ _check_dependencies() {
 	fi
 }
 #######################################################################################################################################################
-# This is first help section that for triggers that do not require any processing and only provide a static result whe using help
-#######################################################################################################################################################
-while (("${#}")); do
-	case ${1} in
-		-b | --build-directory)
-			qbt_build_dir="${2}"
-			shift 2
-			;;
-		-c | --cmake)
-			qbt_build_tool="cmake"
-			shift
-			;;
-		-d | --debug)
-			qbt_build_debug="yes"
-			shift
-			;;
-		-sdu | --script-debug-urls)
-			script_debug_urls="yes"
-			shift
-			;;
-		-dma | --debian-mode-alternate)
-			qbt_debian_mode="alternate"
-			shift
-			;;
-		-cd | --cache-directory)
-			qbt_cache_dir="${2%/}"
-			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
-				qbt_cache_dir_options="${3}"
-				if [[ "${3}" == "rm" ]]; then
-					[[ -d "${qbt_cache_dir}" ]] && rm -rf "${qbt_cache_dir}"
-					printf '\n%b\n\n' " ${urc} Cache directory removed: ${clc}${qbt_cache_dir}${cend}"
-					exit
-				fi
-				shift 3
-			elif [[ -n "${3}" && ! "${3}" =~ ^- ]]; then
-				printf '\n%b\n' " ${urc} Only ${clb}bs${cend} or ${clb}rm${cend} are supported as conditionals for this switch${cend}"
-				printf '\n%b\n\n' " ${uyc} See ${clb}-h-cd${cend} for more information${cend}"
-				exit
-			else
-				shift 2
-			fi
-			;;
-		-i | --icu)
-			qbt_skip_icu="no"
-			[[ "${qbt_skip_icu}" == "no" ]] && delete=("${delete[@]/icu/}")
-			shift
-			;;
-		-p | --proxy)
-			qbt_git_proxy="${2}"
-			qbt_curl_proxy="${2}"
-			shift 2
-			;;
-		-ma | --multi-arch)
-			if [[ -n "${2}" && "${2}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
-				qbt_cross_name="${2}"
-				shift 2
-			else
-				printf '\n%b\n' " ${ulrc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
-				printf '\n%b\n' " ${ulbc} armhf${cend}"
-				printf '%b\n' " ${ulbc} armv7${cend}"
-				printf '%b\n' " ${ulbc} aarch64${cend}"
-				printf '%b\n' " ${ulbc} x86_64${cend}"
-				printf '\n%b\n\n' " ${ulgc} Example usage:${clb} -ma aarch64${cend}"
-				exit 1
-			fi
-			;;
-		-o | --optimize)
-			optimize="-march=native"
-			shift
-			;;
-		-s | --strip)
-			qbt_optimise_strip="yes"
-			shift
-			;;
-		-wf | --workflow)
-			qbt_workflow_files="yes"
-			shift
-			;;
-		-h-cd | --help-cache-directory)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " This will let you set a path of a directory that contains cached github repos of modules"
-			printf '\n%b\n' " ${uyc} Cached apps folder names must match the module name. Case and spelling"
-			printf '\n%b\n' " For example: ${clc}~/cache_dir/qbittorrent${cend}"
-			printf '\n%b\n' " Additonal flags supported: ${clc}rm${cend} - remove the cache directory and exit"
-			printf '\n%b\n' " Additonal flags supported: ${clc}bs${cend} - download cache for all activated modules then exit"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
-			exit
-			;;
-		-h-dma | --help-debian-mode-alternate)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " This modes builds the dependencies ${clm}gawk${cend} and ${clm}bison${cend} from source"
-			printf '\n%b\n' " In the standard mode they are installed via ${clm}apt-get${cend} as dependencies"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-dma${cend}"
-			exit
-			;;
-		-h-o | --help-optimize)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} using this flag will mean your static build is limited a CPU that matches the host spec"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-o${cend}"
-			printf '\n%b\n\n' " Additonal flags used: ${clc}-march=native${cend}"
-			exit
-			;;
-		-h-p | --help-proxy)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " Specify a proxy URL and PORT to use with curl and git"
-			printf '\n%b\n' " ${ulbc} Usage examples:"
-			printf '\n%b\n' " ${clb}-p${cend} ${clc}username:password@https://123.456.789.321:8443${cend}"
-			printf '\n%b\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend}"
-			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
-			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
-			[[ -n "${qbt_curl_proxy}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy}${tn}${cend}"
-			exit
-			;;
-		-h-sdu | --help-script-debug-urls)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${ulbc} This will print out all the ${cly}_set_module_urls${cend} array info to check"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-sdu${cend}"
-			exit
-			;;
-		-h-wf | --help-work-flow)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${uyc} Use archives from ${clc}https://github.com/userdocs/qbt-workflow-files/releases/latest${cend}"
-			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} If you set a custom version for supported modules it will override and disable workflows as a source for that module"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-wf${cend}"
-			exit
-			;;
-		--) # end argument parsing
-			shift
-			break
-			;;
-		*) # preserve positional arguments
-			params1+=("${1}")
-			shift
-			;;
-	esac
-done
-# Set positional arguments in their proper place.
-set -- "${params1[@]}"
-#######################################################################################################################################################
 # This is a command test function: _cmd exit 1
 #######################################################################################################################################################
 _cmd() {
@@ -899,11 +758,12 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_archive_url
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+		qbt_workflow_archive_url[cmake_ninja]="${source_archive_url[cmake_ninja]}"
 		qbt_workflow_archive_url[bison]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/bison.tar.xz"
 		qbt_workflow_archive_url[gawk]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/gawk.tar.xz"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
 	else
-		qbt_workflow_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
+		qbt_workflow_archive_url[ninja]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/ninja.tar.xz"
 	fi
 	qbt_workflow_archive_url[zlib]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
 	qbt_workflow_archive_url[iconv]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/iconv.tar.xz"
@@ -920,6 +780,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_override
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+		qbt_workflow_override[cmake_ninja]="no"
 		qbt_workflow_override[bison]="no"
 		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
@@ -941,6 +802,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	declare -gA source_default
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+		source_default[cmake_ninja]="file"
 		source_default[bison]="file"
 		source_default[gawk]="file"
 		source_default[glibc]="file"
@@ -1148,6 +1010,8 @@ _download() {
 	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
 
 	[[ "${source_default[${app_name}]}" == "folder" ]] && _download_folder
+
+	return 0
 }
 #######################################################################################################################################################
 #
@@ -1245,13 +1109,20 @@ _download_file() {
 
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 
-	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
+	[[ "${app_name}" == "cmake_ninja" ]] && additional_cmds=("--strip-components=1")
+
+	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
 	# we don't need to cd into the boost if we download it via source archives
 
-	mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-	_pushd "${qbt_dl_folder_path}${sub_dir}"
+	if [[ "${app_name}" == "cmake_ninja" ]]; then
+		_delete_function
+	else
+		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+		_pushd "${qbt_dl_folder_path}${sub_dir}"
 
-	unset sub_dir
+	fi
+
+	unset sub_dir additional_cmds
 	return
 }
 #######################################################################################################################################################
@@ -1305,16 +1176,13 @@ _cmake() {
 
 		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
-
-				_curl "${source_archive_url[cmake_ninja]}" > "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
+				_download cmake_ninja
 				_post_command "Debian cmake and ninja installation"
-				tar xf "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-				rm -f "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
 
-				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
+				printf '%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
 			else
-				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
+				printf '%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
 			fi
 		fi
@@ -1568,6 +1436,176 @@ _release_info() {
 	return
 }
 #######################################################################################################################################################
+# This is first help section that for triggers that do not require any processing and only provide a static result whe using help
+#######################################################################################################################################################
+while (("${#}")); do
+	case ${1} in
+		-b | --build-directory)
+			qbt_build_dir="${2}"
+			shift 2
+			;;
+		-bs-c | --boot-strap-cmake)
+			qbt_build_tool="cmake"
+			params1+=("-bs-c")
+			shift
+			;;
+		-c | --cmake)
+			qbt_build_tool="cmake"
+			shift
+			;;
+		-d | --debug)
+			qbt_build_debug="yes"
+			shift
+			;;
+		-sdu | --script-debug-urls)
+			script_debug_urls="yes"
+			shift
+			;;
+		-dma | --debian-mode-alternate)
+			qbt_debian_mode="alternate"
+			shift
+			;;
+		-cd | --cache-directory)
+			qbt_cache_dir="${2%/}"
+			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
+				qbt_cache_dir_options="${3}"
+				if [[ "${3}" == "rm" ]]; then
+					[[ -d "${qbt_cache_dir}" ]] && rm -rf "${qbt_cache_dir}"
+					printf '\n%b\n\n' " ${urc} Cache directory removed: ${clc}${qbt_cache_dir}${cend}"
+					exit
+				fi
+				shift 3
+			elif [[ -n "${3}" && ! "${3}" =~ ^- ]]; then
+				printf '\n%b\n' " ${urc} Only ${clb}bs${cend} or ${clb}rm${cend} are supported as conditionals for this switch${cend}"
+				printf '\n%b\n\n' " ${uyc} See ${clb}-h-cd${cend} for more information${cend}"
+				exit
+			else
+				shift 2
+			fi
+			;;
+		-i | --icu)
+			qbt_skip_icu="no"
+			[[ "${qbt_skip_icu}" == "no" ]] && delete=("${delete[@]/icu/}")
+			shift
+			;;
+		-p | --proxy)
+			qbt_git_proxy="${2}"
+			qbt_curl_proxy="${2}"
+			shift 2
+			;;
+		-pr | --patch-repo)
+			if [[ -n "${2}" ]]; then
+				if _curl "https://github.com/${2}" &> /dev/null; then
+					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
+					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
+						qbt_patches_url="${2}"
+					else
+						printf '\n%b\n' " ${urc} ${cly}This patches directory does not exist in this repo:${cend}"
+						printf '\n%b\n' "   ${clc}https://github.com/${2}/tree/${default_branch}/patches${cend}"
+						printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo with a pacthes directory.${cend}"
+						exit
+					fi
+				else
+					printf '\n%b\n' " ${urc} ${cly}This repo does not exist:${cend}"
+					printf '\n%b\n' "   ${clc}https://github.com/${2}${cend}"
+					printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo.${cend}"
+					exit
+				fi
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} username/repo ${cend}"
+				exit
+			fi
+			;;
+		-ma | --multi-arch)
+			if [[ -n "${2}" && "${2}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+				qbt_cross_name="${2}"
+				shift 2
+			else
+				printf '\n%b\n' " ${ulrc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				printf '\n%b\n' " ${ulbc} armhf${cend}"
+				printf '%b\n' " ${ulbc} armv7${cend}"
+				printf '%b\n' " ${ulbc} aarch64${cend}"
+				printf '%b\n' " ${ulbc} x86_64${cend}"
+				printf '\n%b\n\n' " ${ulgc} Example usage:${clb} -ma aarch64${cend}"
+				exit 1
+			fi
+			;;
+		-o | --optimize)
+			optimize="-march=native"
+			shift
+			;;
+		-s | --strip)
+			qbt_optimise_strip="yes"
+			shift
+			;;
+		-wf | --workflow)
+			qbt_workflow_files="yes"
+			shift
+			;;
+		-h-cd | --help-cache-directory)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " This will let you set a path of a directory that contains cached github repos of modules"
+			printf '\n%b\n' " ${uyc} Cached apps folder names must match the module name. Case and spelling"
+			printf '\n%b\n' " For example: ${clc}~/cache_dir/qbittorrent${cend}"
+			printf '\n%b\n' " Additonal flags supported: ${clc}rm${cend} - remove the cache directory and exit"
+			printf '\n%b\n' " Additonal flags supported: ${clc}bs${cend} - download cache for all activated modules then exit"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
+			exit
+			;;
+		-h-dma | --help-debian-mode-alternate)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " This modes builds the dependencies ${clm}gawk${cend} and ${clm}bison${cend} from source"
+			printf '\n%b\n' " In the standard mode they are installed via ${clm}apt-get${cend} as dependencies"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-dma${cend}"
+			exit
+			;;
+		-h-o | --help-optimize)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} using this flag will mean your static build is limited a CPU that matches the host spec"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-o${cend}"
+			printf '\n%b\n\n' " Additonal flags used: ${clc}-march=native${cend}"
+			exit
+			;;
+		-h-p | --help-proxy)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " Specify a proxy URL and PORT to use with curl and git"
+			printf '\n%b\n' " ${ulbc} Usage examples:"
+			printf '\n%b\n' " ${clb}-p${cend} ${clc}username:password@https://123.456.789.321:8443${cend}"
+			printf '\n%b\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend}"
+			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
+			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
+			[[ -n "${qbt_curl_proxy}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy}${tn}${cend}"
+			exit
+			;;
+		-h-sdu | --help-script-debug-urls)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${ulbc} This will print out all the ${cly}_set_module_urls${cend} array info to check"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-sdu${cend}"
+			exit
+			;;
+		-h-wf | --help-workflow)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${uyc} Use archives from ${clc}https://github.com/userdocs/qbt-workflow-files/releases/latest${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} If you set a custom version for supported modules it will override and disable workflows as a source for that module"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-wf${cend}"
+			exit
+			;;
+		--) # end argument parsing
+			shift
+			break
+			;;
+		*) # preserve positional arguments
+			params1+=("${1}")
+			shift
+			;;
+	esac
+done
+# Set positional arguments in their proper place.
+set -- "${params1[@]}"
+#######################################################################################################################################################
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
@@ -1593,7 +1631,6 @@ while (("${#}")); do
 			shift
 			;;
 		-bs-c | --boot-strap-cmake)
-			qbt_build_tool="cmake"
 			_cmake
 			shift
 			;;
@@ -1689,22 +1726,6 @@ while (("${#}")); do
 				shift 2
 			else
 				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
-				exit
-			fi
-			;;
-		-pr | --patch-repo)
-			if [[ -n "${2}" ]]; then
-				if _curl "https://github.com/${2}" &> /dev/null; then
-					qbt_patches_url="${2}"
-				else
-					printf '\n%b\n' " ${cy}This repo does not exist:${cend}"
-					printf '\n%b\n' " https://github.com/${2}"
-					printf '\n%b\n\n' " ${cy}Please provide a valid username and repo.${cend}"
-					exit
-				fi
-				shift 2
-			else
-				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} username/repo ${cend}"
 				exit
 			fi
 			;;
