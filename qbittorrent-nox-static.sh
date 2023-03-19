@@ -1210,6 +1210,7 @@ _cmake() {
 		fi
 		printf '\n%b\n' " ${utick} ${clg}cmake and ninja are installed and ready to use${cend}"
 	fi
+	_pushd "${qbt_working_dir}"
 }
 #######################################################################################################################################################
 # This function handles the Multi Arch dynamics of the script.
@@ -1307,6 +1308,7 @@ _multi_arch() {
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_install_dir}/${qbt_cross_host}.tar.gz" ]]; then
 				_curl "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" > "${qbt_install_dir}/${qbt_cross_host}.tar.gz"
 				tar xf "${qbt_install_dir}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+				rm -f "${qbt_install_dir}/${qbt_cross_host}.tar.gz"
 			fi
 
 			_fix_multiarch_static_links "${qbt_cross_host}"
