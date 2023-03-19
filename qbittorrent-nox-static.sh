@@ -1309,7 +1309,7 @@ _cmake() {
 				_curl "${source_archive_url[cmake_ninja]}" > "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
 				_post_command "Debian cmake and ninja installation"
 				tar xf "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-				rm -f "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).deb"
+				rm -f "${qbt_install_dir}/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
 
 				printf '\n%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
