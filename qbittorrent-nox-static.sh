@@ -658,7 +658,7 @@ _set_module_urls() {
 		github_url[gawk]="https://git.savannah.gnu.org/git/gawk.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
 	else
-		github_url[ninja]="https://github.com/ninja-build/ninja.git"
+		github_url[ninja]="https://github.com/userdocs/qbt-ninja-build.git"
 	fi
 	github_url[zlib]="https://github.com/zlib-ng/zlib-ng.git"
 	github_url[iconv]="https://git.savannah.gnu.org/git/libiconv.git"
@@ -684,9 +684,8 @@ _set_module_urls() {
 			github_tag[glibc]="glibc-2.31"
 		fi
 	else
-		github_tag[ninja]="master"
+		github_tag[ninja]="$(_git_git ls-remote -q -t --refs "${github_url[ninja]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	fi
-	github_tag[ninja]="master"
 	github_tag[zlib]="develop"
 	github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
@@ -708,8 +707,8 @@ _set_module_urls() {
 		app_version[gawk]="${github_tag[gawk]#gawk-}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
 	else
-		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(-r)", ""); print $1 }')"
-		app_version[ninja]="$(_curl "https://raw.githubusercontent.com/ninja-build/ninja/master/src/version.cc" | sed -rn 's|const char\* kNinjaVersion = "(.*)";|\1|p' | sed 's/\.git//g')"
+		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(cmake-)", "");sub("(-r)", ""); print $1 }')"
+		app_version[ninja]="${github_tag[ninja]#v}"
 	fi
 	app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
 	app_version[iconv]="${github_tag[iconv]#v}"
@@ -730,8 +729,6 @@ _set_module_urls() {
 		source_archive_url[bison]="https://ftp.gnu.org/gnu/bison/$(grep -Eo 'bison-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/bison/) | sort -V | tail -1)"
 		source_archive_url[gawk]="https://ftp.gnu.org/gnu/gawk/$(grep -Eo 'gawk-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/gawk/) | sort -V | tail -1)"
 		source_archive_url[glibc]="https://ftp.gnu.org/gnu/libc/${github_tag[glibc]}.tar.gz"
-	else
-		source_archive_url[ninja]="https://github.com/ninja-build/ninja/archive/refs/heads/master.tar.gz"
 	fi
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	source_archive_url[iconv]="https://ftp.gnu.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/libiconv/) | sort -V | tail -1)"
@@ -762,8 +759,6 @@ _set_module_urls() {
 		qbt_workflow_archive_url[bison]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/bison.tar.xz"
 		qbt_workflow_archive_url[gawk]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/gawk.tar.xz"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
-	else
-		qbt_workflow_archive_url[ninja]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/ninja.tar.xz"
 	fi
 	qbt_workflow_archive_url[zlib]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
 	qbt_workflow_archive_url[iconv]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/iconv.tar.xz"
@@ -784,8 +779,6 @@ _set_module_urls() {
 		qbt_workflow_override[bison]="no"
 		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
-	else
-		qbt_workflow_override[ninja]="no"
 	fi
 	qbt_workflow_override[zlib]="no"
 	qbt_workflow_override[iconv]="no"
@@ -806,8 +799,6 @@ _set_module_urls() {
 		source_default[bison]="file"
 		source_default[gawk]="file"
 		source_default[glibc]="file"
-	else
-		source_default[ninja]="file"
 	fi
 	source_default[zlib]="file"
 	source_default[iconv]="file"
@@ -980,7 +971,9 @@ _apply_patches() {
 #######################################################################################################################################################
 _download() {
 	_pushd "${qbt_install_dir}"
+
 	[[ -n "${1}" ]] && app_name="${1}"
+
 	# The location we download source archives and folders to
 	qbt_dl_dir="${qbt_install_dir}"
 
@@ -999,8 +992,8 @@ _download() {
 
 	[[ -n "${qbt_cache_dir}" ]] && _cache_dirs
 
-	qbt_dl_file_path="${qbt_install_dir}/${app_name}.tar.xz"
-	qbt_dl_folder_path="${qbt_install_dir}/${app_name}"
+	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
+	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
 		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
@@ -1047,6 +1040,8 @@ _cache_dirs() {
 	if [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_cache_dir}/${app_name}" ]]; then
 		source_default["${app_name}"]="folder"
 	fi
+
+	[[ "${app_name}" == "cmake_ninja" ]] && source_default["${app_name}"]="file"
 
 	return
 }
@@ -1101,7 +1096,7 @@ _download_file() {
 		fi
 
 		# download the remote source file using curl
-		_curl "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
+		_curl --create-dirs "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
 	fi
 
 	# Set the extracted dir name to a var to easily use or remove it
@@ -1114,12 +1109,11 @@ _download_file() {
 	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
 	# we don't need to cd into the boost if we download it via source archives
 
-	if [[ "${app_name}" == "cmake_ninja" ]]; then
+	if [[ "${app_name}" == "cmake_ninja" && -z "${qbt_cache_dir}" ]]; then
 		_delete_function
 	else
 		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
 		_pushd "${qbt_dl_folder_path}${sub_dir}"
-
 	fi
 
 	unset sub_dir additional_cmds
@@ -1179,33 +1173,19 @@ _cmake() {
 				_download cmake_ninja
 				_post_command "Debian cmake and ninja installation"
 
-				printf '%b\n' " ${uyc} Installed cmake: ${cly}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${uyc} Installed ninja: ${cly}${app_version[ninja_debian]}"
-			else
 				printf '%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
 			fi
 		fi
 
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
-			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]%\.git}" ]]; then
-				_download ninja
+			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]}" ]]; then
+				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-${qbt_cross_name:-x86_64}" -o "${qbt_install_dir}/bin/ninja"
+				_post_command ninja
+				chmod 700 "${qbt_install_dir}/bin/ninja"
 
-				if [[ "${qbt_cache_dir_options}" != 'bs' ]]; then
-					cmake -Wno-dev -Wno-deprecated -B build \
-						-D CMAKE_BUILD_TYPE="release" \
-						-D CMAKE_CXX_STANDARD="${standard}" \
-						-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
-						-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/ninja.log"
-					cmake --build build -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-
-					_post_command build
-
-					cmake --install build |& _tee -a "${qbt_install_dir}/logs/ninja.log"
-					[[ -d "${qbt_install_dir}/ninja" ]] && rm -rf "${qbt_install_dir}/ninja"
-					[[ -d "${qbt_install_dir}/ninja-master" ]] && rm -rf "${qbt_install_dir}/ninja-master"
-					[[ -f "${qbt_install_dir}/ninja.tar.xz" ]] && rm -f "${qbt_install_dir}/ninja.tar.xz"
-				fi
+				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake]}"
+				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja]}"
 			fi
 		fi
 		printf '\n%b\n' " ${utick} ${clg}cmake and ninja are installed and ready to use${cend}"
