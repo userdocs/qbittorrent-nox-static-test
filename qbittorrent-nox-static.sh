@@ -49,15 +49,13 @@ cc="\e[36m" clc="\e[96m" # [c]olor[c]yan    [c]olor[l]ight[c]yan
 
 tb="\e[1m" td="\e[2m" tu="\e[4m" tn="\n" tbk="\e[5m" # [t]ext[b]old [t]ext[d]im [t]ext[u]nderlined [t]ext[n]ewline [t]ext[b]lin[k]
 
-utick="\e[32m\U2714\e[0m" uplus="\e[36m\U002b\e[0m" ucross="\e[31m\U00D7\e[0m" # [u]nicode][tick] [u]nicode][plus] [u]nicode][cross]
-
-urc="\e[31m\U25cf\e[0m" ulrc="\e[91m\U25cf\e[0m"    # [u]nicode[r]ed[c]ircle     [u]nicode[l]ight[r]ed[c]ircle
-ugc="\e[32m\U25cf\e[0m" ulgc="\e[92m\U25cf\e[0m"    # [u]nicode[g]reen[c]ircle   [u]nicode[l]ight[g]reen[c]ircle
-uyc="\e[33m\U25cf\e[0m" ulyc="\e[93m\U25cf\e[0m"    # [u]nicode[y]ellow[c]ircle  [u]nicode[l]ight[y]ellow[c]ircle
-ubc="\e[34m\U25cf\e[0m" ulbc="\e[94m\U25cf\e[0m"    # [u]nicode[b]lue[c]ircle    [u]nicode[l]ight[b]lue[c]ircle
-umc="\e[35m\U25cf\e[0m" ulmc="\e[95m\U25cf\e[0m"    # [u]nicode[m]agenta[c]ircle [u]nicode[l]ight[m]agenta[c]ircle
-ucc="\e[36m\U25cf\e[0m" ulcc="\e[96m\U25cf\e[0m"    # [u]nicode[c]yan[c]ircle    [u]nicode[l]ight[c]yan[c]ircle
-ugrc="\e[37m\U25cf\e[0m" ulgrcc="\e[97m\U25cf\e[0m" # [u]nicode[gr]ey[c]ircle    [u]nicode[l]ight[gr]ey[c]ircle
+urc="\e[31m\U2B24\e[0m" ulrc="\e[91m\U2B24\e[0m"    # [u]nicode[r]ed[c]ircle     [u]nicode[l]ight[r]ed[c]ircle
+ugc="\e[32m\U2B24\e[0m" ulgc="\e[92m\U2B24\e[0m"    # [u]nicode[g]reen[c]ircle   [u]nicode[l]ight[g]reen[c]ircle
+uyc="\e[33m\U2B24\e[0m" ulyc="\e[93m\U2B24\e[0m"    # [u]nicode[y]ellow[c]ircle  [u]nicode[l]ight[y]ellow[c]ircle
+ubc="\e[34m\U2B24\e[0m" ulbc="\e[94m\U2B24\e[0m"    # [u]nicode[b]lue[c]ircle    [u]nicode[l]ight[b]lue[c]ircle
+umc="\e[35m\U2B24\e[0m" ulmc="\e[95m\U2B24\e[0m"    # [u]nicode[m]agenta[c]ircle [u]nicode[l]ight[m]agenta[c]ircle
+ucc="\e[36m\U2B24\e[0m" ulcc="\e[96m\U2B24\e[0m"    # [u]nicode[c]yan[c]ircle    [u]nicode[l]ight[c]yan[c]ircle
+ugrc="\e[37m\U2B24\e[0m" ulgrcc="\e[97m\U2B24\e[0m" # [u]nicode[gr]ey[c]ircle    [u]nicode[l]ight[gr]ey[c]ircle
 
 cdef="\e[39m" # [c]olor[def]ault
 cend="\e[0m"  # [c]olor[end]
@@ -324,11 +322,11 @@ _check_dependencies() {
 		fi
 
 		if pkgman > /dev/null 2>&1; then
-			printf '%b\n' " ${utick} ${pkg}"
+			printf '%b\n' " ${ugc} ${pkg}"
 		else
 			if [[ -n "${pkg}" ]]; then
 				deps_installed="no"
-				printf '%b\n' " ${ucross} ${pkg}"
+				printf '%b\n' " ${urc} ${pkg}"
 				qbt_checked_required_pkgs+=("$pkg")
 			fi
 		fi
@@ -337,7 +335,7 @@ _check_dependencies() {
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 	if [[ "${deps_installed}" == "no" ]]; then
 		if [[ "$(id -un)" == 'root' ]]; then
-			printf '\n%b\n\n' " ${uplus} ${cg}Updating${cend}"
+			printf '\n%b\n\n' " ${ulbc} ${cg}Updating${cend}"
 
 			if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 				apk update --repository="${CDN_URL}"
@@ -356,7 +354,7 @@ _check_dependencies() {
 				exit
 			}
 
-			printf '\n%b\n\n' " ${uplus}${cg} Installing required dependencies${cend}"
+			printf '\n%b\n\n' " ${ulbc}${cg} Installing required dependencies${cend}"
 
 			if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 				if ! apk add "${qbt_checked_required_pkgs[@]}" --repository="${CDN_URL}"; then
@@ -372,7 +370,7 @@ _check_dependencies() {
 				fi
 			fi
 
-			printf '\n%b\n' " ${utick}${cg} Dependencies installed!${cend}"
+			printf '\n%b\n' " ${ugc}${cg} Dependencies installed!${cend}"
 
 			deps_installed="yes"
 		else
@@ -587,12 +585,12 @@ _install_qbittorrent() {
 			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "${LOCAL_USER_HOME}/bin"
 		fi
 
-		printf '\n%b\n' " ${uplus} qbittorrent-nox has been installed!${cend}"
+		printf '\n%b\n' " ${ulbc} qbittorrent-nox has been installed!${cend}"
 		printf '\n%b\n\n' " Run it using this command:"
 		[[ "$(id -un)" == 'root' ]] && printf '\n%b\n\n' " ${cg}qbittorrent-nox${cend}" || printf '\n%b\n\n' " ${cg}~/bin/qbittorrent-nox${cend}"
 		exit
 	else
-		printf '\n%b\n\n' " ${ucross} qbittorrent-nox has not been built to the defined install directory:"
+		printf '\n%b\n\n' " ${urc} qbittorrent-nox has not been built to the defined install directory:"
 		printf '\n%b\n' "${cg}${qbt_install_dir_short}/completed${cend}"
 		printf '\n%b\n\n' "Please build it using the script first then install"
 		exit
@@ -928,17 +926,13 @@ _apply_patches() {
 		patch_jamfile="${patch_dir}/Jamfile"
 		patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 
-		# [[ ${qbt_workflow_files} == "no" ]] && printf '\n's
-		# [[ "${app_name}" == 'qbittorrent' ]] && printf '\n' # purely cosmetic
-		# [[ ! -d "${patch_dir}" ]] && mkdir -p "${patch_dir}"
-
 		# If the patch file exists in the module version folder matching the build configuration then use this.
 		if [[ -f "${patch_file}" ]]; then
-			printf '%b\n\n' " ${utick} ${cr}Patching${cend} ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
+			printf '%b\n\n' " ${ugc} ${cr}Patching${cend} ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
 		else
 			# Else check that if there is a remotely host patch file available in the patch repo
 			if _curl --create-dirs "${patch_file_url}" -o "${patch_file}"; then
-				printf '%b\n\n' " ${utick} ${cr}Patching${cend} ${clr}remote${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_url}${cend}"
+				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} ${clr}remote${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_url}${cend}"
 			fi
 		fi
 
@@ -949,16 +943,16 @@ _apply_patches() {
 
 			if [[ "${qbt_libtorrent_master_jamfile}" == "yes" ]]; then
 				_curl --create-dirs "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"
-				printf '%b\n\n' " ${utick}${cr} Using libtorrent branch master Jamfile file${cend}"
+				printf '%b\n\n' " ${ugc}${cr} Using libtorrent branch master Jamfile file${cend}"
 			elif [[ -f "${patch_dir}/Jamfile" ]]; then
 				cp -f "${patch_dir}/Jamfile" "${qbt_dl_folder_path}/${patch_jamfile##*/}"
-				printf '%b\n\n' " ${utick}${cr} Using existing custom Jamfile file${cend}"
+				printf '%b\n\n' " ${ugc}${cr} Using existing custom Jamfile file${cend}"
 			else
 				if _curl --create-dirs "${patch_jamfile_url}" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"; then
-					printf '%b\n\n' " ${utick}${cr} Using downloaded custom Jamfile file${cend}"
+					printf '%b\n\n' " ${ugc}${cr} Using downloaded custom Jamfile file${cend}"
 				else
 
-					printf '%b\n\n' " ${utick}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
+					printf '%b\n\n' " ${ugc}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
 				fi
 			fi
 		fi
@@ -1054,7 +1048,7 @@ _download_folder() {
 
 	# if cache dir is on and the app_name folder does not exist then get folder via cloning default source
 	if [[ -n "${qbt_cache_dir}" && ! -d "${qbt_dl_folder_path}" ]]; then
-		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		printf "\n%b\n\n" " ${ulbc} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 
 		if [[ "${app_name}" =~ (bison|qttools) ]]; then
 			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
@@ -1068,7 +1062,7 @@ _download_folder() {
 	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_dl_folder_path}" ]]; then
-		printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		printf "\n%b\n\n" " ${ulbc} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
 		cp -rf "${qbt_dl_folder_path}" "${qbt_install_dir}/"
 	fi
 
@@ -1086,18 +1080,24 @@ _download_folder() {
 #######################################################################################################################################################
 _download_file() {
 
-	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n\n' " ${uplus} Copying cached ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
-		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
+	if [[ "${qbt_cache_dir_options}" != "bs" && ! -f "${qbt_dl_file_path}" ]]; then
+		printf '\n%b\n' " ${ulbc} Dowloading ${clm}${app_name}${cend} using ${cly}${source_type}${cend} files to ${clc}${qbt_dl_file_path}${cend} - ${cly}${qbt_dl_source_url}${cend}"
 	fi
 
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		printf '\n%b\n' " ${ulbc} Caching ${clm}${app_name}${cend} ${cly}${source_type}${cend} files to ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend} - ${cly}${qbt_dl_source_url}${cend}"
 	fi
 
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		printf '\n%b\n' " ${ugc} Using ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 	fi
+
+	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
+		printf '\n%b\n' " ${ulbc} Copying cached ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
+	fi
+
+	# [[ "${qbt_cache_dir_options}" != "bs" || "${app_name}" != "cmake_ninja" ]] && printf '\n'
 
 	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
 		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
@@ -1168,13 +1168,14 @@ _fix_multiarch_static_links() {
 # This function is for removing files and folders we no longer need
 #######################################################################################################################################################
 _delete_function() {
+	[[ "${app_name}" != "cmake_ninja" ]] && printf '\n'
 	if [[ "${qbt_skip_delete}" != "yes" ]]; then
-		printf '\n%b\n' " ${utick}${clr} Deleting ${app_name} installation files and folders${cend}"
+		printf '%b\n' " ${ugc}${clr} Deleting ${app_name} uncached installation files and folders${cend}"
 		[[ -f "${qbt_dl_file_path}" && "${qbt_workflow_artifacts}" == "no" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
 		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
 		_pushd "${qbt_working_dir}"
 	else
-		printf '\n%b\n' " ${uyc}${clr} Skipping ${app_name} deletion${cend}"
+		printf '%b\n' " ${uyc}${clr} Skipping ${app_name} deletion${cend}"
 	fi
 }
 #######################################################################################################################################################
@@ -1182,7 +1183,7 @@ _delete_function() {
 #######################################################################################################################################################
 _cmake() {
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
-		printf '\n%b\n' " ${uplus} ${clb}Checking if cmake and ninja need to be installed${cend}"
+		printf '\n%b\n' " ${ulbc} ${clb}Checking if cmake and ninja need to be installed${cend}"
 		mkdir -p "${qbt_install_dir}/bin"
 
 		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
@@ -1205,7 +1206,7 @@ _cmake() {
 				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja]}"
 			fi
 		fi
-		printf '\n%b\n' " ${utick} ${clg}cmake and ninja are installed and ready to use${cend}"
+		printf '\n%b\n' " ${ugc} ${clg}cmake and ninja are installed and ready to use${cend}"
 	fi
 	_pushd "${qbt_working_dir}"
 }
@@ -1330,7 +1331,7 @@ _multi_arch() {
 			fi
 			return
 		else
-			printf '\n%b\n\n' " ${ulrc} Multiarch only works with Alpine Linux (native or docker)${cend}"
+			printf '\n%b\n\n' " ${urc} Multiarch only works with Alpine Linux (native or docker)${cend}"
 			exit 1
 		fi
 	else
@@ -1521,12 +1522,12 @@ while (("${#}")); do
 				qbt_cross_name="${2}"
 				shift 2
 			else
-				printf '\n%b\n' " ${ulrc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				printf '\n%b\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
 				printf '\n%b\n' " ${ulbc} armhf${cend}"
 				printf '%b\n' " ${ulbc} armv7${cend}"
 				printf '%b\n' " ${ulbc} aarch64${cend}"
 				printf '%b\n' " ${ulbc} x86_64${cend}"
-				printf '\n%b\n\n' " ${ulgc} Example usage:${clb} -ma aarch64${cend}"
+				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
 				exit 1
 			fi
 			;;
@@ -1642,12 +1643,12 @@ while (("${#}")); do
 				qbt_cross_name="${2}"
 				shift 2
 			else
-				printf '\n%b\n' " ${ulrc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				printf '\n%b\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
 				printf '\n%b\n' " ${ulyc} armhf${cend}"
 				printf '%b\n' " ${ulyc} armv7${cend}"
 				printf '%b\n' " ${ulyc} aarch64${cend}"
 				printf '%b\n' " ${ulyc} x86_64${cend}"
-				printf '\n%b\n\n' " ${ulgc} example usage:${clb} -ma aarch64${cend}"
+				printf '\n%b\n\n' " ${ugc} example usage:${clb} -ma aarch64${cend}"
 				exit 1
 			fi
 			_multi_arch
@@ -2003,7 +2004,7 @@ while (("${#}")); do
 			break
 			;;
 		-*) # unsupported flags
-			printf '\n%b\n\n' " ${ulrc} Error: Unsupported flag ${clr}${1}${cend} - use ${clg}-h${cend} or ${clg}--help${cend} to see the valid options${cend}" >&2
+			printf '\n%b\n\n' " ${urc} Error: Unsupported flag ${clr}${1}${cend} - use ${clg}-h${cend} or ${clg}--help${cend} to see the valid options${cend}" >&2
 			exit 1
 			;;
 		*) # preserve positional arguments
@@ -2309,7 +2310,7 @@ _qtbase() {
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${urc} Please use a correct qt and build tool combination"
-		printf '\n%b\n\n' " ${urc} ${utick} qt5 + qmake ${utick} qt6 + cmake ${ucross} qt5 + cmake ${ucross} qt6 + qmake"
+		printf '\n%b\n\n' " ${urc} ${ugc} qt5 + qmake ${ugc} qt6 + cmake ${urc} qt5 + cmake ${urc} qt6 + qmake"
 		exit 1
 	fi
 }
@@ -2341,7 +2342,7 @@ _qttools() {
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${urc} Please use a correct qt and build tool combination"
-		printf '\n%b\n' " ${urc} ${utick} qt5 + qmake ${utick} qt6 + cmake ${ucross} qt5 + cmake ${ucross} qt6 + qmake"
+		printf '\n%b\n' " ${urc} ${ugc} qt5 + qmake ${ugc} qt6 + cmake ${urc} qt5 + cmake ${urc} qt6 + qmake"
 		exit 1
 	fi
 }
