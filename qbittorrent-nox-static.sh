@@ -976,6 +976,8 @@ _download() {
 
 	# The location we download source archives and folders to
 	qbt_dl_dir="${qbt_install_dir}"
+	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
+	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
 
 	if [[ "${qbt_workflow_files}" == "no" ]] || [[ "${qbt_workflow_override[${app_name}]}" == "yes" ]]; then
 		qbt_dl_source_url="${source_archive_url[${app_name}]}"
@@ -991,17 +993,7 @@ _download() {
 	fi
 
 	[[ -n "${qbt_cache_dir}" ]] && _cache_dirs
-
-	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
-	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
-
-	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
-		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
-		[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name}"
-	fi
-
 	[[ "${source_default[${app_name}]}" == "file" ]] && _download_file
-
 	[[ "${source_default[${app_name}]}" == "folder" ]] && _download_folder
 
 	return 0
@@ -1010,20 +1002,43 @@ _download() {
 #
 #######################################################################################################################################################
 _cache_dirs() {
+	# If the path is not starting with / then make it a full path by prepending the qbt_working_dir path
 	if [[ ! "${qbt_cache_dir}" =~ ^/ ]]; then
 		qbt_cache_dir="${qbt_working_dir}/${qbt_cache_dir}"
 	fi
-	if [[ "${qbt_cache_dir_options}" == "bs" ]]; then
-		qbt_dl_dir="${qbt_cache_dir}"
+
+	qbt_dl_dir="${qbt_cache_dir}"
+	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
+	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
+
+	if [[ "${app_name}" == "cmake_ninja" ]]; then
+		source_default["${app_name}"]="file"
+	elif [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_dl_folder_path}" ]]; then
+		source_default["${app_name}"]="folder"
 	fi
 
-	if [[ ! -d "${qbt_cache_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
-		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
+	return
+}
+#######################################################################################################################################################
+# This function is for downloading git releases based on their tag.
+#######################################################################################################################################################
+_download_folder() {
+	# Set this to avoid some warning when cloning some modules
+	_git_git config --global advice.detachedHead false
+
+	# If not using artifacts remove the source files in the build directory if present before we download or copy them again
+	[[ -d "${qbt_install_dir}/${app_name}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
+	[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name:?}"
+
+	# if there IS NOT and app_name cache directory present in the path provided and we are bootstrapping then use this echo
+	if [[ "${qbt_cache_dir_options}" == "bs" && ! -d "${qbt_dl_folder_path}" ]]; then
+		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_dl_folder_path}${cend}"
 	fi
 
-	if [[ -d "${qbt_cache_dir}/${app_name}" && "${qbt_cache_dir_options}" == "bs" ]]; then
-		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_cache_dir}/${app_name}${cend}"
-		_pushd "${qbt_cache_dir}/${app_name}"
+	# if there IS a app_name cache directory present in the path provided and we are bootstrapping then use this
+	if [[ "${qbt_cache_dir_options}" == "bs" && -d "${qbt_dl_folder_path}" ]]; then
+		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_folder_path}${cend}"
+		_pushd "${qbt_dl_folder_path}"
 
 		if git ls-remote -qh --refs --exit-code "${github_url[${app_name}]}" "${github_tag[${app_name}]}" &> /dev/null; then
 			_git_git fetch origin "${github_tag[${app_name}]}:${github_tag[${app_name}]}" --no-tags --depth=1 --recurse-submodules --update-head-ok
@@ -1037,46 +1052,32 @@ _cache_dirs() {
 		_popd
 	fi
 
-	if [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_cache_dir}/${app_name}" ]]; then
-		source_default["${app_name}"]="folder"
-	fi
-
-	[[ "${app_name}" == "cmake_ninja" ]] && source_default["${app_name}"]="file"
-
-	return
-}
-#######################################################################################################################################################
-# This function is for downloading git releases based on their tag.
-#######################################################################################################################################################
-_download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}"
-	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/${app_name}_github_url.log" > /dev/null
-
-	# Set this to avoid some warning when cloning some modules
-	_git_git config --global advice.detachedHead false
-
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
-		[[ "${qbt_cache_dir_options}" != "bs" ]] && printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
-	else
+	# if cache dir is on and the app_name folder does not exist then get folder via cloning default source
+	if [[ -n "${qbt_cache_dir}" && ! -d "${qbt_dl_folder_path}" ]]; then
 		printf "\n%b\n\n" " ${uplus} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
-		if [[ -n "${qbt_cache_dir}" && "${app_name}" =~ (bison|qttools) ]]; then
-			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
-			_pushd "${qbt_dl_dir}/${app_name}"
+
+		if [[ "${app_name}" =~ (bison|qttools) ]]; then
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
+			_pushd "${qbt_dl_folder_path}"
 			git submodule update --force --recursive --init --remote --depth=1 --single-branch
 			[[ "${app_name}" == "bison" ]] && ./bootstrap
 			_popd
 		else
-			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_dir}/${app_name}"
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
 		fi
 	fi
 
-	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
-		cp -rf "${qbt_cache_dir}/${app_name}"/. "${qbt_dl_folder_path}"
+	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_dl_folder_path}" ]]; then
+		printf "\n%b\n\n" " ${uplus} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		cp -rf "${qbt_dl_folder_path}" "${qbt_install_dir}/"
 	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" ]]; then
-		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-		_pushd "${qbt_dl_folder_path}${sub_dir}"
+		mkdir -p "${qbt_install_dir}/${app_name}${sub_dir}"
+		_pushd "${qbt_install_dir}/${app_name}${sub_dir}"
 	fi
+
+	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/${app_name}_github_url.log" > /dev/null
 
 	unset sub_dir
 	return
@@ -1085,18 +1086,28 @@ _download_folder() { # download_folder "${app_name}" "${github_url[${app_name}]}
 # This function is for downloading source code archives
 #######################################################################################################################################################
 _download_file() {
-	printf '\n%b\n\n' " ${uplus} Installing ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+
+	if [[ -n "${qbt_cache_dir}" && -f "${qbt_dl_file_path}" ]]; then
+		printf '\n%b\n\n' " ${uplus} Copying cached ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
+	fi
+
+	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
+		printf '\n%b\n\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+	fi
+
+	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
+		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
+		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_install_dir}/${app_name}.tar.xz")
+		# delete any existing extracted archives and archives
+		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_install_dir}/${app_name}.tar.xz" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
+	fi
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
-		if [[ -f "${qbt_dl_file_path}" ]]; then
-			# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
-			_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_dl_file_path}")
-			# delete any existing extracted archives and archives
-			rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
-		fi
-
 		# download the remote source file using curl
-		_curl --create-dirs "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
+		if [[ ! -f "${qbt_dl_file_path}" ]]; then
+			_curl --create-dirs "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
+		fi
 	fi
 
 	# Set the extracted dir name to a var to easily use or remove it
@@ -1153,7 +1164,7 @@ _fix_multiarch_static_links() {
 _delete_function() {
 	if [[ "${qbt_skip_delete}" != "yes" ]]; then
 		printf '\n%b\n' " ${utick}${clr} Deleting ${app_name} installation files and folders${cend}"
-		[[ -f "${qbt_dl_file_path}" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
+		[[ -f "${qbt_dl_file_path}" && "${qbt_workflow_artifacts}" == "no" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
 		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
 		_pushd "${qbt_working_dir}"
 	else
@@ -1173,7 +1184,7 @@ _cmake() {
 				_download cmake_ninja
 				_post_command "Debian cmake and ninja installation"
 
-				printf '%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
+				printf '\n%b\n' " ${uyc} Using cmake: ${cly}${app_version[cmake_debian]}"
 				printf '\n%b\n' " ${uyc} Using ninja: ${cly}${app_version[ninja_debian]}"
 			fi
 		fi
@@ -2110,9 +2121,9 @@ _icu() {
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
-		"${qbt_install_dir}/${app_name}/source/runConfigureICU" Linux/gcc
+		"${qbt_install_dir}/${app_name}/${sub_dir}/runConfigureICU" Linux/gcc
 		make -j"$(nproc)"
-		_pushd "${qbt_install_dir}/${app_name}/source"
+		_pushd "${qbt_install_dir}/${app_name}/${sub_dir}"
 	fi
 
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
