@@ -1079,7 +1079,6 @@ _download_folder() {
 
 	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/${app_name}_github_url.log" > /dev/null
 
-	unset sub_dir
 	return
 }
 #######################################################################################################################################################
@@ -1134,7 +1133,7 @@ _download_file() {
 		fi
 	fi
 
-	unset sub_dir additional_cmds
+	unset additional_cmds
 	return
 }
 #######################################################################################################################################################
@@ -2073,6 +2072,8 @@ _glibc() {
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
 	_post_command build
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+
+	unset sub_dir
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317
@@ -2116,7 +2117,7 @@ _iconv() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu_bootstrap() {
-	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" ]]; then
+	if [[ -n "${qbt_cache_dir}" && -d "${qbt_cache_dir}/${app_name}" && "${qbt_workflow_files}" == "no" ]]; then
 		sub_dir="/icu4c/source"
 	else
 		sub_dir="/source"
@@ -2128,15 +2129,17 @@ _icu() {
 	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
-		"${qbt_install_dir}/${app_name}/${sub_dir}/runConfigureICU" Linux/gcc
+		"${qbt_install_dir}/${app_name}${sub_dir}/runConfigureICU" Linux/gcc
 		make -j"$(nproc)"
-		_pushd "${qbt_install_dir}/${app_name}/${sub_dir}"
+		_pushd "${qbt_install_dir}/${app_name}${sub_dir}"
 	fi
 
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+
+	unset sub_dir
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317
