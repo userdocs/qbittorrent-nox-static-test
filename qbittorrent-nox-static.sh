@@ -1011,7 +1011,7 @@ _cache_dirs() {
 	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
 
-	if [[ "${app_name}" == "cmake_ninja" ]]; then
+	if [[ "${qbt_workflow_files}" == "yes" || "${app_name}" == "cmake_ninja" ]]; then
 		source_default["${app_name}"]="file"
 	elif [[ "${qbt_cache_dir_options}" == "bs" || -d "${qbt_dl_folder_path}" ]]; then
 		source_default["${app_name}"]="folder"
@@ -1087,13 +1087,17 @@ _download_folder() {
 #######################################################################################################################################################
 _download_file() {
 
-	if [[ -n "${qbt_cache_dir}" && -f "${qbt_dl_file_path}" ]]; then
+	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${uplus} Copying cached ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
 		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
 	fi
 
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		printf '\n%b\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+	fi
+
+	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
+		printf '\n%b\n' " ${uplus} Caching ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
 	fi
 
 	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
@@ -1117,14 +1121,17 @@ _download_file() {
 
 	[[ "${app_name}" == "cmake_ninja" ]] && additional_cmds=("--strip-components=1")
 
-	_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
-	# we don't need to cd into the boost if we download it via source archives
+	if [[ "${qbt_cache_dir_options}" != "bs" ]]; then
 
-	if [[ "${app_name}" == "cmake_ninja" && -z "${qbt_cache_dir}" ]]; then
-		_delete_function
-	else
-		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-		_pushd "${qbt_dl_folder_path}${sub_dir}"
+		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
+		# we don't need to cd into the boost if we download it via source archives
+
+		if [[ "${app_name}" == "cmake_ninja" && -z "${qbt_cache_dir}" ]]; then
+			_delete_function
+		else
+			mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+			_pushd "${qbt_dl_folder_path}${sub_dir}"
+		fi
 	fi
 
 	unset sub_dir additional_cmds
@@ -1164,8 +1171,8 @@ _fix_multiarch_static_links() {
 _delete_function() {
 	if [[ "${qbt_skip_delete}" != "yes" ]]; then
 		printf '\n%b\n' " ${utick}${clr} Deleting ${app_name} installation files and folders${cend}"
-		[[ -f "${qbt_dl_file_path}" && "${qbt_workflow_artifacts}" == "no" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_dl_file_path}"}
-		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_dl_folder_path}"
+		[[ -f "${qbt_dl_file_path}" && "${qbt_workflow_artifacts}" == "no" ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
+		[[ -d "${qbt_dl_folder_path}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
 		_pushd "${qbt_working_dir}"
 	else
 		printf '\n%b\n' " ${uyc}${clr} Skipping ${app_name} deletion${cend}"
@@ -2385,6 +2392,8 @@ for app_name in "${qbt_modules[@]}"; do
 	else
 		if [[ "${skip_modules["${app_name}"]}" == "no" ]]; then
 			############################################################
+			skipped_false=$((skipped_false + 1))
+			############################################################
 			if command -v "_${app_name}_bootstrap" &> /dev/null; then
 				"_${app_name}_bootstrap"
 			fi
@@ -2397,6 +2406,7 @@ for app_name in "${qbt_modules[@]}"; do
 			############################################################
 			_download
 			############################################################
+			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
 			_apply_patches
@@ -2415,7 +2425,7 @@ for app_name in "${qbt_modules[@]}"; do
 			done
 			printf '\n'
 		fi
-		skipped_false=$((skipped_false + 1))
+
 		[[ "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 	fi
 	_pushd "${qbt_working_dir}"
