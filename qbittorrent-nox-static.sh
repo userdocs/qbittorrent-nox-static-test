@@ -1086,6 +1086,15 @@ _download_folder() {
 #######################################################################################################################################################
 _download_file() {
 
+	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
+		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
+		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_install_dir}/${app_name}.tar.xz")
+		# delete any existing extracted archives and archives
+		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_install_dir}/${app_name}.tar.xz" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
+		[[ -d "${qbt_install_dir}/${app_name}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
+		[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name:?}"
+	fi
+
 	if [[ "${qbt_cache_dir_options}" != "bs" && ! -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${ulbc} Dowloading ${clm}${app_name}${cend} using ${cly}${source_type}${cend} files to ${clc}${qbt_dl_file_path}${cend} - ${cly}${qbt_dl_source_url}${cend}"
 	fi
@@ -1101,15 +1110,6 @@ _download_file() {
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${ulbc} Copying ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
-	fi
-
-	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
-		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
-		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_install_dir}/${app_name}.tar.xz")
-		# delete any existing extracted archives and archives
-		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_install_dir}/${app_name}.tar.xz" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
-		[[ -d "${qbt_install_dir}/${app_name}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
-		[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name:?}"
 	fi
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
@@ -2206,11 +2206,11 @@ _boost() {
 		_pushd "${qbt_install_dir}/boost"
 	fi
 
-	if [[ -n "${qbt_cache_dir}" || "${qbt_build_tool}" != 'cmake' ]]; then
+	if [[ "${qbt_build_tool}" != 'cmake' ]]; then
 		"${qbt_install_dir}/boost/bootstrap.sh" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		ln -s "${qbt_install_dir}/boost/boost" "${qbt_install_dir}/boost/include"
 	else
-		printf '\n%b\n' " ${uyc} Skipping b2 as we are using cmake with Qt6"
+		printf '%b\n' " ${uyc} Skipping b2 as we are using cmake with Qt6"
 	fi
 
 	if [[ "${source_default["${app_name}"]}" == "folder" ]]; then
