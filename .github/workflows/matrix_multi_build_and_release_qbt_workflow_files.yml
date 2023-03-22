@@ -103,7 +103,7 @@ jobs:
         if: matrix.build_tool == 'cmake'
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
 
-      - name: Docker - qtbase -i ${{ github.event.inputs.distinct_id }}
+      - name: Docker - qtbase ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
 
       - name: Docker - qttools ${{ github.event.inputs.distinct_id }}
