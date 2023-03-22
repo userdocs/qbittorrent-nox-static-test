@@ -28,10 +28,10 @@ jobs:
             qbt_qt_version: "6"
 
           - libtorrent_version: "2.0"
-            libtorrent_tag: -lt RC_2_0
+            libtorrent_tag: RC_2_0
 
           - libtorrent_version: "1.2"
-            libtorrent_tag: -lt RC_1_2
+            libtorrent_tag: RC_1_2
 
     name: "${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.libtorrent_version }}"
 
@@ -64,11 +64,16 @@ jobs:
           echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
           echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
           echo "qbt_patches_url=${{ github.repository }}" >> env.custom
-          echo "qbt_workflow_files=yes" >> env.custom
-          echo "qbt_workflow_artifacts=no" >> env.custom
-          echo "qbt_libtorrent_master_jamfile=no" >> env.custom
-          echo "qbt_optimise_strip=yes" >> env.custom
-          echo "qbt_build_debug=no" >> env.custom
+          echo "qbt_libtorrent_master_jamfile="no"
+          echo "qbt_libtorrent_tag="${{ matrix.libtorrent_tag }}"
+          echo "qbt_qbittorrent_tag="release-4.3.9"
+          echo "qbt_boost_tag="boost-1.82.0.beta1"
+          echo "qbt_qt_tag="v6.5.0-rc1"
+          echo "qbt_workflow_files="yes"
+          echo "qbt_workflow_artifacts="no"
+          echo "qbt_cache_dir=""
+          echo "qbt_optimise_strip="yes"
+          echo "qbt_build_debug="no"
 
       - name: Host - Create docker multiarch container
         run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
@@ -80,7 +85,7 @@ jobs:
         run: docker exec -w /root multiarch apk add bash
 
       - name: Docker - Bootstrap
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ matrix.libtorrent_tag }} ${{ matrix.qbittorrent_tag }} -bs-a
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
       - name: Release - qt${{ matrix.qbt_qt_version }} info
         run: |
@@ -103,7 +108,7 @@ jobs:
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh boost
 
       - name: Docker - libtorrent
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ matrix.libtorrent_tag }} libtorrent
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh libtorrent
 
       - name: Docker - double_conversion
         if: matrix.build_tool == 'cmake'
@@ -116,7 +121,7 @@ jobs:
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
 
       - name: Docker - qbittorrent
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ matrix.qbittorrent_tag }} qbittorrent
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
 
       - name: Docker - Set release asset name
         run: docker exec -w /root/${{ env.build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
