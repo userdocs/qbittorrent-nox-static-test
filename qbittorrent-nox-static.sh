@@ -93,6 +93,8 @@ fi
 # This function sets some default values we use but whose values can be overridden by certain flags or exported as variables before running the script
 #######################################################################################################################################################
 _set_default_values() {
+	[[ -f "${PWD}/.qbt_env" ]] && source "${PWD}/.qbt_env"
+
 	# For docker deploys to not get prompted to set the timezone.
 	DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
 
