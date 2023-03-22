@@ -1529,7 +1529,7 @@ while (("${#}")); do
 			;;
 		-pr | --patch-repo)
 			if [[ -n "${2}" ]]; then
-				if _curl -S "https://github.com/${2}" &> /dev/null; then
+				if _curl -S "https://github.com/${2}" > /dev/null; then
 					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
 					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
 						qbt_patches_url="${2}"
