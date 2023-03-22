@@ -29,7 +29,7 @@ jobs:
             qbt_qt_tag: "v6.5.0-rc1"
 
           - libtorrent_version: "2.0"
-             : "RC_2_0"
+            libtorrent_tag: "RC_2_0"
 
           - libtorrent_version: "1.2"
             libtorrent_tag: "RC_1_2"
