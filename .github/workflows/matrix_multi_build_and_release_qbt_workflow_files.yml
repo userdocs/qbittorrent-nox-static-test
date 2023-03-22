@@ -57,6 +57,7 @@ jobs:
           echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
           echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
           echo "qbt_patches_url=${{ github.repository }}" >> env.custom
+          echo "qbt_skip_icu=no" >> env.custom
           echo "qbt_workflow_files=yes" >> env.custom
           echo "qbt_workflow_artifacts=no" >> env.custom
           echo "qbt_libtorrent_master_jamfile=no" >> env.custom
@@ -103,7 +104,7 @@ jobs:
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
 
       - name: Docker - qtbase -i ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase -i
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
 
       - name: Docker - qttools ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
