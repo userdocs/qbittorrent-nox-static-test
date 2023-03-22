@@ -140,9 +140,6 @@ _set_default_values() {
 	# The legacy workflow disables this and it is incremented by the workflow instead.
 	qbt_workflow_type="${qbt_workflow_type:-standard}"
 
-	# In standard mode gawk and bison are installed via apt-get as system dependencies. In alternate mode they are built from source.
-	qbt_debian_mode="${qbt_debian_mode:-standard}"
-
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
@@ -172,7 +169,7 @@ _set_default_values() {
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
 
 	# Define our list of available modules in an array.
-	qbt_modules=("all" "install" "bison" "gawk" "glibc" "zlib" "iconv" "icu" "openssl" "boost" "libtorrent" "double_conversion" "qtbase" "qttools" "qbittorrent")
+	qbt_modules=("all" "install" "glibc" "zlib" "iconv" "icu" "openssl" "boost" "libtorrent" "double_conversion" "qtbase" "qttools" "qbittorrent")
 
 	# Create this array empty. Modules listed in or added to this array will be removed from the default list of modules, changing the behaviour of all or install
 	delete=()
@@ -194,7 +191,6 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_qt_tag=\"${clg}${github_tag[qtbase]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_qbittorrent_tag=\"${clg}${github_tag[qbittorrent]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_master_jamfile=\"${clg}${qbt_libtorrent_master_jamfile}${cly}\"${cend}"
-		[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${cly}  qbt_debian_mode=\"${clg}${qbt_debian_mode}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_files=\"${clg}${qbt_workflow_files}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_artifacts=\"${clg}${qbt_workflow_artifacts}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_cache_dir=\"${clg}${qbt_cache_dir}${cly}\"${cend}"
@@ -254,15 +250,13 @@ _set_default_values() {
 
 	# if Alpine then delete modules we don't use and set the required packages array
 	if [[ "${what_id}" =~ ^(alpine)$ ]]; then
-		delete+=("bison" "gawk" "glibc")
+		delete+=("glibc")
 		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("coreutils" "gpg")
 		qbt_required_pkgs=("autoconf" "automake" "bash" "bash-completion" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
 	fi
 
 	# if debian based then set the required packages array
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
-		[[ "${qbt_debian_mode}" == 'alternate' ]] && delete_pkgs+=("gawk" "bison")
-		[[ "${qbt_debian_mode}" == 'standard' ]] && delete+=("bison" "gawk")
 		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("autopoint" "gperf")
 		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
 	fi
@@ -663,8 +657,6 @@ _set_module_urls() {
 	declare -gA github_url
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds.git"
-		github_url[bison]="https://git.savannah.gnu.org/git/bison.git"
-		github_url[gawk]="https://git.savannah.gnu.org/git/gawk.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
 	else
 		github_url[ninja]="https://github.com/userdocs/qbt-ninja-build.git"
@@ -685,8 +677,6 @@ _set_module_urls() {
 	declare -gA github_tag
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		github_tag[bison]="$(_git_git ls-remote -q -t --refs "${github_url[bison]}" | awk '/\/v/{sub("refs/tags/", "");sub("(.*)((-|_)[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		github_tag[gawk]="$(_git_git ls-remote -q -t --refs "${github_url[gawk]}" | awk '/\/tags\/gawk/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 		if [[ "${what_version_codename}" =~ ^(jammy)$ ]]; then
 			github_tag[glibc]="glibc-2.37"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
@@ -712,8 +702,6 @@ _set_module_urls() {
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
-		app_version[bison]="${github_tag[bison]#v}"
-		app_version[gawk]="${github_tag[gawk]#gawk-}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
 	else
 		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(cmake-)", "");sub("(-r)", ""); print $1 }')"
@@ -735,8 +723,6 @@ _set_module_urls() {
 	declare -gA source_archive_url
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.gz"
-		source_archive_url[bison]="https://ftp.gnu.org/gnu/bison/$(grep -Eo 'bison-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/bison/) | sort -V | tail -1)"
-		source_archive_url[gawk]="https://ftp.gnu.org/gnu/gawk/$(grep -Eo 'gawk-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://ftp.gnu.org/gnu/gawk/) | sort -V | tail -1)"
 		source_archive_url[glibc]="https://ftp.gnu.org/gnu/libc/${github_tag[glibc]}.tar.gz"
 	fi
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
@@ -765,8 +751,6 @@ _set_module_urls() {
 	declare -gA qbt_workflow_archive_url
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_archive_url[cmake_ninja]="${source_archive_url[cmake_ninja]}"
-		qbt_workflow_archive_url[bison]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/bison.tar.xz"
-		qbt_workflow_archive_url[gawk]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/gawk.tar.xz"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
 	fi
 	qbt_workflow_archive_url[zlib]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/zlib.tar.xz"
@@ -785,8 +769,6 @@ _set_module_urls() {
 	declare -gA qbt_workflow_override
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_override[cmake_ninja]="no"
-		qbt_workflow_override[bison]="no"
-		qbt_workflow_override[gawk]="no"
 		qbt_workflow_override[glibc]="no"
 	fi
 	qbt_workflow_override[zlib]="no"
@@ -805,8 +787,6 @@ _set_module_urls() {
 	declare -gA source_default
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_default[cmake_ninja]="file"
-		source_default[bison]="file"
-		source_default[gawk]="file"
 		source_default[glibc]="file"
 	fi
 	source_default[zlib]="file"
@@ -1048,11 +1028,10 @@ _download_folder() {
 	fi
 
 	if [[ ! -d "${qbt_dl_folder_path}" ]]; then
-		if [[ "${app_name}" =~ (bison|qttools) ]]; then
+		if [[ "${app_name}" =~ qttools ]]; then
 			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
 			_pushd "${qbt_dl_folder_path}"
 			git submodule update --force --recursive --init --remote --depth=1 --single-branch
-			[[ "${app_name}" == "bison" ]] && ./bootstrap
 			_popd
 		else
 			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
@@ -1229,7 +1208,7 @@ _cmake() {
 # This function handles the Multi Arch dynamics of the script.
 #######################################################################################################################################################
 _multi_arch() {
-	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
 
 			[[ "${1}" != 'bootstrap' ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
@@ -1247,6 +1226,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabi"
 							;;&
 						*)
+							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
 							;;
@@ -1264,6 +1244,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabihf"
 							;;&
 						*)
+							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
 							;;
@@ -1281,6 +1262,7 @@ _multi_arch() {
 							qbt_cross_host="aarch64-linux-gnu"
 							;;&
 						*)
+							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-aarch64"
 							qbt_cross_qtbase="linux-aarch64-gnu-g++"
 							;;
@@ -1298,25 +1280,9 @@ _multi_arch() {
 							qbt_cross_host="x86_64-linux-gnu"
 							;;&
 						*)
+							qbt_cross_boost=""
 							qbt_cross_openssl="linux-x86_64"
 							qbt_cross_qtbase="linux-g++-64"
-							;;
-					esac
-					;;
-				x86)
-					case "${qbt_cross_target}" in
-						alpine)
-							cross_arch="x86"
-							qbt_cross_host="x86_64-linux-muslx32"
-							qbt_zlib_arch="x86"
-							;;&
-						debian | ubuntu)
-							cross_arch="i386"
-							qbt_cross_host="i686-linux-gnu"
-							;;&
-						*)
-							qbt_cross_openssl="linux-x32"
-							qbt_cross_qtbase="linux-g++-32"
 							;;
 					esac
 					;;
@@ -1340,8 +1306,6 @@ _multi_arch() {
 
 			_fix_multiarch_static_links "${qbt_cross_host}"
 
-			multi_bison=("--host=${qbt_cross_host}")                                                # ${multi_bison[@]}
-			multi_gawk=("--host=${qbt_cross_host}")                                                 # ${multi_gawk[@]}
 			multi_glibc=("--host=${qbt_cross_host}")                                                # ${multi_glibc[@]}
 			multi_iconv=("--host=${qbt_cross_host}")                                                # ${multi_iconv[@]}
 			multi_icu=("--host=${qbt_cross_host}" "-with-cross-build=${qbt_install_dir}/icu/cross") # ${multi_icu[@]}
@@ -1353,10 +1317,9 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				b2_toolset="gcc-arm"
-				printf '%b\n' "using gcc : arm : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
-				multi_libtorrent=("toolset=${b2_toolset}")     # ${multi_libtorrent[@]}
-				multi_qbittorrent=("--host=${qbt_cross_host}") # ${multi_qbittorrent[@]}
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
+				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
 			return
 		else
@@ -1489,10 +1452,6 @@ while (("${#}")); do
 			script_debug_urls="yes"
 			shift
 			;;
-		-dma | --debian-mode-alternate)
-			qbt_debian_mode="alternate"
-			shift
-			;;
 		-cd | --cache-directory)
 			qbt_cache_dir="${2%/}"
 			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
@@ -1557,13 +1516,6 @@ while (("${#}")); do
 			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
 			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
 			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
-			exit
-			;;
-		-h-dma | --help-debian-mode-alternate)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " This modes builds the dependencies ${clm}gawk${cend} and ${clm}bison${cend} from source"
-			printf '\n%b\n' " In the standard mode they are installed via ${clm}apt-get${cend} as dependencies"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-dma${cend}"
 			exit
 			;;
 		-h-o | --help-optimize)
@@ -1734,6 +1686,11 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				if _curl "https://github.com/${2}" &> /dev/null; then
 					qbt_patches_url="${2}"
+				else
+					printf '\n%b\n' " ${urc} ${cly}This repo does not exist:${cend}"
+					printf '\n%b\n' "   ${clc}https://github.com/${2}${cend}"
+					printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo.${cend}"
+					exit
 				fi
 				shift 2
 			else
@@ -1791,7 +1748,6 @@ while (("${#}")); do
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-c${cend}     ${td}or${cend} ${clb}--cmake${cend}                 ${cy}Help:${cend} ${clb}-h-c${cend}     ${td}or${cend} ${clb}--help-cmake${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-cd${cend}    ${td}or${cend} ${clb}--cache-directory${cend}       ${cy}Help:${cend} ${clb}-h-cd${cend}    ${td}or${cend} ${clb}--help-cache-directory${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-d${cend}     ${td}or${cend} ${clb}--debug${cend}                 ${cy}Help:${cend} ${clb}-h-d${cend}     ${td}or${cend} ${clb}--help-debug${cend}"
-			printf '%b\n' " ${cg}Use:${cend} ${clb}-dma${cend}   ${td}or${cend} ${clb}--debian-mode-alternate${cend} ${cy}Help:${cend} ${clb}-h-dma${cend}   ${td}or${cend} ${clb}--help-debian-mode-alternate${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-p${cend}  ${td}or${cend} ${clb}--boot-strap-patches${cend}    ${cy}Help:${cend} ${clb}-h-bs-p${cend}  ${td}or${cend} ${clb}--help-boot-strap-patches${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-c${cend}  ${td}or${cend} ${clb}--boot-strap-cmake${cend}      ${cy}Help:${cend} ${clb}-h-bs-c${cend}  ${td}or${cend} ${clb}--help-boot-strap-cmake${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-r${cend}  ${td}or${cend} ${clb}--boot-strap-release${cend}    ${cy}Help:${cend} ${clb}-h-bs-r${cend}  ${td}or${cend} ${clb}--help-boot-strap-release${cend}"
@@ -1816,8 +1772,6 @@ while (("${#}")); do
 			printf '\n%b\n' " ${cg}Use:${cend} ${clm}all${cend} ${td}or${cend} ${clm}module-name${cend}          ${cg}Usage:${cend} ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clm}all${cend} ${clb}-i${cend}"
 			printf '\n%b\n' " ${td}${clm}all${cend} ${td}----------------${cend} ${td}${cly}optional${cend} ${td}Recommended method to install all modules${cend}"
 			printf '%b\n' " ${td}${clm}install${cend} ${td}------------${cend} ${td}${cly}optional${cend} ${td}Install the ${td}${clc}${qbt_install_dir_short}/completed/qbittorrent-nox${cend} ${td}binary${cend}"
-			[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' "${td} ${clm}bison${cend} ${td}--------------${cend} ${td}${cly}optional${cend} ${td}Build bison${cend}"
-			[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${td}${clm}gawk${cend} ${td}---------------${cend} ${td}${cly}optional${cend} ${td}Build gawk${cend}"
 			[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${td}${clm}glibc${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Build libc locally to statically link nss${cend}"
 			printf '%b\n' " ${td}${clm}zlib${cend} ${td}---------------${cend} ${td}${clr}required${cend} ${td}Build zlib locally${cend}"
 			printf '%b\n' " ${td}${clm}iconv${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Build iconv locally${cend}"
@@ -1839,7 +1793,6 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_qbittorrent_tag=\"\"${cend} ${td}-----------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for qbittorrent${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_boost_tag=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for boost${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_qt_tag=\"\"${cend} ${td}--------------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for Qt${cend}"
-			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - skip bison gawk or install them - defaults to standard${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_files=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt-workflow-files for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_artifacts=\"\"${cend} ${td}--------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt_workflow_artifacts for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_cache_dir=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}path empty - provide a path to a cache directory${cend}"
@@ -2078,22 +2031,6 @@ _cmake
 _multi_arch
 #######################################################################################################################################################
 # shellcheck disable=SC2317
-_bison() {
-	./configure "${multi_bison[@]}" --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
-	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-}
-#######################################################################################################################################################
-# shellcheck disable=SC2317
-_gawk() {
-	./configure "${multi_gawk[@]}" --prefix="$qbt_install_dir" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-	make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
-	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-}
-#######################################################################################################################################################
-# shellcheck disable=SC2317
 _glibc_bootstrap() {
 	sub_dir="/BUILD"
 }
@@ -2157,7 +2094,7 @@ _icu_bootstrap() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu() {
-	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
 		"${qbt_install_dir}/${app_name}${sub_dir}/runConfigureICU" Linux/gcc
