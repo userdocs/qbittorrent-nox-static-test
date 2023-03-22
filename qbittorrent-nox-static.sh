@@ -1469,6 +1469,9 @@ _release_info() {
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
 [[ -n "${qbt_patches_url}" ]] && set -- -pr "${qbt_patches_url}" "${@}"
+
+echo "${qbt_patches_url}"
+echo ""${@}""
 #######################################################################################################################################################
 # This is first help section that for triggers that do not require any processing and only provide a static result whe using help
 #######################################################################################################################################################
@@ -1529,11 +1532,7 @@ while (("${#}")); do
 			;;
 		-pr | --patch-repo)
 			if [[ -n "${2}" ]]; then
-				echo "$(
-					_curl "https://github.com/${2}" &> /dev/null
-					echo $?
-				)"
-
+				echo "'${2}'"
 				if _curl "https://github.com/${2}" &> /dev/null; then
 					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
 					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
