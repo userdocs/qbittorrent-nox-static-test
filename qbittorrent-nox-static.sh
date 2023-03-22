@@ -465,9 +465,9 @@ _error_tag() {
 #######################################################################################################################################################
 _curl_curl() {
 	if [[ -z "${qbt_curl_proxy}" ]]; then
-		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${@}"
+		curl -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${@}"
 	else
-		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 --proxy-insecure -x "${qbt_curl_proxy}" "${@}"
+		curl -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 --proxy-insecure -x "${qbt_curl_proxy}" "${@}"
 	fi
 
 }
