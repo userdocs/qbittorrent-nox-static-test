@@ -1215,7 +1215,7 @@ _cmake() {
 
 		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]}" ]]; then
-				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-${qbt_cross_name:-x86_64}" -o "${qbt_install_dir}/bin/ninja"
+				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-$(apk info --print-arch)" -o "${qbt_install_dir}/bin/ninja"
 				_post_command ninja
 				chmod 700 "${qbt_install_dir}/bin/ninja"
 
@@ -1231,7 +1231,7 @@ _cmake() {
 # This function handles the Multi Arch dynamics of the script.
 #######################################################################################################################################################
 _multi_arch() {
-	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
 
 			[[ "${1}" != 'bootstrap' ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
@@ -1250,7 +1250,6 @@ _multi_arch() {
 							;;&
 						*)
 							qbt_cross_openssl="linux-armv4"
-							qbt_cross_boost="arm"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
 							;;
 					esac
@@ -1268,7 +1267,6 @@ _multi_arch() {
 							;;&
 						*)
 							qbt_cross_openssl="linux-armv4"
-							qbt_cross_boost="arm"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
 							;;
 					esac
@@ -1286,7 +1284,6 @@ _multi_arch() {
 							;;&
 						*)
 							qbt_cross_openssl="linux-aarch64"
-							qbt_cross_boost="arm"
 							qbt_cross_qtbase="linux-aarch64-gnu-g++"
 							;;
 					esac
@@ -1304,8 +1301,24 @@ _multi_arch() {
 							;;&
 						*)
 							qbt_cross_openssl="linux-x86_64"
-							qbt_cross_boost="x86_64"
 							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				x86)
+					case "${qbt_cross_target}" in
+						alpine)
+							cross_arch="x86"
+							qbt_cross_host="x86_64-linux-muslx32"
+							qbt_zlib_arch="x86"
+							;;&
+						debian | ubuntu)
+							cross_arch="i386"
+							qbt_cross_host="i686-linux-gnu"
+							;;&
+						*)
+							qbt_cross_openssl="linux-x32"
+							qbt_cross_qtbase="linux-g++-32"
 							;;
 					esac
 					;;
@@ -1320,10 +1333,11 @@ _multi_arch() {
 
 			mkdir -p "${qbt_install_dir}/logs"
 
-			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_install_dir}/${qbt_cross_host}.tar.gz" ]]; then
-				_curl "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" > "${qbt_install_dir}/${qbt_cross_host}.tar.gz"
-				tar xf "${qbt_install_dir}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-				rm -f "${qbt_install_dir}/${qbt_cross_host}.tar.gz"
+			[[ "${1}" == 'bootstrap' && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+
+			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
+				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
 			fi
 
 			_fix_multiarch_static_links "${qbt_cross_host}"
@@ -1378,12 +1392,13 @@ _release_info() {
 
 	if _git_git ls-remote -t --exit-code "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -q '"name": "dependency-version.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
-			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > remote-dependency-version.json; do
+			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > "${release_info_dir}/remote-dependency-version.json"; do
 				printf '%b\n' "Waiting for dependency-version.json URL."
 				sleep 2
 			done
 
-			remote_revision_version="$(sed -rn 's|(.*)"revision": "(.*)"|\2|p' < remote-dependency-version.json)"
+			remote_revision_version="$(sed -rn 's|(.*)"revision": "(.*)"|\2|p' < "${release_info_dir}/remote-dependency-version.json")"
+			rm -f "${release_info_dir}/remote-dependency-version.json"
 
 			if [[ "${remote_revision_version}" =~ ^[0-9]+$ && "${qbt_workflow_type}" == 'standard' ]]; then
 				qbt_revision_version="$((remote_revision_version + 1))"
@@ -2160,7 +2175,7 @@ _icu_bootstrap() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu() {
-	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
 		"${qbt_install_dir}/${app_name}${sub_dir}/runConfigureICU" Linux/gcc
