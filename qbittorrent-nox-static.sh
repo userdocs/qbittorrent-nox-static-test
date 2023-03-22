@@ -152,6 +152,9 @@ _set_default_values() {
 	# Env setting for the boost tag
 	qbt_boost_tag="${qbt_boost_tag:-}"
 
+	# Env setting for the Qt tag
+	qbt_qt_tag="${qbt_qt_tag:-}"
+
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
 
@@ -183,6 +186,7 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_libtorrent_tag=\"${clg}${github_tag[libtorrent]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_qbittorrent_tag=\"${clg}${github_tag[qbittorrent]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_qt_tag=\"${clg}${github_tag[qtbase]}${cly}\"${cend}"
 		[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${cly}  qbt_debian_mode=\"${clg}${qbt_debian_mode}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_files=\"${clg}${qbt_workflow_files}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_artifacts=\"${clg}${qbt_workflow_artifacts}${cly}\"${cend}"
@@ -1093,11 +1097,9 @@ _download_file() {
 	fi
 
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n' " ${ulbc} Copying cached ${clm}${app_name}${cend} using ${source_type} files - ${cly}${qbt_dl_source_url}${cend}"
+		printf '\n%b\n\n' " ${ulbc} Copying ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
 	fi
-
-	# [[ "${qbt_cache_dir_options}" != "bs" || "${app_name}" != "cmake_ninja" ]] && printf '\n'
 
 	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
 		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
@@ -1611,6 +1613,7 @@ _set_default_values "${@}" # see functions
 [[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n "${qbt_qbittorrent_tag}" ]] && set -- -qt "${qbt_qbittorrent_tag}" "${@}"
 [[ -n "${qbt_boost_tag}" ]] && set -- -bt "${qbt_boost_tag}" "${@}"
+[[ -n "${qbt_qt_tag}" ]] && set -- -qtt "${qbt_qt_tag}" "${@}"
 
 _check_dependencies # see functions
 
@@ -1754,6 +1757,25 @@ while (("${#}")); do
 				exit
 			fi
 			;;
+		-qtt | --qt-tag)
+			if [[ -n "${2}" ]]; then
+				github_tag[qtbase]="$(_git "${github_url[qtbase]}" -t "${2}")"
+				github_tag[qttools]="$(_git "${github_url[qttools]}" -t "${2}")"
+				app_version[qtbase]="$(printf '%s' "${github_tag[qtbase]#v}" | sed 's/-lts-lgpl//g')"
+				app_version[qttools]="$(printf '%s' "${github_tag[qttools]#v}" | sed 's/-lts-lgpl//g')"
+
+				source_default[qtbase]="folder"
+				source_default[qttools]="folder"
+
+				qbt_workflow_override[qtbase]="yes"
+				_test_git_ouput "${github_tag[qtbase]}" "qtbase" "${2}"
+				_test_git_ouput "${github_tag[qttools]}" "qttools" "${2}"
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
+				exit
+			fi
+			;;
 		-h | --help)
 			printf '\n%b\n\n' " ${tb}${tu}Here are a list of available options${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-b${cend}     ${td}or${cend} ${clb}--build-directory${cend}       ${cy}Help:${cend} ${clb}-h-b${cend}     ${td}or${cend} ${clb}--help-build-directory${cend}"
@@ -1778,6 +1800,7 @@ while (("${#}")); do
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-pr${cend}    ${td}or${cend} ${clb}--patch-repo${cend}            ${cy}Help:${cend} ${clb}-h-pr${cend}    ${td}or${cend} ${clb}--help-patch-repo${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-qm${cend}    ${td}or${cend} ${clb}--qbittorrent-master${cend}    ${cy}Help:${cend} ${clb}-h-qm${cend}    ${td}or${cend} ${clb}--help-qbittorrent-master${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-qt${cend}    ${td}or${cend} ${clb}--qbittorrent-tag${cend}       ${cy}Help:${cend} ${clb}-h-qt${cend}    ${td}or${cend} ${clb}--help-qbittorrent-tag${cend}"
+			printf '%b\n' " ${cg}Use:${cend} ${clb}-qtt${cend}   ${td}or${cend} ${clb}--qt-tag${cend}                ${cy}Help:${cend} ${clb}-h-qtt${cend}   ${td}or${cend} ${clb}--help-qtt-tag${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-s${cend}     ${td}or${cend} ${clb}--strip${cend}                 ${cy}Help:${cend} ${clb}-h-s${cend}     ${td}or${cend} ${clb}--help-strip${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-sdu${cend}   ${td}or${cend} ${clb}--script-debug-urls${cend}     ${cy}Help:${cend} ${clb}-h-sdu${cend}   ${td}or${cend} ${clb}--help-script-debug-urls${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-wf${cend}    ${td}or${cend} ${clb}--workflow${cend}              ${cy}Help:${cend} ${clb}-h-wf${cend}    ${td}or${cend} ${clb}--help-workflow${cend}"
@@ -1812,6 +1835,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_libtorrent_tag=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for libtorrent${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_qbittorrent_tag=\"\"${cend} ${td}-----------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for qbittorrent${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_boost_tag=\"\"${cend} ${td}-----------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for boost${cend}"
+			printf '%b\n' " ${td}${clm}export qbt_qt_tag=\"\"${cend} ${td}--------------------${cend} ${td}${clr}options${cend} ${td}Takes a valid git tag or branch for Qt${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_debian_mode=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}standard alternate - skip bison gawk or install them - defaults to standard${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_files=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt-workflow-files for dependencies${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_workflow_artifacts=\"\"${cend} ${td}--------${cend} ${td}${clr}options${cend} ${td}yes no - use qbt_workflow_artifacts for dependencies${cend}"
@@ -1984,6 +2008,18 @@ while (("${#}")); do
 				printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -qt ${clc}${github_tag[qbittorrent]}${cend} ${clb}-h-qt${cend}"
 				printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
 				printf '\n%b\n' " ${clb}-qt${cend} ${clc}${github_tag[qbittorrent]}${cend}"
+			fi
+			printf '\n'
+			exit
+			;;
+		-h-qtt | --help-qt-tag)
+			if [[ ! "${github_tag[qtbase]}" =~ (error_tag|error_22) ]]; then
+				printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+				printf '\n%b\n' " Use a provided Qt tag when cloning from github."
+				printf '\n%b\n' " ${cy}You can use this flag with this help command to see the value if called before the help option.${cend}"
+				printf '\n%b\n' " ${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend}${clb} -qt ${clc}${github_tag[qtbase]}${cend} ${clb}-h-qt${cend}"
+				printf '\n%b\n' " ${td}This flag must be provided with arguments.${cend}"
+				printf '\n%b\n' " ${clb}-qt${cend} ${clc}${github_tag[qtbase]}${cend}"
 			fi
 			printf '\n'
 			exit
