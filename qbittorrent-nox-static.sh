@@ -1528,8 +1528,9 @@ while (("${#}")); do
 			shift 2
 			;;
 		-pr | --patch-repo)
-			set -x
 			if [[ -n "${2}" ]]; then
+				echo "$(_curl "https://github.com/${2}" &> /dev/null)"
+
 				if _curl "https://github.com/${2}" &> /dev/null; then
 					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
 					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
