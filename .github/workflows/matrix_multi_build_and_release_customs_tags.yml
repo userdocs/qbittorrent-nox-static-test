@@ -22,10 +22,12 @@ jobs:
           - build_tool: ""
             qbt_qt_version_name: "qt5-"
             qbt_qt_version: "5"
+            qbt_qt_tag: "v5.15.8-lts-lgpl"
 
           - build_tool: "cmake"
             qbt_qt_version_name: ""
             qbt_qt_version: "6"
+            qbt_qt_tag: "v6.5.0-rc1"
 
           - libtorrent_version: "2.0"
             libtorrent_tag: RC_2_0
@@ -68,7 +70,7 @@ jobs:
           echo "qbt_libtorrent_tag="${{ matrix.libtorrent_tag }}"
           echo "qbt_qbittorrent_tag="release-4.3.9"
           echo "qbt_boost_tag="boost-1.82.0.beta1"
-          echo "qbt_qt_tag="v6.5.0-rc1"
+          echo "qbt_qt_tag="${{ matrix.qbt_qt_tag }}"
           echo "qbt_workflow_files="yes"
           echo "qbt_workflow_artifacts="no"
           echo "qbt_cache_dir=""
