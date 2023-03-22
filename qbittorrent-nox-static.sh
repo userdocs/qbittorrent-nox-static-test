@@ -1085,7 +1085,7 @@ _download_folder() {
 _download_file() {
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && ! -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n' " ${ulbc} Dowloading ${clm}${app_name}${cend} using ${cly}${source_type}${cend} files to ${clc}${qbt_dl_file_path}${cend} - ${cly}${qbt_dl_source_url}${cend}"
+		printf '\n%b\n\n' " ${ulbc} Dowloading ${clm}${app_name}${cend} using ${cly}${source_type}${cend} files to ${clc}${qbt_dl_file_path}${cend} - ${cly}${qbt_dl_source_url}${cend}"
 	fi
 
 	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
