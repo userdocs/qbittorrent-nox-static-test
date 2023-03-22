@@ -1030,12 +1030,12 @@ _download_folder() {
 
 	# if there IS NOT and app_name cache directory present in the path provided and we are bootstrapping then use this echo
 	if [[ "${qbt_cache_dir_options}" == "bs" && ! -d "${qbt_dl_folder_path}" ]]; then
-		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_dl_folder_path}${cend}"
+		printf '\n%b\n\n' " ${ulbc} Caching ${clm}${app_name}${cend} with tag ${cly}${github_tag[${app_name}]}${cend} to ${clc}${clc}${qbt_dl_folder_path}${cend}${cend} from ${cly}${cly}${github_url[${app_name}]}${cend}"
 	fi
 
 	# if cache dir is on and the app_name folder does not exist then get folder via cloning default source
 	if [[ "${qbt_cache_dir_options}" != "bs" && ! -d "${qbt_dl_folder_path}" ]]; then
-		printf "\n%b\n\n" " ${ulbc} ${clm}${app_name}${cend} - Downloading ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		printf '\n%b\n\n' " ${ulbc} Downloading ${clm}${app_name}${cend} with tag ${cly}${github_tag[${app_name}]}${cend} to ${clc}${clc}${qbt_dl_folder_path}${cend}${cend} from ${cly}${cly}${github_url[${app_name}]}${cend}"
 	fi
 
 	if [[ ! -d "${qbt_dl_folder_path}" ]]; then
@@ -1068,7 +1068,7 @@ _download_folder() {
 	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_dl_folder_path}" ]]; then
-		printf "\n%b\n\n" " ${ulbc} Copying ${clm}${app_name}${cend} from cache : ${clc}${qbt_cache_dir}/${app_name}${cend} from ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+		printf '\n%b\n\n' " ${ulbc} Copying ${clm}${app_name}${cend} from cache ${clc}${qbt_cache_dir}/${app_name}${cend} with tag ${cly}${github_tag[${app_name}]}${cend} to ${clc}${qbt_install_dir}/${app_name}${cend}"
 		cp -rf "${qbt_dl_folder_path}" "${qbt_install_dir}/"
 	fi
 
