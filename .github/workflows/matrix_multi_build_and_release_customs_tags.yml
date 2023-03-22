@@ -17,7 +17,6 @@ jobs:
         arch_type: [x86_64, armhf, armv7, aarch64]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
-        qbittorrent_tag: ["-qt master"]
         include:
           - build_tool: ""
             qbt_qt_version_name: "qt5-"
@@ -68,7 +67,7 @@ jobs:
           echo "qbt_patches_url=${{ github.repository }}" >> env.custom
           echo "qbt_libtorrent_master_jamfile="no"
           echo "qbt_libtorrent_tag="${{ matrix.libtorrent_tag }}"
-          echo "qbt_qbittorrent_tag="release-4.3.9"
+          echo "qbt_qbittorrent_tag="master"
           echo "qbt_boost_tag="boost-1.82.0.beta1"
           echo "qbt_qt_tag="${{ matrix.qbt_qt_tag }}"
           echo "qbt_workflow_files="yes"
