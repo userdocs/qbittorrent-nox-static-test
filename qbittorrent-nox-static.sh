@@ -597,7 +597,7 @@ _install_qbittorrent() {
 		fi
 
 		printf '\n%b\n' " ${ulbc} qbittorrent-nox has been installed!${cend}"
-		printf '\n%b\n\n' " Run it using this command:"
+		printf '\n%b\n' " Run it using this command:"
 		[[ "$(id -un)" == 'root' ]] && printf '\n%b\n\n' " ${cg}qbittorrent-nox${cend}" || printf '\n%b\n\n' " ${cg}~/bin/qbittorrent-nox${cend}"
 		exit
 	else
@@ -1733,20 +1733,7 @@ while (("${#}")); do
 		-pr | --patch-repo)
 			if [[ -n "${2}" ]]; then
 				if _curl "https://github.com/${2}" &> /dev/null; then
-					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
-					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
-						qbt_patches_url="${2}"
-					else
-						printf '\n%b\n' " ${urc} ${cly}This patches directory does not exist in this repo:${cend}"
-						printf '\n%b\n' "   ${clc}https://github.com/${2}/tree/${default_branch}/patches${cend}"
-						printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo with a pacthes directory.${cend}"
-						exit
-					fi
-				else
-					printf '\n%b\n' " ${urc} ${cly}This repo does not exist:${cend}"
-					printf '\n%b\n' "   ${clc}https://github.com/${2}${cend}"
-					printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo.${cend}"
-					exit
+					qbt_patches_url="${2}"
 				fi
 				shift 2
 			else
