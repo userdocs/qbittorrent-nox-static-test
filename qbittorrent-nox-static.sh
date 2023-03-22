@@ -143,17 +143,21 @@ _set_default_values() {
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
-	# Env setting for the libtorrent tag
-	qbt_libtorrent_tag="${qbt_libtorrent_tag:-}"
+	qbt_bootstrap="${qbt_bootstrap:-}"
 
-	# Env setting for the qbittorrent tag
-	qbt_qbittorrent_tag="${qbt_qbittorrent_tag:-}"
+	qbt_with_icu="${qbt_with_icu:-}"
 
 	# Env setting for the boost tag
 	qbt_boost_tag="${qbt_boost_tag:-}"
 
+	# Env setting for the libtorrent tag
+	qbt_libtorrent_tag="${qbt_libtorrent_tag:-}"
+
 	# Env setting for the Qt tag
 	qbt_qt_tag="${qbt_qt_tag:-}"
+
+	# Env setting for the qbittorrent tag
+	qbt_qbittorrent_tag="${qbt_qbittorrent_tag:-}"
 
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
@@ -182,11 +186,13 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_build_tool=\"${clg}${qbt_build_tool}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_cross_name=\"${clg}${qbt_cross_name}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_patches_url=\"${clg}${qbt_patches_url}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_bootstrap=\"${clg}${qbt_bootstrap}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_with_icu=\"${clg}${qbt_with_icu}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_master_jamfile=\"${clg}${qbt_libtorrent_master_jamfile}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_tag=\"${clg}${github_tag[libtorrent]}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_qbittorrent_tag=\"${clg}${github_tag[qbittorrent]}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_qt_tag=\"${clg}${github_tag[qtbase]}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_qbittorrent_tag=\"${clg}${github_tag[qbittorrent]}${cly}\"${cend}"
 		[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${cly}  qbt_debian_mode=\"${clg}${qbt_debian_mode}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_files=\"${clg}${qbt_workflow_files}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_workflow_artifacts=\"${clg}${qbt_workflow_artifacts}${cly}\"${cend}"
@@ -927,8 +933,10 @@ _apply_patches() {
 		patch_file="${patch_dir}/patch"
 		patch_file_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/patch"
 
-		patch_jamfile="${patch_dir}/Jamfile"
-		patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
+		if [[ "${app_name}" == 'libtorrent' ]]; then
+			patch_jamfile="${patch_dir}/Jamfile"
+			patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
+		fi
 
 		# If the patch file exists in the module version folder matching the build configuration then use this.
 		if [[ -f "${patch_file}" ]]; then
@@ -1440,6 +1448,12 @@ _release_info() {
 	return
 }
 #######################################################################################################################################################
+# Environment variables - settings positional parameters of flags
+#######################################################################################################################################################
+[[ -n "${qbt_bootstrap}" && "${qbt_bootstrap}" == "c" ]] && set -- -bs-"${qbt_bootstrap}" "${@}"
+[[ -n "${qbt_patches_url}" ]] && set -- -pr "${qbt_patches_url}" "${@}"
+[[ "${qbt_with_icu}" == "yes" ]] && set -- -i "${@}"
+#######################################################################################################################################################
 # This is first help section that for triggers that do not require any processing and only provide a static result whe using help
 #######################################################################################################################################################
 while (("${#}")); do
@@ -1613,25 +1627,24 @@ set -- "${params1[@]}"
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
-
-[[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
-[[ -n "${qbt_qbittorrent_tag}" ]] && set -- -qt "${qbt_qbittorrent_tag}" "${@}"
+_check_dependencies        # see functions
+_script_version            # see functions
+_set_build_directory       # see functions
+_set_module_urls "${@}"    # see functions
+#######################################################################################################################################################
+# Environment variables - settings positional parameters of flags
+#######################################################################################################################################################
+[[ -n "${qbt_bootstrap}" && "${qbt_bootstrap}" != "c" ]] && set -- -bs-"${qbt_bootstrap}" "${@}"
 [[ -n "${qbt_boost_tag}" ]] && set -- -bt "${qbt_boost_tag}" "${@}"
+[[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n "${qbt_qt_tag}" ]] && set -- -qtt "${qbt_qt_tag}" "${@}"
-
-_check_dependencies # see functions
-
-_script_version # see functions
-
-_set_build_directory # see functions
-
-_set_module_urls "${@}" # see functions
+[[ -n "${qbt_qbittorrent_tag}" ]] && set -- -qt "${qbt_qbittorrent_tag}" "${@}"
 #######################################################################################################################################################
 # This section controls our flags that we can pass to the script to modify some variables and behavior.
 #######################################################################################################################################################
 while (("${#}")); do
 	case "${1}" in
-		-bs | --boot-strap)
+		-bs-p | --boot-strap-patches)
 			_apply_patches bootstrap
 			shift
 			;;
@@ -1670,18 +1683,15 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				github_tag[boost]="$(_git "${github_url[boost]}" -t "${2}")"
 				app_version[boost]="${github_tag[boost]#boost-}"
-
 				if [[ "${app_version[boost]}" =~ \.beta ]]; then
 					boost_url="${app_version[boost]//\./_}" boost_url="${boost_url/beta1/b1}" boost_url="${boost_url/beta2/b2}"
 					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/beta/${app_version[boost]}/source/boost_${boost_url}.tar.gz"
 				else
 					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//\./_}.tar.gz"
 				fi
-
 				if ! _curl -I "${source_archive_url[boost]}" &> /dev/null; then
 					source_default[libtorrent]="folder"
 				fi
-
 				qbt_workflow_override[boost]="yes"
 				_test_git_ouput "${github_tag[boost]}" "boost" "${2}"
 				shift 2
@@ -1746,13 +1756,11 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				github_tag[qbittorrent]="$(_git "${github_url[qbittorrent]}" -t "$2")"
 				app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
-
 				if [[ "${github_tag[qbittorrent]}" =~ ^release- ]]; then
 					source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
 				else
 					source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
 				fi
-
 				qbt_workflow_override[qbittorrent]="yes"
 				_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "$2"
 				shift 2
@@ -1767,13 +1775,10 @@ while (("${#}")); do
 				github_tag[qttools]="$(_git "${github_url[qttools]}" -t "${2}")"
 				app_version[qtbase]="$(printf '%s' "${github_tag[qtbase]#v}" | sed 's/-lts-lgpl//g')"
 				app_version[qttools]="$(printf '%s' "${github_tag[qttools]#v}" | sed 's/-lts-lgpl//g')"
-
 				source_default[qtbase]="folder"
 				source_default[qttools]="folder"
-
 				qbt_workflow_override[qtbase]="yes"
 				qbt_workflow_override[qttools]="yes"
-
 				_test_git_ouput "${github_tag[qtbase]}" "qtbase" "${2}"
 				_test_git_ouput "${github_tag[qttools]}" "qttools" "${2}"
 				shift 2
@@ -1790,7 +1795,7 @@ while (("${#}")); do
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-cd${cend}    ${td}or${cend} ${clb}--cache-directory${cend}       ${cy}Help:${cend} ${clb}-h-cd${cend}    ${td}or${cend} ${clb}--help-cache-directory${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-d${cend}     ${td}or${cend} ${clb}--debug${cend}                 ${cy}Help:${cend} ${clb}-h-d${cend}     ${td}or${cend} ${clb}--help-debug${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-dma${cend}   ${td}or${cend} ${clb}--debian-mode-alternate${cend} ${cy}Help:${cend} ${clb}-h-dma${cend}   ${td}or${cend} ${clb}--help-debian-mode-alternate${cend}"
-			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs${cend}    ${td}or${cend} ${clb}--boot-strap${cend}            ${cy}Help:${cend} ${clb}-h-bs${cend}    ${td}or${cend} ${clb}--help-boot-strap${cend}"
+			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-p${cend}  ${td}or${cend} ${clb}--boot-strap-patches${cend}    ${cy}Help:${cend} ${clb}-h-bs-p${cend}  ${td}or${cend} ${clb}--help-boot-strap-patches${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-c${cend}  ${td}or${cend} ${clb}--boot-strap-cmake${cend}      ${cy}Help:${cend} ${clb}-h-bs-c${cend}  ${td}or${cend} ${clb}--help-boot-strap-cmake${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-r${cend}  ${td}or${cend} ${clb}--boot-strap-release${cend}    ${cy}Help:${cend} ${clb}-h-bs-r${cend}  ${td}or${cend} ${clb}--help-boot-strap-release${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-bs-ma${cend} ${td}or${cend} ${clb}--boot-strap-multi-arch${cend} ${cy}Help:${cend} ${clb}-h-bs-ma${cend} ${td}or${cend} ${clb}--help-boot-strap-multi-arch${cend}"
@@ -1810,11 +1815,8 @@ while (("${#}")); do
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-s${cend}     ${td}or${cend} ${clb}--strip${cend}                 ${cy}Help:${cend} ${clb}-h-s${cend}     ${td}or${cend} ${clb}--help-strip${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-sdu${cend}   ${td}or${cend} ${clb}--script-debug-urls${cend}     ${cy}Help:${cend} ${clb}-h-sdu${cend}   ${td}or${cend} ${clb}--help-script-debug-urls${cend}"
 			printf '%b\n' " ${cg}Use:${cend} ${clb}-wf${cend}    ${td}or${cend} ${clb}--workflow${cend}              ${cy}Help:${cend} ${clb}-h-wf${cend}    ${td}or${cend} ${clb}--help-workflow${cend}"
-
 			printf '\n%b\n' " ${tb}${tu}Module specific help - flags are used with the modules listed here.${cend}"
-
 			printf '\n%b\n' " ${cg}Use:${cend} ${clm}all${cend} ${td}or${cend} ${clm}module-name${cend}          ${cg}Usage:${cend} ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clm}all${cend} ${clb}-i${cend}"
-
 			printf '\n%b\n' " ${td}${clm}all${cend} ${td}----------------${cend} ${td}${cly}optional${cend} ${td}Recommended method to install all modules${cend}"
 			printf '%b\n' " ${td}${clm}install${cend} ${td}------------${cend} ${td}${cly}optional${cend} ${td}Install the ${td}${clc}${qbt_install_dir_short}/completed/qbittorrent-nox${cend} ${td}binary${cend}"
 			[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' "${td} ${clm}bison${cend} ${td}--------------${cend} ${td}${cly}optional${cend} ${td}Build bison${cend}"
@@ -1830,9 +1832,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}qtbase${cend} ${td}-------------${cend} ${td}${clr}required${cend} ${td}Build qtbase locally${cend}"
 			printf '%b\n' " ${td}${clm}qttools${cend} ${td}------------${cend} ${td}${clr}required${cend} ${td}Build qttools locally${cend}"
 			printf '%b\n' " ${td}${clm}qbittorrent${cend} ${td}--------${cend} ${td}${clr}required${cend} ${td}Build qbittorrent locally${cend}"
-
 			printf '\n%b\n' " ${tb}${tu}env help - supported exportable evironment variables${cend}"
-
 			printf '\n%b\n' " ${td}${clm}export qbt_libtorrent_version=\"\"${cend} ${td}--------${cend} ${td}${clr}options${cend} ${td}1.2 - 2.0${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_qt_version=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}5 - 5.15 - 6 - 6.2 - 6.3 and so on${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_build_tool=\"\"${cend} ${td}----------------${cend} ${td}${clr}options${cend} ${td}qmake - cmake${cend}"
@@ -1849,9 +1849,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}export qbt_libtorrent_master_jamfile=\"\"${cend} ${td}-${cend} ${td}${clr}options${cend} ${td}yes no - use RC branch instead of release jamfile${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_optimise_strip=\"\"${cend} ${td}------------${cend} ${td}${clr}options${cend} ${td}yes no - strip binaries - cannot be used with debug${cend}"
 			printf '%b\n' " ${td}${clm}export qbt_build_debug=\"\"${cend} ${td}---------------${cend} ${td}${clr}options${cend} ${td}yes no - debug build - cannot be used with strip${cend}"
-
 			_print_env
-
 			exit
 			;;
 		-h-b | --help-build-directory)
@@ -1864,7 +1862,7 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${td}${ulbc} Usage example:${cend} ${td}${cg}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${td}${clm}module${cend} ${clb}-b${cend} ${td}${clc}\"\$HOME/build\"${cend} ${td}- will specify a custom build directory and install a specific module use to that custom location${cend}"
 			exit
 			;;
-		-h-bs | --help-boot-strap)
+		-h-bs-p | --help-boot-strap-patches)
 			_apply_patches bootstrap-help
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n' " Creates dirs in this structure: ${cc}${qbt_install_dir_short}/patches/app_name/tag/patch${cend}"
@@ -1896,7 +1894,6 @@ while (("${#}")); do
 			printf '%b\n' " ${uyc} aarch64"
 			printf '\n%b\n' "${clg} Usage:${cend} ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clb}-bs-ma ${qbt_cross_name:-aarch64}${cend}"
 			printf '\n%b\n\n' " ${uyc} You can also set it as a variable to trigger cross building: ${clb}export qbt_cross_name=${qbt_cross_name:-aarch64}${cend}"
-
 			exit
 			;;
 		-h-bs-a | --help-boot-strap-all)
@@ -2065,8 +2062,7 @@ _error_tag
 #######################################################################################################################################################
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
 #######################################################################################################################################################
-_debug "${@}" # requires shifted params from options block 2
-
+_debug "${@}"                # requires shifted params from options block 2
 _installation_modules "${@}" # requires shifted params from options block 2
 #######################################################################################################################################################
 # If any modules fail the qbt_modules_test then exit now.
@@ -2075,16 +2071,13 @@ if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	printf '\n%b\n' " ${tbk}${urc}${cend}${tb} One or more of the provided modules are not supported${cend}"
 	printf '\n%b\n' " ${uyc}${tb} Below is a list of supported modules${cend}"
 	printf '\n%b\n' " ${umc}${clm} ${qbt_modules[*]}${cend}"
-
 	_print_env
-
 	exit
 fi
 #######################################################################################################################################################
 # Functions part 4:
 #######################################################################################################################################################
 _cmake
-
 _multi_arch
 #######################################################################################################################################################
 # shellcheck disable=SC2317
