@@ -1033,6 +1033,23 @@ _download_folder() {
 		printf '\n%b\n' " ${ugc} ${clb}${app_name}${cend} - caching to directory ${clc}${qbt_dl_folder_path}${cend}"
 	fi
 
+	# if cache dir is on and the app_name folder does not exist then get folder via cloning default source
+	if [[ "${qbt_cache_dir_options}" != "bs" && ! -d "${qbt_dl_folder_path}" ]]; then
+		printf "\n%b\n\n" " ${ulbc} ${clm}${app_name}${cend} - Downloading ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
+	fi
+
+	if [[ ! -d "${qbt_dl_folder_path}" ]]; then
+		if [[ "${app_name}" =~ (bison|qttools) ]]; then
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
+			_pushd "${qbt_dl_folder_path}"
+			git submodule update --force --recursive --init --remote --depth=1 --single-branch
+			[[ "${app_name}" == "bison" ]] && ./bootstrap
+			_popd
+		else
+			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
+		fi
+	fi
+
 	# if there IS a app_name cache directory present in the path provided and we are bootstrapping then use this
 	if [[ "${qbt_cache_dir_options}" == "bs" && -d "${qbt_dl_folder_path}" ]]; then
 		printf '\n%b\n\n' " ${ugc} ${clb}${app_name}${cend} - Updating directory ${clc}${qbt_dl_folder_path}${cend}"
@@ -1048,21 +1065,6 @@ _download_folder() {
 
 		_git_git checkout "${github_tag[${app_name}]}"
 		_popd
-	fi
-
-	# if cache dir is on and the app_name folder does not exist then get folder via cloning default source
-	if [[ -n "${qbt_cache_dir}" && ! -d "${qbt_dl_folder_path}" ]]; then
-		printf "\n%b\n\n" " ${ulbc} Installing ${clm}${app_name}${cend} - ${cly}${github_url[${app_name}]}${cend} using tag${cly} ${github_tag[${app_name}]}${cend}"
-
-		if [[ "${app_name}" =~ (bison|qttools) ]]; then
-			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
-			_pushd "${qbt_dl_folder_path}"
-			git submodule update --force --recursive --init --remote --depth=1 --single-branch
-			[[ "${app_name}" == "bison" ]] && ./bootstrap
-			_popd
-		else
-			_git clone --no-tags --single-branch --branch "${github_tag[${app_name}]}" --shallow-submodules --recurse-submodules -j"$(nproc)" --depth 1 "${github_url[${app_name}]}" "${qbt_dl_folder_path}"
-		fi
 	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && -n "${qbt_cache_dir}" && -d "${qbt_dl_folder_path}" ]]; then
@@ -1106,6 +1108,8 @@ _download_file() {
 		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_install_dir}/${app_name}.tar.xz")
 		# delete any existing extracted archives and archives
 		rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_install_dir}/${app_name}.tar.xz" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
+		[[ -d "${qbt_install_dir}/${app_name}" ]] && rm -rf "${qbt_install_dir}/${app_name:?}"
+		[[ -d "${qbt_install_dir}/include/${app_name}" ]] && rm -rf "${qbt_install_dir}/include/${app_name:?}"
 	fi
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
@@ -1768,6 +1772,8 @@ while (("${#}")); do
 				source_default[qttools]="folder"
 
 				qbt_workflow_override[qtbase]="yes"
+				qbt_workflow_override[qttools]="yes"
+
 				_test_git_ouput "${github_tag[qtbase]}" "qtbase" "${2}"
 				_test_git_ouput "${github_tag[qttools]}" "qttools" "${2}"
 				shift 2
@@ -2204,7 +2210,7 @@ _boost() {
 		"${qbt_install_dir}/boost/bootstrap.sh" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		ln -s "${qbt_install_dir}/boost/boost" "${qbt_install_dir}/boost/include"
 	else
-		printf '%b\n' " ${uyc} Skipping b2 as we are using cmake"
+		printf '\n%b\n' " ${uyc} Skipping b2 as we are using cmake with Qt6"
 	fi
 
 	if [[ "${source_default["${app_name}"]}" == "folder" ]]; then
