@@ -465,9 +465,9 @@ _error_tag() {
 #######################################################################################################################################################
 _curl_curl() {
 	if [[ -z "${qbt_curl_proxy}" ]]; then
-		curl -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${@}"
+		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${@}"
 	else
-		curl -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 --proxy-insecure -x "${qbt_curl_proxy}" "${@}"
+		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 --proxy-insecure -x "${qbt_curl_proxy}" "${@}"
 	fi
 
 }
@@ -1466,10 +1466,6 @@ _release_info() {
 	return
 }
 #######################################################################################################################################################
-# Environment variables - settings positional parameters of flags
-#######################################################################################################################################################
-[[ -n "${qbt_patches_url}" ]] && set -- -pr "${qbt_patches_url}" "${@}"
-#######################################################################################################################################################
 # This is first help section that for triggers that do not require any processing and only provide a static result whe using help
 #######################################################################################################################################################
 while (("${#}")); do
@@ -1526,30 +1522,6 @@ while (("${#}")); do
 			qbt_git_proxy="${2}"
 			qbt_curl_proxy="${2}"
 			shift 2
-			;;
-		-pr | --patch-repo)
-			if [[ -n "${2}" ]]; then
-				if _curl -S "https://github.com/${2}" > /dev/null; then
-					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
-					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
-						qbt_patches_url="${2}"
-					else
-						printf '\n%b\n' " ${urc} ${cly}This patches directory does not exist in this repo:${cend}"
-						printf '\n%b\n' "   ${clc}https://github.com/${2}/tree/${default_branch}/patches${cend}"
-						printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo with a pacthes directory.${cend}"
-						exit
-					fi
-				else
-					printf '\n%b\n' " ${urc} ${cly}This repo does not exist:${cend}"
-					printf '\n%b\n' "   ${clc}https://github.com/${2}${cend}"
-					printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo.${cend}"
-					exit
-				fi
-				shift 2
-			else
-				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} username/repo ${cend}"
-				exit
-			fi
 			;;
 		-ma | --multi-arch)
 			if [[ -n "${2}" && "${2}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
@@ -1650,6 +1622,7 @@ _set_module_urls "${@}"    # see functions
 #######################################################################################################################################################
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
+[[ -n "${qbt_patches_url}" ]] && set -- -pr "${qbt_patches_url}" "${@}"
 [[ -n "${qbt_boost_tag}" ]] && set -- -bt "${qbt_boost_tag}" "${@}"
 [[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n "${qbt_qt_tag}" ]] && set -- -qtt "${qbt_qt_tag}" "${@}"
@@ -1756,6 +1729,30 @@ while (("${#}")); do
 				shift 2
 			else
 				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} TAG ${cend}"
+				exit
+			fi
+			;;
+		-pr | --patch-repo)
+			if [[ -n "${2}" ]]; then
+				if _curl "https://github.com/${2}" &> /dev/null; then
+					default_branch=$(_curl "https://api.github.com/repos/${2}" | sed -rn 's|(.*)"default_branch": "(.*)",|\2|p')
+					if _curl "https://github.com/${2}/tree/${default_branch}/patches" &> /dev/null; then
+						qbt_patches_url="${2}"
+					else
+						printf '\n%b\n' " ${urc} ${cly}This patches directory does not exist in this repo:${cend}"
+						printf '\n%b\n' "   ${clc}https://github.com/${2}/tree/${default_branch}/patches${cend}"
+						printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo with a pacthes directory.${cend}"
+						exit
+					fi
+				else
+					printf '\n%b\n' " ${urc} ${cly}This repo does not exist:${cend}"
+					printf '\n%b\n' "   ${clc}https://github.com/${2}${cend}"
+					printf '\n%b\n\n' " ${uyc} ${cly}Please provide a valid username and repo.${cend}"
+					exit
+				fi
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} ${cly}You must provide a tag for this switch:${cend} ${clb}${1} username/repo ${cend}"
 				exit
 			fi
 			;;
