@@ -1418,9 +1418,7 @@ _release_info() {
 
 		🟡 Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 
-		To see the build combinations that the script automates please check the build table.
-
-		🟠 [Check the build table for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
+		🟠 [To see the build combinations that the script automates please check the build table. for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
 
 		<!--
 		declare -A current_build_version
