@@ -93,6 +93,7 @@ fi
 # This function sets some default values we use but whose values can be overridden by certain flags or exported as variables before running the script
 #######################################################################################################################################################
 _set_default_values() {
+	# Source env vars from a file if it exists
 	[[ -f "${PWD}/.qbt_env" ]] && source "${PWD}/.qbt_env"
 
 	# For docker deploys to not get prompted to set the timezone.
@@ -147,7 +148,7 @@ _set_default_values() {
 
 	qbt_bootstrap="${qbt_bootstrap:-}"
 
-	qbt_with_icu="${qbt_with_icu:-}"
+	qbt_skip_icu="${qbt_skip_icu:-no}"
 
 	# Env setting for the boost tag
 	qbt_boost_tag="${qbt_boost_tag:-}"
@@ -189,7 +190,7 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_cross_name=\"${clg}${qbt_cross_name}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_patches_url=\"${clg}${qbt_patches_url}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_bootstrap=\"${clg}${qbt_bootstrap}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_with_icu=\"${clg}${qbt_with_icu}${cly}\"${cend}"
+		printf '%b\n' " ${cly}  qbt_skip_icu=\"${clg}${qbt_skip_icu}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_master_jamfile=\"${clg}${qbt_libtorrent_master_jamfile}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_tag=\"${clg}${github_tag[libtorrent]}${cly}\"${cend}"
@@ -1452,9 +1453,7 @@ _release_info() {
 #######################################################################################################################################################
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
-[[ -n "${qbt_bootstrap}" && "${qbt_bootstrap}" == "c" ]] && set -- -bs-"${qbt_bootstrap}" "${@}"
 [[ -n "${qbt_patches_url}" ]] && set -- -pr "${qbt_patches_url}" "${@}"
-[[ "${qbt_with_icu}" == "yes" ]] && set -- -i "${@}"
 #######################################################################################################################################################
 # This is first help section that for triggers that do not require any processing and only provide a static result whe using help
 #######################################################################################################################################################
@@ -1636,7 +1635,6 @@ _set_module_urls "${@}"    # see functions
 #######################################################################################################################################################
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
-[[ -n "${qbt_bootstrap}" && "${qbt_bootstrap}" != "c" ]] && set -- -bs-"${qbt_bootstrap}" "${@}"
 [[ -n "${qbt_boost_tag}" ]] && set -- -bt "${qbt_boost_tag}" "${@}"
 [[ -n "${qbt_libtorrent_tag}" ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n "${qbt_qt_tag}" ]] && set -- -qtt "${qbt_qt_tag}" "${@}"
