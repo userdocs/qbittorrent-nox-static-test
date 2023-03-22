@@ -146,8 +146,7 @@ _set_default_values() {
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
-	qbt_bootstrap="${qbt_bootstrap:-}"
-
+	# Env setting for the icu tag
 	qbt_skip_icu="${qbt_skip_icu:-no}"
 
 	# Env setting for the boost tag
@@ -189,7 +188,6 @@ _set_default_values() {
 		printf '%b\n' " ${cly}  qbt_build_tool=\"${clg}${qbt_build_tool}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_cross_name=\"${clg}${qbt_cross_name}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_patches_url=\"${clg}${qbt_patches_url}${cly}\"${cend}"
-		printf '%b\n' " ${cly}  qbt_bootstrap=\"${clg}${qbt_bootstrap}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_skip_icu=\"${clg}${qbt_skip_icu}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_boost_tag=\"${clg}${github_tag[boost]}${cly}\"${cend}"
 		printf '%b\n' " ${cly}  qbt_libtorrent_master_jamfile=\"${clg}${qbt_libtorrent_master_jamfile}${cly}\"${cend}"
