@@ -1285,7 +1285,7 @@ _multi_arch() {
 						alpine)
 							cross_arch="x86"
 							qbt_cross_host="i686-linux-musl"
-							qbt_zlib_arch="x86"
+							qbt_zlib_arch="i686"
 							;;&
 						*)
 							bitness="32"
@@ -1309,7 +1309,7 @@ _multi_arch() {
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 				printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
-				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 			else
 				printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 			fi
