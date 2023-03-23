@@ -446,6 +446,13 @@ _tee() {
 #######################################################################################################################################################
 # error functions
 #######################################################################################################################################################
+_error_url() {
+	[[ "${test_url_status}" -ne "200" ]] && {
+		printf '\n%b\n\n' " ${cy}Test URL failed: There could be an issue with your proxy settings or network connection${cend}"
+		exit
+	}
+}
+
 _error_tag() {
 	[[ "${github_tag[*]}" =~ error_tag ]] && {
 		printf '\n'
@@ -456,12 +463,7 @@ _error_tag() {
 # _curl test download functions - default is no proxy - _curl is a test function and _curl_curl is the command function
 #######################################################################################################################################################
 _curl_curl() {
-	if [[ -z "${qbt_curl_proxy}" ]]; then
-		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${@}"
-	else
-		"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 --proxy-insecure -x "${qbt_curl_proxy}" "${@}"
-	fi
-
+	"$(type -P curl)" -sNL4fq --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 "${qbt_curl_proxy[@]}" "${@}"
 }
 
 _curl() {
@@ -473,11 +475,7 @@ _curl() {
 # git test download functions - default is no proxy - git is a test function and _git_git is the command function
 #######################################################################################################################################################
 _git_git() {
-	if [[ -z "${qbt_git_proxy}" ]]; then
-		"$(type -P git)" "${@}"
-	else
-		"$(type -P git)" -c http.sslVerify=false -c http.https://github.com.proxy="${qbt_git_proxy}" "${@}"
-	fi
+	"$(type -P git)" "${qbt_git_proxy[@]}" "${@}"
 }
 
 _git() {
@@ -803,12 +801,7 @@ _set_module_urls() {
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
 	boost_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
-
-	if ! _curl "https://www.google.com" &> /dev/null; then
-		printf '\n%b\n\n' " ${cy}Google test: There is an issue with your proxy settings or network connection${cend}"
-		exit
-	fi
-
+	test_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://www.google.com")"
 	return
 }
 #######################################################################################################################################################
@@ -1476,8 +1469,8 @@ while (("${#}")); do
 			shift
 			;;
 		-p | --proxy)
-			qbt_git_proxy="${2}"
-			qbt_curl_proxy="${2}"
+			qbt_git_proxy=("-c" "http.sslVerify=false" "-c" "http.https://github.com.proxy=${2}")
+			qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
 			shift 2
 			;;
 		-ma | --multi-arch)
@@ -2008,6 +2001,7 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 #######################################################################################################################################################
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
+_error_url
 _error_tag
 #######################################################################################################################################################
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
