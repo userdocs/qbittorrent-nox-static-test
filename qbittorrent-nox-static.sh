@@ -942,7 +942,14 @@ _apply_patches() {
 			fi
 		fi
 
+		# Patch files
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
+
+		# Copy modified files from source directory
+		if [[ -d "${patch_dir}/source" ]]; then
+			printf '%b\n\n' " ${urc} ${cly}Copying files from source dir${cend}"
+			cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
+		fi
 	fi
 }
 #######################################################################################################################################################
@@ -1065,7 +1072,6 @@ _download_folder() {
 # This function is for downloading source code archives
 #######################################################################################################################################################
 _download_file() {
-
 	if [[ -f "${qbt_install_dir}/${app_name}.tar.xz" && "${qbt_workflow_artifacts}" == "no" ]]; then
 		# This checks that the archive is not corrupt or empty checking for a top level folder and exiting if there is no result i.e. the archive is empty - so that we do rm and empty substitution
 		_cmd grep -Eqom1 "(.*)[^/]" <(tar tf "${qbt_install_dir}/${app_name}.tar.xz")
@@ -1082,8 +1088,7 @@ _download_file() {
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n' " ${ugc} Using ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n\n' " ${ulbc} Copying ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
-		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
+		printf '\n%b\n\n' " ${ulbc} Extracting ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 	fi
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
@@ -1101,7 +1106,6 @@ _download_file() {
 	[[ "${app_name}" == "cmake_ninja" ]] && additional_cmds=("--strip-components=1")
 
 	if [[ "${qbt_cache_dir_options}" != "bs" ]]; then
-
 		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
 		# we don't need to cd into the boost if we download it via source archives
 
@@ -1212,7 +1216,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabi"
 							;;&
 						*)
-							address_model="32"
+							bitness="32"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
@@ -1231,7 +1235,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabihf"
 							;;&
 						*)
-							address_model="32"
+							bitness="32"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
@@ -1250,7 +1254,7 @@ _multi_arch() {
 							qbt_cross_host="aarch64-linux-gnu"
 							;;&
 						*)
-							address_model="64"
+							bitness="64"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-aarch64"
 							qbt_cross_qtbase="linux-aarch64-gnu-g++"
@@ -1269,7 +1273,7 @@ _multi_arch() {
 							qbt_cross_host="x86_64-linux-gnu"
 							;;&
 						*)
-							address_model="64"
+							bitness="64"
 							qbt_cross_boost=""
 							qbt_cross_openssl="linux-x86_64"
 							qbt_cross_qtbase="linux-g++-64"
@@ -1284,7 +1288,7 @@ _multi_arch() {
 							qbt_zlib_arch="x86"
 							;;&
 						*)
-							address_model="32"
+							bitness="32"
 							qbt_cross_openssl="linux-x86"
 							qbt_cross_qtbase="linux-g++-32"
 							;;
@@ -1306,8 +1310,9 @@ _multi_arch() {
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 				# _curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				_curl --create-dirs "https://skarnet.org/toolchains/cross/i686-linux-musl_i686-12.2.0.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
-				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
 			fi
+
+			tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
 
 			_fix_multiarch_static_links "${qbt_cross_host}"
 
@@ -2194,7 +2199,7 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${address_model}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
@@ -2234,14 +2239,34 @@ _double_conversion() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _qtbase() {
-	case "${qbt_cross_name}" in
-		armhf | armv7)
-			sed "s|arm-linux-gnueabi|${qbt_cross_host}|g" -i "mkspecs/linux-arm-gnueabi-g++/qmake.conf"
-			;;
-		aarch64)
-			sed "s|aarch64-linux-gnu|${qbt_cross_host}|g" -i "mkspecs/linux-aarch64-gnu-g++/qmake.conf"
-			;;
-	esac
+
+	cat > "mkspecs/${qbt_cross_qtbase}/qmake.conf" <<- QT_MKSPECS
+		MAKEFILE_GENERATOR      = UNIX
+		CONFIG                 += incremental
+		QMAKE_INCREMENTAL_STYLE = sublib
+
+		include(../common/linux.conf)
+
+		QMAKE_CFLAGS            = -m${bitness}
+		QMAKE_LFLAGS            = -m${bitness}
+
+		include(../common/gcc-base-unix.conf)
+		include(../common/g++-unix.conf)
+
+		# modifications to g++.conf
+		QMAKE_CC                = ${qbt_cross_host}-gcc
+		QMAKE_CXX               = ${qbt_cross_host}-g++
+		QMAKE_LINK              = ${qbt_cross_host}-g++
+		QMAKE_LINK_SHLIB        = ${qbt_cross_host}-g++
+
+		# modifications to linux.conf
+		QMAKE_AR                = ${qbt_cross_host}-ar cqs
+		QMAKE_OBJCOPY           = ${qbt_cross_host}-objcopy
+		QMAKE_NM                = ${qbt_cross_host}-nm -P
+		QMAKE_STRIP             = ${qbt_cross_host}-strip
+
+		load(qt_config)
+	QT_MKSPECS
 
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
