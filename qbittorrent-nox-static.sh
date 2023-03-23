@@ -1550,7 +1550,7 @@ while (("${#}")); do
 			printf '\n%b\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend}"
 			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
 			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
-			[[ -n "${qbt_curl_proxy}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy}${tn}${cend}"
+			[[ -n "${qbt_curl_proxy[*]}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy[*]}${tn}${cend}"
 			exit
 			;;
 		-h-sdu | --help-script-debug-urls)
