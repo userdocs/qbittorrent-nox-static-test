@@ -878,7 +878,7 @@ _installation_modules() {
 # This function will test to see if a Jamfile patch file exists via the variable patches_github_url for the tag used.
 #######################################################################################################################################################
 _apply_patches() {
-	[[ -n ${1} ]] && app_name="${1}"
+	[[ -n "${1}" ]] && app_name="${1}"
 	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
 	default_jamfile="${app_version[libtorrent]//./\_}"
 
@@ -889,11 +889,7 @@ _apply_patches() {
 		default_jamfile="RC_${default_jamfile%_*}"
 	fi
 
-	if [[ "${app_name}" == 'bootstrap-help' ]]; then # All the core variables we need for the help command are set so we can exit this function now.
-		return
-	fi
-
-	if [[ "${app_name}" == 'bootstrap' ]]; then
+	if [[ "${app_name}" == "bootstrap" ]]; then
 		for module_patch in "${qbt_modules[@]}"; do
 			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}"
 		done
@@ -910,7 +906,7 @@ _apply_patches() {
 		patch_file="${patch_dir}/patch"
 		patch_file_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/patch"
 
-		if [[ "${app_name}" == 'libtorrent' ]]; then
+		if [[ "${app_name}" == "libtorrent" ]]; then
 			patch_jamfile="${patch_dir}/Jamfile"
 			patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 		fi
@@ -926,7 +922,7 @@ _apply_patches() {
 		fi
 
 		# Libtorrent specific stuff
-		if [[ "${app_name}" == 'libtorrent' ]]; then
+		if [[ "${app_name}" == "libtorrent" ]]; then
 			# cosmetics
 			[[ "${source_default[libtorrent]}" == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n'
 
@@ -947,8 +943,6 @@ _apply_patches() {
 		fi
 
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
-
-		[[ -d "${patch_dir}/source" ]] && cp -rf
 	fi
 }
 #######################################################################################################################################################
@@ -1083,17 +1077,11 @@ _download_file() {
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && ! -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${ulbc} Dowloading ${clm}${app_name}${cend} using ${cly}${source_type}${cend} files to ${clc}${qbt_dl_file_path}${cend} - ${cly}${qbt_dl_source_url}${cend}"
-	fi
-
-	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
+	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n' " ${ulbc} Caching ${clm}${app_name}${cend} ${cly}${source_type}${cend} files to ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend} - ${cly}${qbt_dl_source_url}${cend}"
-	fi
-
-	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
+	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n' " ${ugc} Using ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
-	fi
-
-	if [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
+	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${ulbc} Copying ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 		cp -rf "${qbt_dl_file_path}" "${qbt_install_dir}/"
 	fi
