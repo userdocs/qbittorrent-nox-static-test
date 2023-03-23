@@ -490,7 +490,7 @@ _git() {
 	fi
 
 	if ! _curl -fIL "${git_test_cmd[@]}" &> /dev/null; then
-		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
+		printf '\n%b\n\n' " ${cy}Git test 1: There is an issue with your proxy settings or network connection${cend}"
 		exit
 	fi
 
@@ -505,7 +505,7 @@ _git() {
 		printf '%b\n' 'error_tag'
 	else
 		if ! _git_git "${@}"; then
-			printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
+			printf '\n%b\n\n' " ${cy}Git test 2: There is an issue with your proxy settings or network connection${cend}"
 			exit
 		fi
 	fi
@@ -806,7 +806,7 @@ _set_module_urls() {
 	boost_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
 
 	if ! _curl "https://www.google.com" &> /dev/null; then
-		printf '\n%b\n\n' " ${cy}There is an issue with your proxy settings or network connection${cend}"
+		printf '\n%b\n\n' " ${cy}Google test: There is an issue with your proxy settings or network connection${cend}"
 		exit
 	fi
 
