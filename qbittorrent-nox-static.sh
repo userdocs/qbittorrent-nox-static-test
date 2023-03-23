@@ -612,10 +612,10 @@ _script_version() {
 	fi
 }
 #######################################################################################################################################################
-# URL test for normal use and proxy use
+# URL test for normal use and proxy use - make sure we can reach google.com before processing the URL functions
 #######################################################################################################################################################
 _test_url() {
-	test_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://www.google.com")"
+	test_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://github.com")"
 	if [[ "${test_url_status}" -eq "200" ]]; then
 		printf '\n%b\n' " ${ugc} Test URL = ${cg}passed${cend}"
 	else
