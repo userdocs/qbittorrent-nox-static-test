@@ -1414,6 +1414,7 @@ _release_info() {
 		|  armv7  | armv7l-linux-musleabihf  |   armv7-a   |
 		| aarch64 |    aarch64-linux-musl    |   armv8-a   |
 		| x86_64  |    x86_64-linux-musl     |    amd64    |
+		|   x86   |     i686-linux-musl      |    i686     |
 
 		## Info about the build matrixes for qbittorrent-nox-static
 
