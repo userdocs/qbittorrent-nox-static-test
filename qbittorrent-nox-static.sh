@@ -393,9 +393,9 @@ _check_dependencies() {
 		fi
 	fi
 
-	# All checks passed print
+	# All dependency checks passed print
 	if [[ "${deps_installed}" != "no" ]]; then
-		printf '\n%b\n' " ${ugc}${tb} All checks passed and core dependencies are installed, continuing to build${cend}"
+		printf '\n%b\n' " ${ugc}${tb} Dependencies: All checks passed, continuing to build${cend}"
 	fi
 }
 #######################################################################################################################################################
@@ -446,13 +446,6 @@ _tee() {
 #######################################################################################################################################################
 # error functions
 #######################################################################################################################################################
-_error_url() {
-	[[ "${test_url_status}" -ne "200" ]] && {
-		printf '\n%b\n\n' " ${cy}Test URL failed: There could be an issue with your proxy settings or network connection${cend}"
-		exit
-	}
-}
-
 _error_tag() {
 	[[ "${github_tag[*]}" =~ error_tag ]] && {
 		printf '\n'
@@ -616,6 +609,18 @@ _script_version() {
 		printf '\n%b\n' " ${ugc} curl -sLo ~/qbittorrent-nox-static.sh https://git.io/qbstatic${cend}"
 	else
 		printf '\n%b\n' " ${ugc} Script version: ${clg}${script_version}${cend}"
+	fi
+}
+#######################################################################################################################################################
+# URL test for normal use and proxy use
+#######################################################################################################################################################
+_test_url() {
+	test_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://www.google.com")"
+	if [[ "${test_url_status}" -eq "200" ]]; then
+		printf '\n%b\n' " ${ugc} Test URL = ${cg}passed${cend}"
+	else
+		printf '\n%b\n\n' " ${urc} ${cy}Test URL failed:${cend} ${cly}There could be an issue with your proxy settings or network connection${cend}"
+		exit
 	fi
 }
 #######################################################################################################################################################
@@ -801,7 +806,6 @@ _set_module_urls() {
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
 	boost_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
-	test_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://www.google.com")"
 	return
 }
 #######################################################################################################################################################
@@ -1560,8 +1564,9 @@ set -- "${params1[@]}"
 _set_default_values "${@}" # see functions
 _check_dependencies        # see functions
 _script_version            # see functions
-_set_build_directory       # see functions
-_set_module_urls "${@}"    # see functions
+_test_url
+_set_build_directory    # see functions
+_set_module_urls "${@}" # see functions
 #######################################################################################################################################################
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
@@ -2001,7 +2006,6 @@ set -- "${params2[@]}" # Set positional arguments in their proper place.
 #######################################################################################################################################################
 # Lets dip out now if we find that any github tags failed validation or the urls are invalid
 #######################################################################################################################################################
-_error_url
 _error_tag
 #######################################################################################################################################################
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
