@@ -241,7 +241,7 @@ _set_default_values() {
 	esac
 
 	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
-	if [[ ${qbt_cross_name} =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ ${qbt_cross_name} =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		_multi_arch bootstrap
 	else
 		cross_arch="$(uname -m)"
@@ -879,7 +879,6 @@ _installation_modules() {
 #######################################################################################################################################################
 _apply_patches() {
 	[[ -n ${1} ]] && app_name="${1}"
-
 	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
 	default_jamfile="${app_version[libtorrent]//./\_}"
 
@@ -948,6 +947,8 @@ _apply_patches() {
 		fi
 
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
+
+		[[ -d "${patch_dir}/source" ]] && cp -rf
 	fi
 }
 #######################################################################################################################################################
@@ -1205,7 +1206,7 @@ _cmake() {
 # This function handles the Multi Arch dynamics of the script.
 #######################################################################################################################################################
 _multi_arch() {
-	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
 
 			[[ "${1}" != 'bootstrap' ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
@@ -1223,6 +1224,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabi"
 							;;&
 						*)
+							address_model="32"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
@@ -1241,6 +1243,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-gnueabihf"
 							;;&
 						*)
+							address_model="32"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-armv4"
 							qbt_cross_qtbase="linux-arm-gnueabi-g++"
@@ -1259,6 +1262,7 @@ _multi_arch() {
 							qbt_cross_host="aarch64-linux-gnu"
 							;;&
 						*)
+							address_model="64"
 							qbt_cross_boost="gcc-arm"
 							qbt_cross_openssl="linux-aarch64"
 							qbt_cross_qtbase="linux-aarch64-gnu-g++"
@@ -1277,9 +1281,24 @@ _multi_arch() {
 							qbt_cross_host="x86_64-linux-gnu"
 							;;&
 						*)
+							address_model="64"
 							qbt_cross_boost=""
 							qbt_cross_openssl="linux-x86_64"
 							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				x86)
+					case "${qbt_cross_target}" in
+						alpine)
+							cross_arch="x86"
+							qbt_cross_host="i686-linux-musl"
+							qbt_zlib_arch="x86"
+							;;&
+						*)
+							address_model="32"
+							qbt_cross_openssl="linux-x86"
+							qbt_cross_qtbase="linux-g++-32"
 							;;
 					esac
 					;;
@@ -1297,7 +1316,8 @@ _multi_arch() {
 			[[ "${1}" == 'bootstrap' && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				# _curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				_curl --create-dirs "https://skarnet.org/toolchains/cross/i686-linux-musl_i686-12.2.0.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
 			fi
 
@@ -1478,7 +1498,7 @@ while (("${#}")); do
 			shift 2
 			;;
 		-ma | --multi-arch)
-			if [[ -n "${2}" && "${2}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+			if [[ -n "${2}" && "${2}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 				qbt_cross_name="${2}"
 				shift 2
 			else
@@ -1593,7 +1613,7 @@ while (("${#}")); do
 			shift
 			;;
 		-bs-ma | --boot-strap-multi-arch)
-			if [[ -n "${2}" && "${2}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+			if [[ -n "${2}" && "${2}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 				qbt_cross_name="${2}"
 				shift 2
 			else
@@ -1816,7 +1836,7 @@ while (("${#}")); do
 			printf '\n%b\n' " Creates dirs in this structure: ${cc}${qbt_install_dir_short}/patches/app_name/tag/patch${cend}"
 			printf '\n%b\n' " Add your patches there, for example."
 			printf '\n%b\n' " ${cc}${qbt_install_dir_short}/patches/libtorrent/${app_version[libtorrent]}/patch${cend}"
-			printf '\n%b\n\n' " ${cc}${qbt_install_dir_short}/patches/qbittorrent/${app_name}/patch${cend}"
+			printf '\n%b\n\n' " ${cc}${qbt_install_dir_short}/patches/qbittorrent/${app_version[qbittorrent]}/patch${cend}"
 			exit
 			;;
 		-h-bs-c | --help-boot-cmake)
@@ -1934,13 +1954,13 @@ while (("${#}")); do
 			_apply_patches bootstrap-help
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n' " Specify a username and repo to use patches hosted on github${cend}"
-			printf '\n%b\n' " ${cg}${ulbc} Usage example:${cend} ${clb}-pr${cend} ${clc}usnerame/repo${cend}"
-			printf '\n%b\n' " ${cy}There is a specific github directory format you need to use with this flag${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}There is a specific github directory format you need to use with this flag${cend}"
 			printf '\n%b\n' " ${clc}patches/libtorrent/${app_version[libtorrent]}/patch${cend}"
 			printf '%b\n' " ${clc}patches/libtorrent/${app_version[libtorrent]}/Jamfile${cend} ${clr}(defaults to branch master)${cend}"
-			printf '\n%b\n' " ${clc}patches/qbittorrent/${app_name}/patch${cend}"
-			printf '\n%b\n' " ${cy}If an installation tag matches a hosted tag patch file, it will be automaticlaly used.${cend}"
-			printf '\n%b\n\n' " The tag name will alway be an abbreviated version of the default or specificed tag.${cend}"
+			printf '\n%b\n' " ${clc}patches/qbittorrent/${app_version[qbittorrent]}/patch${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}If an installation tag matches a hosted tag patch file, it will be automatically used.${cend}"
+			printf '\n%b\n' " The tag name will alway be an abbreviated version of the default or specificed tag.${cend}"
+			printf '\n%b\n\n' " ${ulbc} ${cg}Usage example:${cend} ${clb}-pr usnerame/repo${cend}"
 			exit
 			;;
 		-h-qm | --help-qbittorrent-master)
@@ -2092,7 +2112,7 @@ _icu_bootstrap() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu() {
-	if [[ "${qbt_cross_name}" =~ ^(x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
 		"${qbt_install_dir}/${app_name}${sub_dir}/runConfigureICU" Linux/gcc
@@ -2186,7 +2206,7 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="$(getconf LONG_BIT)" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${address_model}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
