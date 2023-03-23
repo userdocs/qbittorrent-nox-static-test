@@ -1284,12 +1284,12 @@ _multi_arch() {
 					case "${qbt_cross_target}" in
 						alpine)
 							cross_arch="x86"
-							qbt_cross_host="x86_64-linux-muslx32"
+							qbt_cross_host="i686-linux-musl"
 							qbt_zlib_arch="x86"
 							;;&
 						*)
 							bitness="32"
-							qbt_cross_openssl="linux-x32"
+							qbt_cross_openssl="linux-x86"
 							qbt_cross_qtbase="linux-g++-32"
 							;;
 					esac
@@ -1315,9 +1315,7 @@ _multi_arch() {
 			fi
 
 			tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-
 			_fix_multiarch_static_links "${qbt_cross_host}"
-
 			multi_glibc=("--host=${qbt_cross_host}")                                                # ${multi_glibc[@]}
 			multi_iconv=("--host=${qbt_cross_host}")                                                # ${multi_iconv[@]}
 			multi_icu=("--host=${qbt_cross_host}" "-with-cross-build=${qbt_install_dir}/icu/cross") # ${multi_icu[@]}
@@ -2248,10 +2246,18 @@ _qtbase() {
 		QMAKE_INCREMENTAL_STYLE = sublib
 
 		include(../common/linux.conf)
+	QT_MKSPECS
 
-		QMAKE_CFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
-		QMAKE_LFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64)$ ]]; then
+		cat >> "mkspecs/${qbt_cross_qtbase}/qmake.conf" <<- QT_MKSPECS
 
+			QMAKE_CFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
+			QMAKE_LFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
+
+		QT_MKSPECS
+	fi
+
+	cat >> "mkspecs/${qbt_cross_qtbase}/qmake.conf" <<- QT_MKSPECS
 		include(../common/gcc-base-unix.conf)
 		include(../common/g++-unix.conf)
 
