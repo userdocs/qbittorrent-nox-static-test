@@ -1284,7 +1284,7 @@ _multi_arch() {
 					case "${qbt_cross_target}" in
 						alpine)
 							cross_arch="x86"
-							qbt_cross_host="i686-linux-musl"
+							qbt_cross_host="x86_64-linux-muslx32"
 							qbt_zlib_arch="x86"
 							;;&
 						*)
@@ -1308,8 +1308,10 @@ _multi_arch() {
 			[[ "${1}" == 'bootstrap' && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-				# _curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
-				_curl --create-dirs "https://skarnet.org/toolchains/cross/i686-linux-musl_i686-12.2.0.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
+				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.gz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+			else
+				printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 			fi
 
 			tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
@@ -2199,7 +2201,7 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness:-$(getconf LONG_BIT)}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
@@ -2247,8 +2249,8 @@ _qtbase() {
 
 		include(../common/linux.conf)
 
-		QMAKE_CFLAGS            = -m${bitness}
-		QMAKE_LFLAGS            = -m${bitness}
+		QMAKE_CFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
+		QMAKE_LFLAGS            = -m${bitness:-$(getconf LONG_BIT)}
 
 		include(../common/gcc-base-unix.conf)
 		include(../common/g++-unix.conf)
