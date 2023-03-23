@@ -1289,7 +1289,7 @@ _multi_arch() {
 							;;&
 						*)
 							bitness="32"
-							qbt_cross_openssl="linux-x86"
+							qbt_cross_openssl="linux-x32"
 							qbt_cross_qtbase="linux-g++-32"
 							;;
 					esac
