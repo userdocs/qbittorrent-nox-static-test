@@ -241,7 +241,7 @@ _set_default_values() {
 	esac
 
 	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
-	if [[ ${qbt_cross_name} =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		_multi_arch bootstrap
 	else
 		cross_arch="$(uname -m)"
@@ -549,6 +549,7 @@ _debug() {
 
 		printf '\n%b\n' " ${umc} ${cly}Tests${cend}"
 		printf '\n%b\n' " ${clg}boost_url_status:${cend} ${clb}${boost_url_status}${cend}"
+		printf '%b\n' " ${clg}test_url_status:${cend} ${clb}${test_url_status}${cend}"
 
 		printf '\n'
 		exit
@@ -892,7 +893,7 @@ _apply_patches() {
 
 	if [[ "${app_name}" == "bootstrap" ]]; then
 		for module_patch in "${qbt_modules[@]}"; do
-			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}"
+			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
 		done
 		unset module_patch
 		printf '\n%b\n\n' " ${uyc} Using the defaults, these directories have been created:${cend}"
@@ -1201,9 +1202,7 @@ _cmake() {
 _multi_arch() {
 	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
 		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
-
-			[[ "${1}" != 'bootstrap' ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
-
+			[[ "${1}" != "bootstrap" ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
 			case "${qbt_cross_name}" in
 				armhf)
 					case "${qbt_cross_target}" in
@@ -1288,6 +1287,10 @@ _multi_arch() {
 							qbt_cross_host="i686-linux-musl"
 							qbt_zlib_arch="i686"
 							;;&
+						debian | ubuntu)
+							cross_arch="i386"
+							qbt_cross_host="i686-linux-gnu"
+							;;&
 						*)
 							bitness="32"
 							qbt_cross_openssl="linux-x86"
@@ -1306,17 +1309,20 @@ _multi_arch() {
 
 			mkdir -p "${qbt_install_dir}/logs"
 
-			[[ "${1}" == 'bootstrap' && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+			[[ "${qbt_cache_dir_options}" == "bs" && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 
-			if [[ "${qbt_cross_target}" =~ ^(alpine)$ && ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-				printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
-				_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
-			else
-				printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cached files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
+			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
+				if [[ "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
+					printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${cend}"
+					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+				else
+					printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
+				fi
+
+				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+				_fix_multiarch_static_links "${qbt_cross_host}"
 			fi
 
-			tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
-			_fix_multiarch_static_links "${qbt_cross_host}"
 			multi_glibc=("--host=${qbt_cross_host}")                                                # ${multi_glibc[@]}
 			multi_iconv=("--host=${qbt_cross_host}")                                                # ${multi_iconv[@]}
 			multi_icu=("--host=${qbt_cross_host}" "-with-cross-build=${qbt_install_dir}/icu/cross") # ${multi_icu[@]}
