@@ -131,7 +131,7 @@ _set_default_values() {
 	qbt_libtorrent_master_jamfile="${qbt_libtorrent_master_jamfile:-no}"
 
 	# Strip symbols by default as we need full debug builds to be useful gdb to backtrace so stripping is a sensible default optimisation.
-	qbt_optimise_strip="${qbt_optimise_strip:-no}"
+	qbt_optimise_strip="${qbt_optimise_strip:-yes}"
 
 	# Github actions specific - Build revisions - The workflow will set this dynamically so that the urls are not hardcoded to a single repo
 	qbt_revision_url="${qbt_revision_url:-userdocs/qbittorrent-nox-static}"
