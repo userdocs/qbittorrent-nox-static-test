@@ -689,7 +689,8 @@ _set_module_urls() {
 		github_tag[ninja]="$(_git_git ls-remote -q -t --refs "${github_url[ninja]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	fi
 	github_tag[zlib]="develop"
-	github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	#github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",|\2|p')"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
@@ -1381,11 +1382,11 @@ _release_info() {
 
 	cat > "${release_info_dir}/dependency-version.json" <<- DEPENDENCY_INFO
 		{
-		    "qbittorrent": "${app_version[qbittorrent]}",
-		    "qt${qt_version_short_array[0]}": "${app_version[qtbase]}",
-		    "libtorrent_${qbt_libtorrent_version//\./_}": "${app_version[libtorrent]}",
-		    "boost": "${app_version[boost]}",
 		    "openssl": "${app_version[openssl]}",
+		    "boost": "${app_version[boost]}",
+		    "libtorrent_${qbt_libtorrent_version//\./_}": "${app_version[libtorrent]}",
+		    "qt${qt_version_short_array[0]}": "${app_version[qtbase]}",
+		    "qbittorrent": "${app_version[qbittorrent]}",
 		    "revision": "${qbt_revision_version:-0}"
 		}
 	DEPENDENCY_INFO
@@ -1402,7 +1403,7 @@ _release_info() {
 		|            OpenSSL             |   ${app_version[openssl]}   |
 		|            zlib-ng             |    ${app_version[zlib]}     |
 
-		## Architectures and build info
+		## Architecture and build info
 
 		🔵 These source code files are used for workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)
 
@@ -1426,11 +1427,11 @@ _release_info() {
 
 		<!--
 		declare -A current_build_version
-		current_build_version[qbittorrent]="${app_version[qbittorrent]}"
-		current_build_version[qt${qt_version_short_array[0]}]="${app_version[qtbase]}"
+		current_build_version[openssl]="${app_version[openssl]}"
+		current_build_version[boost]="${app_version[boost]}"
 		current_build_version[libtorrent_${qbt_libtorrent_version//\./_}]="${app_version[libtorrent]}"
-		current_build_version[boost]=${app_version[boost]}
-		current_build_version[openssl]=${app_version[openssl]}
+		current_build_version[qt${qt_version_short_array[0]}]="${app_version[qtbase]}"
+		current_build_version[qbittorrent]="${app_version[qbittorrent]}"
 		current_build_version[revision]="${qbt_revision_version:-0}"
 		-->
 	RELEASE_INFO
