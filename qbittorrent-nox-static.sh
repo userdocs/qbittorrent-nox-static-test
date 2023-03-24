@@ -242,7 +242,7 @@ _set_default_values() {
 
 	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
 	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
-		_multi_arch bootstrap
+		_multi_arch info_bootstrap
 	else
 		cross_arch="$(uname -m)"
 		delete_pkgs+=("crossbuild-essential-${cross_arch}")
@@ -948,8 +948,8 @@ _apply_patches() {
 		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
 
 		# Copy modified files from source directory
-		if [[ -d "${patch_dir}/source" ]]; then
-			printf '%b\n\n' " ${urc} ${cly}Copying files from source dir${cend}"
+		if [[ -d "${patch_dir}/source" && "$(ls -A "${patch_dir}/source")" ]]; then
+			printf '%b\n\n' " ${urc} ${cly}Copying files from patch source dir${cend}"
 			cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
 		fi
 	fi
@@ -1300,7 +1300,7 @@ _multi_arch() {
 					;;
 			esac
 
-			[[ "${1}" == 'bootstrap' ]] && return
+			[[ "${1}" == 'info_bootstrap' ]] && return
 
 			CHOST="${qbt_cross_host}"
 			CC="${qbt_cross_host}-gcc"
@@ -1309,14 +1309,16 @@ _multi_arch() {
 
 			mkdir -p "${qbt_install_dir}/logs"
 
-			[[ "${qbt_cache_dir_options}" == "bs" && -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]] && rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+			if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" ]] && [[ -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
+				rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+			fi
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
-				if [[ "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
+				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 					printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${cend}"
 					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				else
-					printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
+					printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${cend}"
 				fi
 
 				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
@@ -1633,7 +1635,7 @@ while (("${#}")); do
 			_apply_patches bootstrap
 			_release_info
 			_cmake
-			_multi_arch
+			_multi_arch bootstrap
 			shift
 			;;
 		-bt | --boost-version)
