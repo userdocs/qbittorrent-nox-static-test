@@ -177,6 +177,21 @@ _set_default_values() {
 	# Create this array empty. Packages listed in or added to this array will be removed from the default list of packages, changing the list of installed dependencies
 	delete_pkgs=()
 
+	# Define all available multi arches we use from here https://github.com/userdocs/qbt-musl-cross-make#readme
+	declare -gA multi_arch_options
+	multi_arch_options[default]="default"
+	multi_arch_options[x86]="x86"
+	multi_arch_options[x86_64]="x86_64"
+	multi_arch_options[armel]="armel"
+	multi_arch_options[armhf]="armhf"
+	multi_arch_options[armv7]="armv7"
+	multi_arch_options[aarch64]="aarch64"
+	multi_arch_options[s390x]="s390x"
+	multi_arch_options[ppc64el]="ppc64el"
+	multi_arch_options[mips]="mips"
+	multi_arch_options[mips64]="mips64"
+	multi_arch_options[riscv64]="riscv64"
+
 	# A function to print some env values of the script dynamically. Used in the help section and script output.
 	_print_env() {
 		printf '\n%b\n\n' " ${uyc} Default env settings${cend}"
@@ -241,7 +256,7 @@ _set_default_values() {
 	esac
 
 	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
-	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${multi_arch_options[${qbt_cross_name:-default}]}" == "${qbt_cross_name}" ]]; then
 		_multi_arch info_bootstrap
 	else
 		cross_arch="$(uname -m)"
@@ -1200,10 +1215,28 @@ _cmake() {
 # This function handles the Multi Arch dynamics of the script.
 #######################################################################################################################################################
 _multi_arch() {
-	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${multi_arch_options[${qbt_cross_name:-default}]}" == "${qbt_cross_name}" ]]; then
 		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
 			[[ "${1}" != "bootstrap" ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
 			case "${qbt_cross_name}" in
+				armel)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="arm-linux-musleabi"
+							qbt_zlib_arch="armv5"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="arm-linux-gnueabi"
+							;;
+						*)
+							bitness="32"
+							cross_arch="armel"
+							qbt_cross_boost="gcc-arm"
+							qbt_cross_openssl="linux-armv4"
+							qbt_cross_qtbase="linux-arm-gnueabi-g++"
+							;;
+					esac
+					;;
 				armhf)
 					case "${qbt_cross_target}" in
 						alpine)
@@ -1213,7 +1246,7 @@ _multi_arch() {
 							;;&
 						debian | ubuntu)
 							cross_arch="armel"
-							qbt_cross_host="arm-linux-gnueabi"
+							qbt_cross_host="arm-linux-gnueabihf"
 							;;&
 						*)
 							bitness="32"
@@ -1298,6 +1331,97 @@ _multi_arch() {
 							;;
 					esac
 					;;
+				s390x)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="s390x-linux-musl"
+							qbt_zlib_arch="s390x"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="s390x-linux-gnu"
+							;;&
+						*)
+							cross_arch="s390x"
+							bitness="64"
+							qbt_cross_boost="gcc-s390x"
+							qbt_cross_openssl="linux64-s390x"
+							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				ppc64el)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="powerpc64le-linux-musl"
+							qbt_zlib_arch="ppc64el"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="powerpc64le-linux-gnu"
+							;;&
+						*)
+							bitness="64"
+							cross_arch="ppc64el"
+							qbt_cross_boost="gcc-ppc64el"
+							qbt_cross_openssl="linux-ppc64le"
+							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				mips)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="mips-linux-muslsf"
+							qbt_zlib_arch="mips"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="mips-linux-gnu"
+							;;&
+						*)
+							bitness="32"
+							cross_arch="mips"
+							qbt_cross_boost="gcc-mips"
+							qbt_cross_openssl="linux-mips32"
+							qbt_cross_qtbase="linux-g++-32"
+							;;
+					esac
+					;;
+				mips64)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="mips64-linux-musl"
+							qbt_zlib_arch="mips64"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="mips64-linux-gnuabi64"
+							;;&
+						*)
+							bitness="64"
+							cross_arch="ppc64el"
+							qbt_cross_boost="gcc-mips64"
+							qbt_cross_openssl="linux64-mips64"
+							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				riscv64)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="riscv64-linux-musl"
+							qbt_zlib_arch="mips64"
+							;;&
+						debian | ubuntu)
+							printf '\n%b\n\n' " ${urc} This arch - ${cly}${qbt_cross_target}${cend} - can only be cross built on and Alpine OS Host"
+							exit 1
+							;;
+						*)
+							bitness="64"
+							cross_arch="riscv64"
+							qbt_cross_boost="gcc-riscv64"
+							qbt_cross_openssl="linux64-riscv64"
+							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
 			esac
 
 			[[ "${1}" == 'info_bootstrap' ]] && return
@@ -1315,8 +1439,8 @@ _multi_arch() {
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-					printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}https://github.com/userdocs/musl-cross-make-clone/releases/latest/download/${qbt_cross_host}.tar.xz${cend}"
-					_curl --create-dirs "https://github.com/userdocs/musl-cross-make-clone/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+					printf '\n%b\n' " ${ulbc} Downloading ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${cend}"
+					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				else
 					printf '\n%b\n' " ${ulbc} Extracting ${clm}${qbt_cross_host}.tar.gz${cend} cross tool chain - ${clc}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${cend}"
 				fi
@@ -1500,20 +1624,6 @@ while (("${#}")); do
 			qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
 			shift 2
 			;;
-		-ma | --multi-arch)
-			if [[ -n "${2}" && "${2}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
-				qbt_cross_name="${2}"
-				shift 2
-			else
-				printf '\n%b\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
-				printf '\n%b\n' " ${ulbc} armhf${cend}"
-				printf '%b\n' " ${ulbc} armv7${cend}"
-				printf '%b\n' " ${ulbc} aarch64${cend}"
-				printf '%b\n' " ${ulbc} x86_64${cend}"
-				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
-				exit 1
-			fi
-			;;
 		-o | --optimize)
 			qbt_optimize="-march=native"
 			shift
@@ -1616,7 +1726,7 @@ while (("${#}")); do
 			shift
 			;;
 		-bs-ma | --boot-strap-multi-arch)
-			if [[ -n "${2}" && "${2}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+			if [[ -n "${2}" && "${multi_arch_options[${2}]}" == "${2}" ]]; then
 				qbt_cross_name="${2}"
 				shift 2
 			else
@@ -1675,6 +1785,21 @@ while (("${#}")); do
 			source_default[qbittorrent]="folder"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			shift
+			;;
+		-ma | --multi-arch)
+			if [[ -n "${2}" && "${multi_arch_options[${2}]}" == "${2}" ]]; then
+				qbt_cross_name="${2}"
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+
+				for arches in "${multi_arch_options[@]}"; do
+					printf '%b\n' " ${ulbc} ${arches}${cend}"
+				done
+
+				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
+				exit 1
+			fi
 			;;
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
@@ -2115,7 +2240,7 @@ _icu_bootstrap() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _icu() {
-	if [[ "${qbt_cross_name}" =~ ^(x86|x86_64|armhf|armv7|aarch64)$ ]]; then
+	if [[ "${multi_arch_options[${qbt_cross_name:-default}]}" == "${qbt_cross_name}" ]]; then
 		mkdir -p "${qbt_install_dir}/${app_name}/cross"
 		_pushd "${qbt_install_dir}/${app_name}/cross"
 		"${qbt_install_dir}/${app_name}${sub_dir}/runConfigureICU" Linux/gcc
