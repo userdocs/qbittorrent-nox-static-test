@@ -28,7 +28,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="1.1.0"
+script_version="2.0.0"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -90,6 +90,26 @@ if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|focal|jammy)$ ]] || [[ "
 	exit 1
 fi
 #######################################################################################################################################################
+# Multi arch stuff
+#######################################################################################################################################################
+# Define all available multi arches we use from here https://github.com/userdocs/qbt-musl-cross-make#readme
+declare -gA multi_arch_options
+multi_arch_options[default]="skip"
+multi_arch_options[armel]="armel"
+multi_arch_options[armhf]="armhf"
+multi_arch_options[armv7]="armv7"
+multi_arch_options[aarch64]="aarch64"
+multi_arch_options[x86_64]="x86_64"
+multi_arch_options[x86]="x86"
+multi_arch_options[s390x]="s390x"
+multi_arch_options[powerpc]="powerpc"
+multi_arch_options[ppc64el]="ppc64el"
+multi_arch_options[mips]="mips"
+multi_arch_options[mipsel]="mipsel"
+multi_arch_options[mips64]="mips64"
+multi_arch_options[mips64el]="mips64el"
+multi_arch_options[riscv64]="riscv64"
+#######################################################################################################################################################
 # This function sets some default values we use but whose values can be overridden by certain flags or exported as variables before running the script
 #######################################################################################################################################################
 _set_default_values() {
@@ -103,7 +123,7 @@ _set_default_values() {
 	qbt_build_tool="${qbt_build_tool:-qmake}"
 
 	# Default to empty to use host native build tools. This way we can build on native arch on a supported OS and skip cross build toolchains
-	qbt_cross_name="${qbt_cross_name:-}"
+	qbt_cross_name="${qbt_cross_name:-default}"
 
 	# Default to host - we are not really using this for anything other than what it defaults to so no need to set it.
 	qbt_cross_target="${qbt_cross_target:-${what_id}}"
@@ -177,21 +197,6 @@ _set_default_values() {
 	# Create this array empty. Packages listed in or added to this array will be removed from the default list of packages, changing the list of installed dependencies
 	delete_pkgs=()
 
-	# Define all available multi arches we use from here https://github.com/userdocs/qbt-musl-cross-make#readme
-	declare -gA multi_arch_options
-	multi_arch_options[default]="default"
-	multi_arch_options[x86]="x86"
-	multi_arch_options[x86_64]="x86_64"
-	multi_arch_options[armel]="armel"
-	multi_arch_options[armhf]="armhf"
-	multi_arch_options[armv7]="armv7"
-	multi_arch_options[aarch64]="aarch64"
-	multi_arch_options[s390x]="s390x"
-	multi_arch_options[ppc64el]="ppc64el"
-	multi_arch_options[mips]="mips"
-	multi_arch_options[mips64]="mips64"
-	multi_arch_options[riscv64]="riscv64"
-
 	# A function to print some env values of the script dynamically. Used in the help section and script output.
 	_print_env() {
 		printf '\n%b\n\n' " ${uyc} Default env settings${cend}"
@@ -256,7 +261,7 @@ _set_default_values() {
 	esac
 
 	# If we are cross building then bootstrap the cross build tools we ned for the target arch else set native arch and remove the debian cross build tools
-	if [[ "${multi_arch_options[${qbt_cross_name:-default}]}" == "${qbt_cross_name}" ]]; then
+	if [[ "${multi_arch_options[${qbt_cross_name}]}" == "${qbt_cross_name}" ]]; then
 		_multi_arch info_bootstrap
 	else
 		cross_arch="$(uname -m)"
@@ -1103,14 +1108,14 @@ _download_file() {
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n' " ${ulbc} Caching ${clm}${app_name}${cend} ${cly}${source_type}${cend} files to ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend} - ${cly}${qbt_dl_source_url}${cend}"
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n' " ${ugc} Using ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
+		[[ "${qbt_cache_dir_options}" == "bs" ]] && printf '\n%b\n' " ${ulbc} Updating ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" != "bs" && -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n\n' " ${ulbc} Extracting ${clm}${app_name}${cend} cached ${cly}${source_type}${cend} files from - ${clc}${qbt_cache_dir}/${app_name}.tar.xz${cend}"
 	fi
 
 	if [[ "${qbt_workflow_artifacts}" == "no" ]]; then
 		# download the remote source file using curl
-		if [[ ! -f "${qbt_dl_file_path}" ]]; then
+		if [[ "${qbt_cache_dir_options}" = "bs" || ! -f "${qbt_dl_file_path}" ]]; then
 			_curl --create-dirs "${qbt_dl_source_url}" -o "${qbt_dl_file_path}"
 		fi
 	fi
@@ -1126,7 +1131,7 @@ _download_file() {
 		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
 		# we don't need to cd into the boost if we download it via source archives
 
-		if [[ "${app_name}" == "cmake_ninja" && -z "${qbt_cache_dir}" ]]; then
+		if [[ "${app_name}" == "cmake_ninja" ]]; then
 			_delete_function
 		else
 			mkdir -p "${qbt_dl_folder_path}${sub_dir}"
@@ -1227,7 +1232,7 @@ _multi_arch() {
 							;;&
 						debian | ubuntu)
 							qbt_cross_host="arm-linux-gnueabi"
-							;;
+							;;&
 						*)
 							bitness="32"
 							cross_arch="armel"
@@ -1349,6 +1354,24 @@ _multi_arch() {
 							;;
 					esac
 					;;
+				powerpc)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="powerpc-linux-musl"
+							qbt_zlib_arch="ppc"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="powerpc-linux-gnu"
+							;;&
+						*)
+							bitness="32"
+							cross_arch="powerpc"
+							qbt_cross_boost="gcc-ppc"
+							qbt_cross_openssl="linux-ppc"
+							qbt_cross_qtbase="linux-g++-32"
+							;;
+					esac
+					;;
 				ppc64el)
 					case "${qbt_cross_target}" in
 						alpine)
@@ -1370,7 +1393,7 @@ _multi_arch() {
 				mips)
 					case "${qbt_cross_target}" in
 						alpine)
-							qbt_cross_host="mips-linux-muslsf"
+							qbt_cross_host="mips-linux-musl"
 							qbt_zlib_arch="mips"
 							;;&
 						debian | ubuntu)
@@ -1380,6 +1403,24 @@ _multi_arch() {
 							bitness="32"
 							cross_arch="mips"
 							qbt_cross_boost="gcc-mips"
+							qbt_cross_openssl="linux-mips32"
+							qbt_cross_qtbase="linux-g++-32"
+							;;
+					esac
+					;;
+				mipsel)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="mipsel-linux-musl"
+							qbt_zlib_arch="mipsel"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="mipsel-linux-gnu"
+							;;&
+						*)
+							bitness="32"
+							cross_arch="mipsel"
+							qbt_cross_boost="gcc-mipsel"
 							qbt_cross_openssl="linux-mips32"
 							qbt_cross_qtbase="linux-g++-32"
 							;;
@@ -1396,8 +1437,26 @@ _multi_arch() {
 							;;&
 						*)
 							bitness="64"
-							cross_arch="ppc64el"
+							cross_arch="mips64"
 							qbt_cross_boost="gcc-mips64"
+							qbt_cross_openssl="linux64-mips64"
+							qbt_cross_qtbase="linux-g++-64"
+							;;
+					esac
+					;;
+				mips64el)
+					case "${qbt_cross_target}" in
+						alpine)
+							qbt_cross_host="mips64el-linux-musl"
+							qbt_zlib_arch="mips64el"
+							;;&
+						debian | ubuntu)
+							qbt_cross_host="mips64el-linux-gnuabi64"
+							;;&
+						*)
+							bitness="64"
+							cross_arch="mips64el"
+							qbt_cross_boost="gcc-mips64el"
 							qbt_cross_openssl="linux64-mips64"
 							qbt_cross_qtbase="linux-g++-64"
 							;;
@@ -1541,13 +1600,22 @@ _release_info() {
 
 		🔵 These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
 
-		|  Arch   | Alpine Cross build files | Arch config |
-		| :-----: | :----------------------: | :---------: |
-		|  armhf  |   arm-linux-musleabihf   |   armv6zk   |
-		|  armv7  | armv7l-linux-musleabihf  |   armv7-a   |
-		| aarch64 |    aarch64-linux-musl    |   armv8-a   |
-		| x86_64  |    x86_64-linux-musl     |    amd64    |
-		|   x86   |     i686-linux-musl      |    i686     |
+		|  Crossarch  | Alpine Cross build files | Arch config |                                                             Tuning                                                              |
+		| :---------: | :----------------------: | :---------: | :-----------------------------------------------------------------------------------------------------------------------------: |
+		|    armel    |    arm-linux-musleabi    |   armv5te   |                       --with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux                       |
+		|    armhf    |   arm-linux-musleabihf   |   armv6zk   |              --with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux               |
+		|    armv7    | armv7l-linux-musleabihf  |   armv7-a   | --with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb |
+		|   aarch64   |    aarch64-linux-musl    |   armv8-a   |                                               --with-arch=armv8-a --with-abi=lp64                                               |
+		|   x86_64    |    x86_64-linux-musl     |    amd64    |                                                               N/A                                                               |
+		|     x86     |     i686-linux-musl      |    i686     |                                        --with-arch=i686 --with-tune=generic --enable-cld                                        |
+		|    s390x    |     s390x-linux-musl     |    zEC12    |                  --with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float                  |
+		|   powerpc   |    powerpc-linux-musl    |     ppc     |                                          --enable-secureplt --enable-decimal-float=no                                           |
+		| powerpc64le |  powerpc64le-linux-musl  |    ppc64    |                 --with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux                  |
+		|    mips     |     mips-linux-musl      |    mips     |                               --with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |
+		|   mipsel    |    mipsel-linux-musl     |   mips32    |                                -with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |
+		|   mips64    |    mips64-linux-musl     |   mips32    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |
+		|  mips64el   |   mips64el-linux-musl    |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |
+		|   riscv64   |    riscv64-linux-musl    |   rv64gc    |                                 --with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic                                 |
 
 		## Info about the build matrixes for qbittorrent-nox-static
 
@@ -1592,10 +1660,6 @@ while (("${#}")); do
 			qbt_build_debug="yes"
 			shift
 			;;
-		-sdu | --script-debug-urls)
-			script_debug_urls="yes"
-			shift
-			;;
 		-cd | --cache-directory)
 			qbt_cache_dir="${2%/}"
 			if [[ -n "${3}" && "${3}" =~ (^rm$|^bs$) ]]; then
@@ -1619,6 +1683,19 @@ while (("${#}")); do
 			[[ "${qbt_skip_icu}" == "no" ]] && delete=("${delete[@]/icu/}")
 			shift
 			;;
+		-ma | --multi-arch)
+			if [[ -n "${2}" && "${multi_arch_options[${2}]}" == "${2}" ]]; then
+				qbt_cross_name="${2}"
+				shift 2
+			else
+				printf '\n%b\n\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				for arches in "${multi_arch_options[@]}"; do
+					printf '%b\n' " ${ulbc} ${arches}${cend}"
+				done
+				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
+				exit 1
+			fi
+			;;
 		-p | --proxy)
 			qbt_git_proxy=("-c" "http.sslVerify=false" "-c" "http.https://github.com.proxy=${2}")
 			qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
@@ -1632,52 +1709,13 @@ while (("${#}")); do
 			qbt_optimise_strip="yes"
 			shift
 			;;
+		-sdu | --script-debug-urls)
+			script_debug_urls="yes"
+			shift
+			;;
 		-wf | --workflow)
 			qbt_workflow_files="yes"
 			shift
-			;;
-		-h-cd | --help-cache-directory)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " This will let you set a path of a directory that contains cached github repos of modules"
-			printf '\n%b\n' " ${uyc} Cached apps folder names must match the module name. Case and spelling"
-			printf '\n%b\n' " For example: ${clc}~/cache_dir/qbittorrent${cend}"
-			printf '\n%b\n' " Additonal flags supported: ${clc}rm${cend} - remove the cache directory and exit"
-			printf '\n%b\n' " Additonal flags supported: ${clc}bs${cend} - download cache for all activated modules then exit"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
-			exit
-			;;
-		-h-o | --help-optimize)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} using this flag will mean your static build is limited a CPU that matches the host spec"
-			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-o${cend}"
-			printf '\n%b\n\n' " Additonal flags used: ${clc}-march=native${cend}"
-			exit
-			;;
-		-h-p | --help-proxy)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " Specify a proxy URL and PORT to use with curl and git"
-			printf '\n%b\n' " ${ulbc} Usage examples:"
-			printf '\n%b\n' " ${clb}-p${cend} ${clc}username:password@https://123.456.789.321:8443${cend}"
-			printf '\n%b\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend}"
-			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
-			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
-			[[ -n "${qbt_curl_proxy[*]}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy[*]}${tn}${cend}"
-			exit
-			;;
-		-h-sdu | --help-script-debug-urls)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${ulbc} This will print out all the ${cly}_set_module_urls${cend} array info to check"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-sdu${cend}"
-			exit
-			;;
-		-h-wf | --help-workflow)
-			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${uyc} Use archives from ${clc}https://github.com/userdocs/qbt-workflow-files/releases/latest${cend}"
-			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} If you set a custom version for supported modules it will override and disable workflows as a source for that module"
-			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-wf${cend}"
-			exit
 			;;
 		--) # end argument parsing
 			shift
@@ -1726,20 +1764,17 @@ while (("${#}")); do
 			shift
 			;;
 		-bs-ma | --boot-strap-multi-arch)
-			if [[ -n "${2}" && "${multi_arch_options[${2}]}" == "${2}" ]]; then
-				qbt_cross_name="${2}"
-				shift 2
+			if [[ "${multi_arch_options[${qbt_cross_name}]}" == "${qbt_cross_name}" ]]; then
+				_multi_arch
+				shift
 			else
-				printf '\n%b\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
-				printf '\n%b\n' " ${ulyc} armhf${cend}"
-				printf '%b\n' " ${ulyc} armv7${cend}"
-				printf '%b\n' " ${ulyc} aarch64${cend}"
-				printf '%b\n' " ${ulyc} x86_64${cend}"
-				printf '\n%b\n\n' " ${ugc} example usage:${clb} -ma aarch64${cend}"
+				printf '\n%b\n\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				for arches in "${multi_arch_options[@]}"; do
+					printf '%b\n' " ${ulbc} ${arches}${cend}"
+				done
+				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
 				exit 1
 			fi
-			_multi_arch
-			shift
 			;;
 		-bs-a | --boot-strap-all)
 			_apply_patches bootstrap
@@ -1785,21 +1820,6 @@ while (("${#}")); do
 			source_default[qbittorrent]="folder"
 			_test_git_ouput "${github_tag[qbittorrent]}" "qbittorrent" "master"
 			shift
-			;;
-		-ma | --multi-arch)
-			if [[ -n "${2}" && "${multi_arch_options[${2}]}" == "${2}" ]]; then
-				qbt_cross_name="${2}"
-				shift 2
-			else
-				printf '\n%b\n\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
-
-				for arches in "${multi_arch_options[@]}"; do
-					printf '%b\n' " ${ulbc} ${arches}${cend}"
-				done
-
-				printf '\n%b\n\n' " ${ugc} Example usage:${clb} -ma aarch64${cend}"
-				exit 1
-			fi
 			;;
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
@@ -2020,6 +2040,18 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${uyc} You can use this flag with ICU and qtbase will use ICU instead of iconv."
 			exit
 			;;
+		-h-cd | --help-cache-directory)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " This will let you set a path of a directory that contains cached github repos of modules"
+			printf '\n%b\n' " ${uyc} Cached apps folder names must match the module name. Case and spelling"
+			printf '\n%b\n' " For example: ${clc}~/cache_dir/qbittorrent${cend}"
+			printf '\n%b\n' " Additonal flags supported: ${clc}rm${cend} - remove the cache directory and exit"
+			printf '\n%b\n' " Additonal flags supported: ${clc}bs${cend} - download cache for all activated modules then exit"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir${cend}"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir rm${cend}"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-cd ~/cache_dir bs${cend}"
+			exit
+			;;
 		-h-d | --help-debug)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
 			printf '\n%b\n\n' " Enables debug symbols for libtorrent and qbitorrent when building - required for gdb backtrace"
@@ -2078,6 +2110,24 @@ while (("${#}")); do
 			printf '\n'
 			exit
 			;;
+		-h-o | --help-optimize)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} using this flag will mean your static build is limited a CPU that matches the host spec"
+			printf '\n%b\n' " ${ulbc} Usage example: ${clb}-o${cend}"
+			printf '\n%b\n\n' " Additonal flags used: ${clc}-march=native${cend}"
+			exit
+			;;
+		-h-p | --help-proxy)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " Specify a proxy URL and PORT to use with curl and git"
+			printf '\n%b\n' " ${ulbc} Usage examples:"
+			printf '\n%b\n' " ${clb}-p${cend} ${clc}username:password@https://123.456.789.321:8443${cend}"
+			printf '\n%b\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend}"
+			printf '\n%b\n' " ${uyc} Call this before the help option to see outcome dynamically:"
+			printf '\n%b\n\n' " ${clb}-p${cend} ${clc}https://proxy.com:12345${cend} ${clb}-h-p${cend}"
+			[[ -n "${qbt_curl_proxy[*]}" ]] && printf '%b\n' " proxy command: ${clc}${qbt_curl_proxy[*]}${tn}${cend}"
+			exit
+			;;
 		-h-pr | --help-patch-repo)
 			_apply_patches bootstrap-help
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
@@ -2130,6 +2180,19 @@ while (("${#}")); do
 			printf '\n%b\n' " If you need to debug a build with gdb you must build a debug build using the flag ${clb}-d${cend}"
 			printf '\n%b\n' " ${td}This flag is provided with no arguments.${cend}"
 			printf '\n%b\n\n' " ${clb}-s${cend}"
+			exit
+			;;
+		-h-sdu | --help-script-debug-urls)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${ulbc} This will print out all the ${cly}_set_module_urls${cend} array info to check"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-sdu${cend}"
+			exit
+			;;
+		-h-wf | --help-workflow)
+			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
+			printf '\n%b\n' " ${uyc} Use archives from ${clc}https://github.com/userdocs/qbt-workflow-files/releases/latest${cend}"
+			printf '\n%b\n' " ${uyc} ${cly}Warning:${cend} If you set a custom version for supported modules it will override and disable workflows as a source for that module"
+			printf '\n%b\n\n' " ${ulbc} Usage example: ${clb}-wf${cend}"
 			exit
 			;;
 		--) # end argument parsing
@@ -2418,9 +2481,11 @@ _qtbase() {
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
 			-D QT_FEATURE_optimize_full=on -D QT_FEATURE_static=on -D QT_FEATURE_shared=off \
-			-D QT_FEATURE_gui=off -D QT_FEATURE_openssl_linked=on \
-			-D QT_FEATURE_dbus=off -D QT_FEATURE_system_pcre2=off -D QT_FEATURE_widgets=off \
+			-D QT_FEATURE_gui=off -D QT_FEATURE_openssl_linked=on -D QT_FEATURE_dbus=off \
+			-D QT_FEATURE_system_pcre2=off -D QT_FEATURE_widgets=off \
+			-D FEATURE_androiddeployqt=OFF -D FEATURE_animation=OFF \
 			-D QT_FEATURE_testlib=off -D QT_BUILD_EXAMPLES=off -D QT_BUILD_TESTS=off \
+			-D QT_BUILD_EXAMPLES_BY_DEFAULT=OFF -D QT_BUILD_TESTS_BY_DEFAULT=OFF \
 			-D CMAKE_CXX_STANDARD="${standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \

@@ -14,7 +14,7 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        arch_type: [x86_64, armhf, armv7, aarch64]
+        arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
         include:
@@ -44,11 +44,16 @@ jobs:
       - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
         run: sudo apt-get -y upgrade
 
-      - name: Host - Install host qemu-static ${{ github.event.inputs.distinct_id }}
-        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+      - name: Host - Install qemu-static and binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
+        run: |
+          qemuuserstatic="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=qemu&exact_match=true' | jq -r '.entries[0].source_package_version')"
+          binfmtsupport="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=binfmt-support&exact_match=true' | jq -r '.entries[0].source_package_version')"
 
-      - name: Host - Docker multiarch bootstrap ${{ github.event.inputs.distinct_id }}
-        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          curl -sLo qemuuserstatic.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/q/qemu/qemu-user-static_${qemuuserstatic#*:}_amd64.deb"
+          curl -sLo binfmtsupport.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/b/binfmt-support/binfmt-support_${binfmtsupport}_amd64.deb"
+
+          sudo dpkg -i qemuuserstatic.deb
+          sudo dpkg -i binfmtsupport.deb
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
@@ -57,6 +62,7 @@ jobs:
           echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
           echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
           echo "qbt_patches_url=${{ github.repository }}" >> env.custom
+          echo "qbt_skip_icu=no" >> env.custom
           echo "qbt_workflow_files=yes" >> env.custom
           echo "qbt_workflow_artifacts=no" >> env.custom
           echo "qbt_libtorrent_master_jamfile=no" >> env.custom
@@ -102,8 +108,8 @@ jobs:
         if: matrix.build_tool == 'cmake'
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
 
-      - name: Docker - qtbase -i ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase -i
+      - name: Docker - qtbase ${{ github.event.inputs.distinct_id }}
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
 
       - name: Docker - qttools ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
