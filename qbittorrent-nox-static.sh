@@ -579,9 +579,9 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} -static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -w ${qbt_strip_flags} -Wno-psabi -I${include_dir}"
-	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -L${lib_dir} -pthread"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} -static -w -Wno-psabi -I${include_dir}"
+	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -w -Wno-psabi -I${include_dir}"
+	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }-static ${qbt_strip_flags} -L${lib_dir} -pthread"
 }
 
 _custom_flags_reset() {
