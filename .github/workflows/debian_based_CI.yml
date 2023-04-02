@@ -1,9 +1,9 @@
 name: Debian Based CI
 on:
-  #push:
-  #  paths:
-  #    - "qbittorrent-nox-static.sh"
-  #pull_request:
+  push:
+    paths:
+      - "qbittorrent-nox-static.sh"
+  pull_request:
   workflow_dispatch:
     inputs:
       distinct_id:
@@ -62,7 +62,6 @@ jobs:
         qbt_qt_version: ${{ matrix.qbt_qt_version }}
         qbt_build_tool: ${{ matrix.build_tool }}
         qbt_workflow_files: yes
-        qbt_debian_mode: standard
     steps:
       - uses: actions/checkout@v3
 
@@ -76,9 +75,9 @@ jobs:
         if: matrix.build_tool == 'cmake' && matrix.container_codename == 'bionic'
         run: |
           apt-get install -y gcc-8 g++-8
-          echo "CC=gcc-8" >> $GITHUB_ENV
-          echo "AR=gcc-ar-8" >> $GITHUB_ENV
-          echo "CXX=g++-8" >> $GITHUB_ENV
+          printf '%s\n' "CC=gcc-8" >> $GITHUB_ENV
+          printf '%s\n' "AR=gcc-ar-8" >> $GITHUB_ENV
+          printf '%s\n' "CXX=g++-8" >> $GITHUB_ENV
 
       - run: bash qbittorrent-nox-static.sh -bs-a
       - run: bash qbittorrent-nox-static.sh glibc

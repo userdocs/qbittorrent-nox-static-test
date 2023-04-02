@@ -46,7 +46,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
-        run: echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - set up lunar repo -t lunar ${{ github.event.inputs.distinct_id }}
+        run: |
+          printf '%b\n' 'Package: *\nPin: release n=lunar\nPin-Priority: 50' | sudo tee /etc/apt/preferences
+          printf '%b\n' 'deb http://archive.ubuntu.com/ubuntu/ lunar main universe restricted' | sudo tee /etc/apt/sources.list.d/lunar.list
 
       - name: Host - update ${{ github.event.inputs.distinct_id }}
         run: sudo apt-get update
@@ -54,30 +59,22 @@ jobs:
       - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
         run: sudo apt-get -y upgrade
 
-      - name: Host - Install qemu-static and binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
-        run: |
-          qemuuserstatic="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=qemu&exact_match=true' | jq -r '.entries[0].source_package_version')"
-          binfmtsupport="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=binfmt-support&exact_match=true' | jq -r '.entries[0].source_package_version')"
-
-          curl -sLo qemuuserstatic.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/q/qemu/qemu-user-static_${qemuuserstatic#*:}_amd64.deb"
-          curl -sLo binfmtsupport.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/b/binfmt-support/binfmt-support_${binfmtsupport}_amd64.deb"
-
-          sudo dpkg -i qemuuserstatic.deb
-          sudo dpkg -i binfmtsupport.deb
+      - name: Host - set up qemu-user-static binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
+        run: sudo apt install -t lunar libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
-          echo "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
-          echo "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
-          echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
-          echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
-          echo "qbt_patches_url=${{ github.repository }}" >> env.custom
-          echo "qbt_skip_icu=no" >> env.custom
-          echo "qbt_workflow_files=no" >> env.custom
-          echo "qbt_workflow_artifacts=no" >> env.custom
-          echo "qbt_libtorrent_master_jamfile=no" >> env.custom
-          echo "qbt_optimise_strip=yes" >> env.custom
-          echo "qbt_build_debug=no" >> env.custom
+          printf '%s\n' "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
+          printf '%s\n' "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
+          printf '%s\n' "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
+          printf '%s\n' "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
+          printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
+          printf '%s\n' "qbt_skip_icu=no" >> env.custom
+          printf '%s\n' "qbt_workflow_files=no" >> env.custom
+          printf '%s\n' "qbt_workflow_artifacts=no" >> env.custom
+          printf '%s\n' "qbt_libtorrent_master_jamfile=no" >> env.custom
+          printf '%s\n' "qbt_optimise_strip=yes" >> env.custom
+          printf '%s\n' "qbt_build_debug=no" >> env.custom
 
       - name: Host - Create docker multiarch container ${{ github.event.inputs.distinct_id }}
         run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
@@ -203,10 +200,10 @@ jobs:
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
-        run: echo "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
 
       - name: Host - Bootstrap release title ${{ github.event.inputs.distinct_id }}
-        run: echo "release_title=$(cat ${{ matrix.libtorrent_version }}/title.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_title=$(cat ${{ matrix.libtorrent_version }}/title.md)" >> $GITHUB_ENV
 
       - name: Host- Create release - tag - assets ${{ github.event.inputs.distinct_id }}
         uses: ncipollo/release-action@v1
