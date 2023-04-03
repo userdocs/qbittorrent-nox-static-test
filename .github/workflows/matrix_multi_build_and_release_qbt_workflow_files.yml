@@ -24,7 +24,8 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
+        # arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
+        arch_type: [armhf, armv7, aarch64, x86_64, x86]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
         include:
