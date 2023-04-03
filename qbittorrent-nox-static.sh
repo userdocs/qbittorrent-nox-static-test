@@ -1582,7 +1582,7 @@ _release_info() {
 		}
 	DEPENDENCY_INFO
 
-	cat > "${release_info_dir}/${qbt_cross_name}-release.md" <<- RELEASE_INFO
+	cat > "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md" <<- RELEASE_INFO
 		## Build info
 
 		|           Components           |           Version           |
@@ -1618,10 +1618,10 @@ _release_info() {
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64 ]] && printf '%s\n' "|   mips64    |    mips64-linux-musl     |   mips32    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64el ]] && printf '%s\n' "|  mips64el   |   mips64el-linux-musl    |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == riscv64 ]] && printf '%s\n' "|   riscv64   |    riscv64-linux-musl    |   rv64gc    |                                 --with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic                                 |"
-		printf '\n'
-	} >> "${release_info_dir}/${qbt_cross_name}-release.md"
+		printf '%s\n'
+	} >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md"
 
-	cat >> "${release_info_dir}/${qbt_cross_name}-release.md" <<- RELEASE_INFO
+	cat >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md" <<- RELEASE_INFO
 		## Info about the build matrixes for qbittorrent-nox-static
 
 		🟡 With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
@@ -1847,6 +1847,10 @@ while (("${#}")); do
 					source_default[libtorrent]="folder"
 				fi
 				qbt_workflow_override[libtorrent]="yes"
+
+				read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
+				qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
+
 				_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 				shift 2
 			else
@@ -1905,6 +1909,9 @@ while (("${#}")); do
 				source_default[qttools]="folder"
 				qbt_workflow_override[qtbase]="yes"
 				qbt_workflow_override[qttools]="yes"
+				qbt_qt_version="${app_version[qtbase]%%.*}"
+				read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
+				qt_version_short="${qt_version_short_array[0]}.${qt_version_short_array[1]}"
 				_test_git_ouput "${github_tag[qtbase]}" "qtbase" "${2}"
 				_test_git_ouput "${github_tag[qttools]}" "qttools" "${2}"
 				shift 2
