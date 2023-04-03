@@ -89,11 +89,6 @@ jobs:
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
-      - name: Release - qt${{ matrix.qbt_qt_version }} info ${{ github.event.inputs.distinct_id }}
-        run: |
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv ${{ matrix.arch_type }}-release.md qt${{ matrix.qbt_qt_version }}-${{ matrix.arch_type }}-release.md
-
       - name: Docker - zlib-ng ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
 
