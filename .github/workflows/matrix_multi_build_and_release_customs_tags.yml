@@ -24,7 +24,8 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
+        # arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
+        arch_type: [armhf, armv7, aarch64, x86_64, x86]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
         include:
@@ -99,11 +100,6 @@ jobs:
 
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
-
-      - name: Release - qt${{ matrix.qbt_qt_version }} info ${{ github.event.inputs.distinct_id }}
-        run: |
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv release.md qt${{ matrix.qbt_qt_version }}-release.md
 
       - name: Docker - zlib-ng ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
@@ -207,9 +203,12 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         run: |
-          paste -d '\n' 1.2/qt5-release.md 2.0/qt6-release.md | uniq > tmp-release.md
-          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' 1.2/qt5-*-release.md | uniq > 1.2/tmp-release.md
+          paste -d '\n' 2.0/qt6-*-release.md | uniq > 2.0/tmp-release.md
+          paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
+
+          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
