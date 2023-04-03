@@ -1582,7 +1582,7 @@ _release_info() {
 		}
 	DEPENDENCY_INFO
 
-	cat > "${release_info_dir}/release.md" <<- RELEASE_INFO
+	cat > "${release_info_dir}/${qbt_cross_name}-release.md" <<- RELEASE_INFO
 		## Build info
 
 		|           Components           |           Version           |
@@ -1599,24 +1599,29 @@ _release_info() {
 		🔵 These source code files are used for workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)
 
 		🔵 These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+	RELEASE_INFO
 
-		|  Crossarch  | Alpine Cross build files | Arch config |                                                             Tuning                                                              |
-		| :---------: | :----------------------: | :---------: | :-----------------------------------------------------------------------------------------------------------------------------: |
-		|    armel    |    arm-linux-musleabi    |   armv5te   |                       --with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux                       |
-		|    armhf    |   arm-linux-musleabihf   |   armv6zk   |              --with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux               |
-		|    armv7    | armv7l-linux-musleabihf  |   armv7-a   | --with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb |
-		|   aarch64   |    aarch64-linux-musl    |   armv8-a   |                                               --with-arch=armv8-a --with-abi=lp64                                               |
-		|   x86_64    |    x86_64-linux-musl     |    amd64    |                                                               N/A                                                               |
-		|     x86     |     i686-linux-musl      |    i686     |                                        --with-arch=i686 --with-tune=generic --enable-cld                                        |
-		|    s390x    |     s390x-linux-musl     |    zEC12    |                  --with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float                  |
-		|   powerpc   |    powerpc-linux-musl    |     ppc     |                                          --enable-secureplt --enable-decimal-float=no                                           |
-		| powerpc64le |  powerpc64le-linux-musl  |    ppc64    |                 --with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux                  |
-		|    mips     |     mips-linux-musl      |    mips     |                               --with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |
-		|   mipsel    |    mipsel-linux-musl     |   mips32    |                                -with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |
-		|   mips64    |    mips64-linux-musl     |   mips32    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |
-		|  mips64el   |   mips64el-linux-musl    |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |
-		|   riscv64   |    riscv64-linux-musl    |   rv64gc    |                                 --with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic                                 |
+	{
+		printf '\n%s\n' "|  Crossarch  | Alpine Cross build files | Arch config |                                                             Tuning                                                              |"
+		printf '%s\n' "| :---------: | :----------------------: | :---------: | :-----------------------------------------------------------------------------------------------------------------------------: |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == armel ]] && printf '%s\n' "|    armel    |    arm-linux-musleabi    |   armv5te   |                       --with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux                       |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == armhf ]] && printf '%s\n' "|    armhf    |   arm-linux-musleabihf   |   armv6zk   |              --with-arch=armv6zk --with-tune=arm1176jzf-s --with-fpu=vfp --with-float=hard --with-abi=aapcs-linux               |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == armv7 ]] && printf '%s\n' "|    armv7    | armv7l-linux-musleabihf  |   armv7-a   | --with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == aarch64 ]] && printf '%s\n' "|   aarch64   |    aarch64-linux-musl    |   armv8-a   |                                               --with-arch=armv8-a --with-abi=lp64                                               |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == x86_64 ]] && printf '%s\n' "|   x86_64    |    x86_64-linux-musl     |    amd64    |                                                               N/A                                                               |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == x86 ]] && printf '%s\n' "|     x86     |     i686-linux-musl      |    i686     |                                        --with-arch=i686 --with-tune=generic --enable-cld                                        |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == s390x ]] && printf '%s\n' "|    s390x    |     s390x-linux-musl     |    zEC12    |                  --with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float                  |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == powerpc ]] && printf '%s\n' "|   powerpc   |    powerpc-linux-musl    |     ppc     |                                          --enable-secureplt --enable-decimal-float=no                                           |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == powerpc64le ]] && printf '%s\n' "| powerpc64le |  powerpc64le-linux-musl  |    ppc64    |                 --with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux                  |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips ]] && printf '%s\n' "|    mips     |     mips-linux-musl      |    mips     |                               --with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mipsel ]] && printf '%s\n' "|   mipsel    |    mipsel-linux-musl     |   mips32    |                                -with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64 ]] && printf '%s\n' "|   mips64    |    mips64-linux-musl     |   mips32    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64el ]] && printf '%s\n' "|  mips64el   |   mips64el-linux-musl    |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == riscv64 ]] && printf '%s\n' "|   riscv64   |    riscv64-linux-musl    |   rv64gc    |                                 --with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic                                 |"
+		printf '%s\n'
+	} >> "${release_info_dir}/${qbt_cross_name}-release.md"
 
+	cat >> "${release_info_dir}/${qbt_cross_name}-release.md" <<- RELEASE_INFO
 		## Info about the build matrixes for qbittorrent-nox-static
 
 		🟡 With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
@@ -1689,6 +1694,7 @@ while (("${#}")); do
 				shift 2
 			else
 				printf '\n%b\n\n' " ${urc} You must provide a valid arch option when using${cend} ${clb}-ma${cend}"
+				unset "multi_arch_options[default]"
 				for arches in "${multi_arch_options[@]}"; do
 					printf '%b\n' " ${ulbc} ${arches}${cend}"
 				done
