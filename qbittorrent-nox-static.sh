@@ -1571,7 +1571,7 @@ _release_info() {
 		fi
 	fi
 
-	cat > "${release_info_dir}/dependency-version.json" <<- DEPENDENCY_INFO
+	cat > "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-dependency-version.json" <<- DEPENDENCY_INFO
 		{
 		    "openssl": "${app_version[openssl]}",
 		    "boost": "${app_version[boost]}",
