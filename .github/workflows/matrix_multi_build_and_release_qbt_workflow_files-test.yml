@@ -200,6 +200,13 @@ jobs:
 
           paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: yolo
+          path: |
+            1.2/*
+            2.0/*
+
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
 
@@ -217,11 +224,6 @@ jobs:
           bodyFile: "release.md"
           allowUpdates: true
           token: "${{ secrets.GITHUB_TOKEN }}"
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: yolo
-          path: 1.2/*,2.0/*
 
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
