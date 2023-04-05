@@ -221,7 +221,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: yolo
-          path: "1.2/*,2.0/*"
+          path: 1.2/*,2.0/*
 
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
