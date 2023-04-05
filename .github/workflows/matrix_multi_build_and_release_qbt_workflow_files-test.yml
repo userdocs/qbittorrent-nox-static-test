@@ -36,7 +36,7 @@ jobs:
             powerpc,
             ppc64el,
             mips,
-            mispsel,
+            mipsel,
             mips64,
             mips64el,
             riscv64,
