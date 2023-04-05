@@ -214,7 +214,7 @@ jobs:
           paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
-          paste -d '\n' 1.2/qt5-*-dependency-version.json 2.0/qt6-*-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
 
       - uses: actions/upload-artifact@v3
         with:
