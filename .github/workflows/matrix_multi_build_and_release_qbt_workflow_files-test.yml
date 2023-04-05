@@ -218,6 +218,10 @@ jobs:
           allowUpdates: true
           token: "${{ secrets.GITHUB_TOKEN }}"
 
+      - uses: actions/upload-artifact@v3
+        with:
+          path: "1.2/,2.0/"
+
   rerun-on-failure:
     if: failure() && inputs.skip_rerun == '0'
     name: rerun-on-failure
