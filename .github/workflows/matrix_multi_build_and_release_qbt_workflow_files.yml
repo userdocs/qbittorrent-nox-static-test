@@ -24,24 +24,24 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        arch_type:
-          [
-            armel,
-            armhf,
-            armv7,
-            aarch64,
-            x86_64,
-            x86,
-            s390x,
-            powerpc,
-            ppc64el,
-            mips,
-            mipsel,
-            mips64,
-            mips64el,
-            riscv64,
-          ]
-        # arch_type: [armhf, armv7, aarch64, x86_64, x86]
+        # arch_type:
+        #   [
+        #     armel,
+        #     armhf,
+        #     armv7,
+        #     aarch64,
+        #     x86_64,
+        #     x86,
+        #     s390x,
+        #     powerpc,
+        #     ppc64el,
+        #     mips,
+        #     mipsel,
+        #     mips64,
+        #     mips64el,
+        #     riscv64,
+        #   ]
+        arch_type: [armhf, armv7, aarch64, x86_64, x86]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
         include:
@@ -212,7 +212,7 @@ jobs:
           paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
-          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' 1.2/qt5-*-dependency-version.json 2.0/qt6-*-dependency-version.json | uniq > dependency-version.json
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
