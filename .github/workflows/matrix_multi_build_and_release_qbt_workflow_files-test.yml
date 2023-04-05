@@ -5,6 +5,16 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        type: boolean
+      retries:
+        description: 'Number of rerun retries'
+        required: true
+        default: '5'
+        type: choice
+        options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
 
 jobs:
   build:
@@ -15,6 +25,7 @@ jobs:
         os_id: [alpine]
         os_version_id: [edge]
         arch_type: [armel, armhf, armv7, aarch64, x86_64, x86, s390x, powerpc, ppc64el, mips, mispel, mips64, mips64el, riscv64]
+        # arch_type: [armhf, armv7, aarch64, x86_64, x86]
         libtorrent_version: ["1.2", "2.0"]
         build_tool: ["", cmake]
         include:
@@ -36,7 +47,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
-        run: echo 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - set up lunar repo -t lunar ${{ github.event.inputs.distinct_id }}
+        run: |
+          printf '%b\n' 'Package: *\nPin: release n=lunar\nPin-Priority: 50' | sudo tee /etc/apt/preferences
+          printf '%b\n' 'deb http://archive.ubuntu.com/ubuntu/ lunar main universe restricted' | sudo tee /etc/apt/sources.list.d/lunar.list
 
       - name: Host - update ${{ github.event.inputs.distinct_id }}
         run: sudo apt-get update
@@ -44,30 +60,22 @@ jobs:
       - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
         run: sudo apt-get -y upgrade
 
-      - name: Host - Install qemu-static and binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
-        run: |
-          qemuuserstatic="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=qemu&exact_match=true' | jq -r '.entries[0].source_package_version')"
-          binfmtsupport="$(curl -sL 'https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&pocket=Release&source_name=binfmt-support&exact_match=true' | jq -r '.entries[0].source_package_version')"
-
-          curl -sLo qemuuserstatic.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/q/qemu/qemu-user-static_${qemuuserstatic#*:}_amd64.deb"
-          curl -sLo binfmtsupport.deb "http://nl.archive.ubuntu.com/ubuntu/pool/universe/b/binfmt-support/binfmt-support_${binfmtsupport}_amd64.deb"
-
-          sudo dpkg -i qemuuserstatic.deb
-          sudo dpkg -i binfmtsupport.deb
+      - name: Host - set up qemu-user-static binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
+        run: sudo apt install -t lunar libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
-          echo "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
-          echo "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
-          echo "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
-          echo "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
-          echo "qbt_patches_url=${{ github.repository }}" >> env.custom
-          echo "qbt_skip_icu=no" >> env.custom
-          echo "qbt_workflow_files=yes" >> env.custom
-          echo "qbt_workflow_artifacts=no" >> env.custom
-          echo "qbt_libtorrent_master_jamfile=no" >> env.custom
-          echo "qbt_optimise_strip=yes" >> env.custom
-          echo "qbt_build_debug=no" >> env.custom
+          printf '%s\n' "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
+          printf '%s\n' "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
+          printf '%s\n' "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
+          printf '%s\n' "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
+          printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
+          printf '%s\n' "qbt_skip_icu=no" >> env.custom
+          printf '%s\n' "qbt_workflow_files=yes" >> env.custom
+          printf '%s\n' "qbt_workflow_artifacts=no" >> env.custom
+          printf '%s\n' "qbt_libtorrent_master_jamfile=no" >> env.custom
+          printf '%s\n' "qbt_optimise_strip=yes" >> env.custom
+          printf '%s\n' "qbt_build_debug=no" >> env.custom
 
       - name: Host - Create docker multiarch container ${{ github.event.inputs.distinct_id }}
         run: docker run --name multiarch -it -d --env-file env.custom -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
@@ -81,14 +89,41 @@ jobs:
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
-      - name: Release - qt${{ matrix.qbt_qt_version }} info ${{ github.event.inputs.distinct_id }}
-        run: |
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv dependency-version.json qt${{ matrix.qbt_qt_version }}-dependency-version.json
-          docker exec -w /root/${{ env.build_dir }}/release_info multiarch mv release.md qt${{ matrix.qbt_qt_version }}-release.md
+      # - name: Docker - zlib-ng ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
 
-      - name: Docker - Test - Download release asset
-        run: |
-          docker exec -w /root multiarch mkdir -p "${{ env.build_dir }}/completed/${{ matrix.libtorrent_version }}"
+      # - name: Docker - iconv ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh iconv
+
+      # - name: Docker - icu ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh icu
+
+      # - name: Docker - openssl ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh openssl
+
+      # - name: Docker - boost ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh boost
+
+      # - name: Docker - libtorrent ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh libtorrent
+
+      # - name: Docker - double_conversion ${{ github.event.inputs.distinct_id }}
+      #   if: matrix.build_tool == 'cmake'
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
+
+      # - name: Docker - qtbase ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
+
+      # - name: Docker - qttools ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
+
+      # - name: Docker - qbittorrent ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
+
+      # - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root/${{ env.build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+
+      - run: docker exec -w /root multiarch mkdir -p /root/${{ env.build_dir }}/completed
 
       - name: Docker - Release Info ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root/${{ env.build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.build_dir }}/completed''
@@ -100,6 +135,13 @@ jobs:
           path: |
             ${{ env.build_dir }}/completed/*
             !${{ env.build_dir }}/completed/*.png
+
+      # - name: Host - Upload cmake graphs artifact ${{ github.event.inputs.distinct_id }}
+      #   if: matrix.build_tool == 'cmake'
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: "${{ matrix.arch_type }}-libtorrent-v${{ matrix.libtorrent_version }}-graphs"
+      #     path: "${{ env.build_dir }}/completed/*.png"
 
   release:
     runs-on: ubuntu-latest
@@ -151,24 +193,41 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         run: |
-          paste -d '\n' 1.2/qt5-release.md 2.0/qt6-release.md | uniq > tmp-release.md
-          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
+          paste -d '\n' 1.2/qt5-*-release.md | uniq > 1.2/tmp-release.md
+          paste -d '\n' 2.0/qt6-*-release.md | uniq > 2.0/tmp-release.md
+          paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
+          paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
+
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
-        run: echo "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
 
       - name: Host - Bootstrap release title ${{ github.event.inputs.distinct_id }}
-        run: echo "release_title=$(cat ${{ matrix.libtorrent_version }}/title.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_title=$(cat ${{ matrix.libtorrent_version }}/title.md)" >> $GITHUB_ENV
 
       - name: Host- Create release - tag - assets ${{ github.event.inputs.distinct_id }}
         uses: ncipollo/release-action@v1
         with:
           prerelease: "${{ matrix.preview_release }}"
-          artifacts: "${{ matrix.libtorrent_version }}/*-qbittorrent-nox,dependency-version.json"
+          artifacts: "dependency-version.json"
           replacesArtifacts: true
           tag: "${{ env.release_tag }}"
           name: "${{ env.release_title }}"
           bodyFile: "release.md"
           allowUpdates: true
           token: "${{ secrets.GITHUB_TOKEN }}"
+
+  rerun-on-failure:
+    if: failure() && inputs.skip_rerun == '0'
+    name: rerun-on-failure
+    needs: release
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Trigger rerun workflow on job failures
+        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${{ inputs.retries }}
