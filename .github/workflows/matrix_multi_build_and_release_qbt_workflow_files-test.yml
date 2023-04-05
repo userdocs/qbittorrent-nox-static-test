@@ -27,19 +27,15 @@ jobs:
         arch_type:
           [
             armel,
-            armhf,
             armv7,
             aarch64,
-            x86_64,
             x86,
             s390x,
             powerpc,
-            ppc64el,
             mips,
             mipsel,
             mips64,
             mips64el,
-            riscv64,
           ]
         # arch_type: [armhf, armv7, aarch64, x86_64, x86]
         libtorrent_version: ["1.2", "2.0"]
