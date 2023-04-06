@@ -16,6 +16,10 @@ on:
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +28,7 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        # arch_type:
+        # qbt_cross_name:
         #   [
         #     armel,
         #     armhf,
@@ -41,19 +45,19 @@ jobs:
         #     mips64el,
         #     riscv64,
         #   ]
-        arch_type: [armhf, armv7, aarch64, x86_64, x86]
-        libtorrent_version: ["1.2", "2.0"]
-        build_tool: ["", cmake]
+        qbt_cross_name: [armhf, armv7, aarch64, x86_64, x86]
+        qbt_libtorrent_version: ["1.2", "2.0"]
+        qbt_build_tool: ["", cmake]
         include:
-          - build_tool: ""
+          - qbt_build_tool: ""
             qbt_qt_version_name: "qt5-"
             qbt_qt_version: "5"
 
-          - build_tool: "cmake"
+          - qbt_build_tool: "cmake"
             qbt_qt_version_name: ""
             qbt_qt_version: "6"
 
-    name: "${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.libtorrent_version }}"
+    name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
       build_dir: "qbt-build"
@@ -81,10 +85,10 @@ jobs:
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
-          printf '%s\n' "qbt_libtorrent_version=${{ matrix.libtorrent_version }}" > env.custom
+          printf '%s\n' "qbt_libtorrent_version=${{ matrix.qbt_libtorrent_version }}" > env.custom
           printf '%s\n' "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
-          printf '%s\n' "qbt_build_tool=${{ matrix.build_tool }}" >> env.custom
-          printf '%s\n' "qbt_cross_name=${{ matrix.arch_type }}" >> env.custom
+          printf '%s\n' "qbt_build_tool=${{ matrix.qbt_build_tool }}" >> env.custom
+          printf '%s\n' "qbt_cross_name=${{ matrix.qbt_cross_name }}" >> env.custom
           printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
           printf '%s\n' "qbt_skip_icu=no" >> env.custom
           # printf '%s\n' "qbt_boost_tag=" >> env.custom
@@ -130,7 +134,7 @@ jobs:
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh libtorrent
 
       - name: Docker - double_conversion ${{ github.event.inputs.distinct_id }}
-        if: matrix.build_tool == 'cmake'
+        if: matrix.qbt_build_tool == 'cmake'
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
 
       - name: Docker - qtbase ${{ github.event.inputs.distinct_id }}
@@ -143,25 +147,25 @@ jobs:
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
 
       - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root/${{ env.build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+        run: docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
       - name: Docker - Release Info ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root/${{ env.build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.build_dir }}/completed''
+        run: docker exec -w /root/${{ env.qbt_build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
 
-      - name: Host - Upload libtorrent-v${{ matrix.libtorrent_version }}-qbittorrent-nox and release info artifact ${{ github.event.inputs.distinct_id }}
+      - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ github.event.inputs.distinct_id }}
         uses: actions/upload-artifact@v3
         with:
-          name: libtorrent-v${{ matrix.libtorrent_version }}-${{ matrix.arch_type }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+          name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
           path: |
-            ${{ env.build_dir }}/completed/*
-            !${{ env.build_dir }}/completed/*.png
+            ${{ env.qbt_build_dir }}/completed/*
+            !${{ env.qbt_build_dir }}/completed/*.png
 
       - name: Host - Upload cmake graphs artifact ${{ github.event.inputs.distinct_id }}
-        if: matrix.build_tool == 'cmake'
+        if: matrix.qbt_build_tool == 'cmake'
         uses: actions/upload-artifact@v3
         with:
-          name: "${{ matrix.arch_type }}-libtorrent-v${{ matrix.libtorrent_version }}-graphs"
-          path: "${{ env.build_dir }}/completed/*.png"
+          name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
+          path: "${{ env.qbt_build_dir }}/completed/*.png"
 
   release:
     runs-on: ubuntu-latest
@@ -172,18 +176,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        libtorrent_version: ["1.2", "2.0"]
+        qbt_libtorrent_version: ["1.2", "2.0"]
         include:
-          - libtorrent_version: "2.0"
+          - qbt_libtorrent_version: "2.0"
             preview_release: false
 
-          - libtorrent_version: "1.2"
+          - qbt_libtorrent_version: "1.2"
             preview_release: true
 
-    name: "Publish release libtorrent-v${{ matrix.libtorrent_version }}"
+    name: "Publish release libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
-      build_dir: "qbt-build"
+      qbt_build_dir: "qbt-build"
 
     steps:
       - name: Checkout ${{ github.event.inputs.distinct_id }}
@@ -221,16 +225,16 @@ jobs:
           paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
-        run: printf '%s\n' "release_tag=$(cat ${{ matrix.libtorrent_version }}/tag.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_tag=$(cat ${{ matrix.qbt_libtorrent_version }}/tag.md)" >> $GITHUB_ENV
 
       - name: Host - Bootstrap release title ${{ github.event.inputs.distinct_id }}
-        run: printf '%s\n' "release_title=$(cat ${{ matrix.libtorrent_version }}/title.md)" >> $GITHUB_ENV
+        run: printf '%s\n' "release_title=$(cat ${{ matrix.qbt_libtorrent_version }}/title.md)" >> $GITHUB_ENV
 
       - name: Host- Create release - tag - assets ${{ github.event.inputs.distinct_id }}
         uses: ncipollo/release-action@v1
         with:
           prerelease: "${{ matrix.preview_release }}"
-          artifacts: "${{ matrix.libtorrent_version }}/*-qbittorrent-nox,dependency-version.json"
+          artifacts: "${{ matrix.qbt_libtorrent_version }}/*-qbittorrent-nox,dependency-version.json"
           replacesArtifacts: true
           tag: "${{ env.release_tag }}"
           name: "${{ env.release_title }}"
