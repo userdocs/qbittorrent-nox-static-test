@@ -156,10 +156,6 @@ _set_default_values() {
 	# Github actions specific - Build revisions - The workflow will set this dynamically so that the urls are not hardcoded to a single repo
 	qbt_revision_url="${qbt_revision_url:-userdocs/qbittorrent-nox-static}"
 
-	# Github actions specific - Build revisions - standard increments the revision version automatically in the script on build
-	# The legacy workflow disables this and it is incremented by the workflow instead.
-	qbt_workflow_type="${qbt_workflow_type:-standard}"
-
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
@@ -1562,12 +1558,7 @@ _release_info() {
 
 			remote_revision_version="$(sed -rn 's|(.*)"revision": "(.*)"|\2|p' < "${release_info_dir}/remote-dependency-version.json")"
 			rm -f "${release_info_dir}/remote-dependency-version.json"
-
-			if [[ "${remote_revision_version}" =~ ^[0-9]+$ && "${qbt_workflow_type}" == 'standard' ]]; then
-				qbt_revision_version="$((remote_revision_version + 1))"
-			elif [[ "${remote_revision_version}" =~ ^[0-9]+$ && "${qbt_workflow_type}" == 'legacy' ]]; then
-				qbt_revision_version="${remote_revision_version}"
-			fi
+			qbt_revision_version="$((remote_revision_version + 1))"
 		fi
 	fi
 
