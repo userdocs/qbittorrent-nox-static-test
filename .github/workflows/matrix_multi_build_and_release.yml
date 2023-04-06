@@ -16,6 +16,10 @@ on:
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -56,7 +60,7 @@ jobs:
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
-      build_dir: "qbt-build"
+      qbt_build_dir: "qbt-build"
 
     steps:
       - name: Checkout ${{ github.event.inputs.distinct_id }}
