@@ -60,7 +60,7 @@ jobs:
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
-      build_dir: "qbt-build"
+      qbt_build_dir: "qbt-build"
 
     steps:
       - name: Checkout ${{ github.event.inputs.distinct_id }}
