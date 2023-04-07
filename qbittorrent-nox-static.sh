@@ -19,10 +19,6 @@
 # There are quite a few variables defined by combining other variables that mean nothing on their own.
 # This behavior is intentional and the warning can be skipped.
 #
-# https://github.com/koalaman/shellcheck/wiki/SC1091
-# I am sourcing /etc/os-release for some variables.
-# It's not available to shellcheck to source and it's a safe file so we can skip this
-#
 # Script Formatting - https://marketplace.visualstudio.com/items?itemName=foxundermoon.shell-format
 #
 #################################################################################################################################################
