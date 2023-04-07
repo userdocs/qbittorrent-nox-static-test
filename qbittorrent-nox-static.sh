@@ -55,6 +55,17 @@ ugrc="\e[37m\U2B24\e[0m" ulgrcc="\e[97m\U2B24\e[0m" # [u]nicode[gr]ey[c]ircle   
 
 cdef="\e[39m" # [c]olor[def]ault
 cend="\e[0m"  # [c]olor[end]
+
+_color_test() {
+	colour_array=("${cr}" "${clr}" "${cg}" "${clg}" "${cy}" "${cly}" "${cb}" "${clb}" "${cm}" "${cc}" "${cl}" "${tb}" "${td}" "${tu}" "${tn}" "${tbk}" "${urc}" "${ulrc}" "${ugc}" "${ulgc}" "${uyc}" "${ulyc}" "${ubc}" "${ulbc}" "${umc}" "${ulmc}" "${ucc}" "${ulcc}" "${ugrc}" "${ulgrcc}" "${cdef}" "${cend}")
+	printf '\n'
+	for colours in "${colour_array[@]}"; do
+		printf '%b\n' "${colours} Test ${cend}"
+	done
+	printf '\n'
+	exit
+}
+[[ "${1}" == "ctest" ]] && _color_test
 #######################################################################################################################################################
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
