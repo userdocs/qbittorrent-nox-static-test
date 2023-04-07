@@ -1821,7 +1821,7 @@ while (("${#}")); do
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]}"
-			ssource_default[qbittorrent]="folder"
+			source_default[qbittorrent]="folder"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			shift
