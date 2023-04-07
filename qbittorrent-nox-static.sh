@@ -12,23 +12,12 @@
 #
 # @credits - https://gist.github.com/notsure2 https://github.com/c0re100/qBittorrent-Enhanced-Edition
 #
-# shellcheck disable=SC2034
-# Why are these checks excluded?
-#
-# https://github.com/koalaman/shellcheck/wiki/SC2034
-# There are quite a few variables defined by combining other variables that mean nothing on their own.
-# This behavior is intentional and the warning can be skipped.
-#
 # Script Formatting - https://marketplace.visualstudio.com/items?itemName=foxundermoon.shell-format
 #
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
 script_version="2.0.0"
-#################################################################################################################################################
-# Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
-#################################################################################################################################################
-set -a
 #################################################################################################################################################
 # Unset some variables to set defaults.
 #################################################################################################################################################
@@ -128,7 +117,7 @@ _set_default_values() {
 	[[ -f "${PWD}/.qbt_env" ]] && source "${PWD}/.qbt_env"
 
 	# For docker deploys to not get prompted to set the timezone.
-	DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
+	export DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
 
 	# The default build configuration is qmake + qt5, qbt_build_tool=cmake or -c will make qt6 and cmake default
 	qbt_build_tool="${qbt_build_tool:-qmake}"
@@ -190,7 +179,7 @@ _set_default_values() {
 
 	# Set the CXX standards used to build cxx code.
 	# ${standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
-	standard="17" && cpp_standard="c${standard}" && cxx_standard="c++${standard}"
+	standard="17" cxx_standard="c++${standard}"
 
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
@@ -889,10 +878,8 @@ _installation_modules() {
 		# Set some python variables we need.
 		python_major="$(python"${qbt_python_version}" -c "import sys; print(sys.version_info[0])")"
 		python_minor="$(python"${qbt_python_version}" -c "import sys; print(sys.version_info[1])")"
-		python_micro="$(python"${qbt_python_version}" -c "import sys; print(sys.version_info[2])")"
 
 		python_short_version="${python_major}.${python_minor}"
-		python_link_version="${python_major}${python_minor}"
 
 		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${tn}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
@@ -996,13 +983,11 @@ _download() {
 
 	if [[ "${qbt_workflow_files}" == "no" ]] || [[ "${qbt_workflow_override[${app_name}]}" == "yes" ]]; then
 		qbt_dl_source_url="${source_archive_url[${app_name}]}"
-		qbt_dl_file_name="${source_archive_url[${app_name}]##*/}"
 		source_type="source"
 	fi
 
 	if [[ "${qbt_workflow_files}" == "yes" && "${qbt_workflow_override[${app_name}]}" == "no" ]] || [[ "${qbt_workflow_artifacts}" == 'yes' ]]; then
 		qbt_dl_source_url="${qbt_workflow_archive_url[${app_name}]}"
-		qbt_dl_file_name="${qbt_workflow_archive_url[${app_name}]##*/}"
 		[[ "${qbt_workflow_files}" == "yes" ]] && source_type="workflow"
 		[[ "${qbt_workflow_artifacts}" == "yes" ]] && source_type="artifact"
 	fi
@@ -1492,10 +1477,10 @@ _multi_arch() {
 
 			[[ "${1}" == 'info_bootstrap' ]] && return
 
-			CHOST="${qbt_cross_host}"
-			CC="${qbt_cross_host}-gcc"
-			AR="${qbt_cross_host}-ar"
-			CXX="${qbt_cross_host}-g++"
+			export CHOST="${qbt_cross_host}"
+			export CC="${qbt_cross_host}-gcc"
+			export AR="${qbt_cross_host}-ar"
+			export CXX="${qbt_cross_host}-g++"
 
 			mkdir -p "${qbt_install_dir}/logs"
 
@@ -2371,9 +2356,9 @@ _boost() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _libtorrent() {
-	BOOST_ROOT="${qbt_install_dir}/boost"
-	BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
-	BOOST_BUILD_PATH="${qbt_install_dir}/boost"
+	export BOOST_ROOT="${qbt_install_dir}/boost"
+	export BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
+	export BOOST_BUILD_PATH="${qbt_install_dir}/boost"
 
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
@@ -2436,7 +2421,7 @@ _double_conversion() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
-			"${multi_libtorrent[@]}" \
+			"${multi_double_conversion[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
