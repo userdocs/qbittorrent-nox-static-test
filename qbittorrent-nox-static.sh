@@ -46,14 +46,15 @@ umc="\e[35m\U2B24\e[0m" ulmc="\e[95m\U2B24\e[0m"    # [u]nicode[m]agenta[c]ircle
 ucc="\e[36m\U2B24\e[0m" ulcc="\e[96m\U2B24\e[0m"    # [u]nicode[c]yan[c]ircle    [u]nicode[l]ight[c]yan[c]ircle
 ugrc="\e[37m\U2B24\e[0m" ulgrcc="\e[97m\U2B24\e[0m" # [u]nicode[gr]ey[c]ircle    [u]nicode[l]ight[gr]ey[c]ircle
 
-cdef="\e[39m" # [c]olor[def]ault
-cend="\e[0m"  # [c]olor[end]
+cend="\e[0m" # [c]olor[end]
 
 _color_test() {
-	colour_array=("${cr}" "${clr}" "${cg}" "${clg}" "${cy}" "${cly}" "${cb}" "${clb}" "${cm}" "${cc}" "${cl}" "${tb}" "${td}" "${tu}" "${tn}" "${tbk}" "${urc}" "${ulrc}" "${ugc}" "${ulgc}" "${uyc}" "${ulyc}" "${ubc}" "${ulbc}" "${umc}" "${ulmc}" "${ucc}" "${ulcc}" "${ugrc}" "${ulgrcc}" "${cdef}" "${cend}")
+	colour_array=("${cr}red" "${clr}light red" "${cg}green" "${clg}light green" "${cy}yellow" "${cly}light yellow" "${cb}blue" "${clb}ligh blue" "${cm}magenta" "${clm}light magenta" "${cc}cyan" "${clc}light cyan")
+	formatting_array=("${tb}Text Bold" "${td}Text Dim" "${tu}Text Undelrine" "${tn}New line" "${tbk}Text Blink")
+	unicode_array=("${urc}" "${ulrc}" "${ugc}" "${ulgc}" "${uyc}" "${ulyc}" "${ubc}" "${ulbc}" "${umc}" "${ulmc}" "${ucc}" "${ulcc}" "${ugrc}" "${ulgrcc}")
 	printf '\n'
-	for colours in "${colour_array[@]}"; do
-		printf '%b\n' "${colours} Test ${cend}"
+	for colours in "${colour_array[@]}" "${formatting_array[@]}" "${unicode_array[@]}"; do
+		printf '%b\n' "${colours}${cend}"
 	done
 	printf '\n'
 	exit
@@ -93,6 +94,14 @@ if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|focal|jammy)$ ]] || [[ "
 	exit 1
 fi
 #######################################################################################################################################################
+# Source env vars from a file if it exists but it will be overridden by switches and flags passed to the script
+#######################################################################################################################################################
+# shellcheck source=/dev/null
+if [[ -f "${PWD}/.qbt_env" ]]; then
+	printf '\n%b\n' " ${umc} Sourcing .qbt_env file"
+	source "${PWD}/.qbt_env"
+fi
+#######################################################################################################################################################
 # Multi arch stuff
 #######################################################################################################################################################
 # Define all available multi arches we use from here https://github.com/userdocs/qbt-musl-cross-make#readme
@@ -116,10 +125,6 @@ multi_arch_options[riscv64]="riscv64"
 # This function sets some default values we use but whose values can be overridden by certain flags or exported as variables before running the script
 #######################################################################################################################################################
 _set_default_values() {
-	# Source env vars from a file if it exists
-	# shellcheck source=/dev/null
-	[[ -f "${PWD}/.qbt_env" ]] && source "${PWD}/.qbt_env"
-
 	# For docker deploys to not get prompted to set the timezone.
 	export DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
 
