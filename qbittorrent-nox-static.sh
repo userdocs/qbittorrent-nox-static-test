@@ -12,7 +12,7 @@
 #
 # @credits - https://gist.github.com/notsure2 https://github.com/c0re100/qBittorrent-Enhanced-Edition
 #
-# shellcheck disable=SC2034,SC1091
+# shellcheck disable=SC2034
 # Why are these checks excluded?
 #
 # https://github.com/koalaman/shellcheck/wiki/SC2034
@@ -63,12 +63,15 @@ cend="\e[0m"  # [c]olor[end]
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
 # Get the main platform name, for example: debian, ubuntu or alpine
+# shellcheck source=/dev/null
 what_id="$(source /etc/os-release && printf "%s" "${ID}")"
 
 # Get the codename for this this OS. Note, Alpine does not have a unique codename.
+# shellcheck source=/dev/null
 what_version_codename="$(source /etc/os-release && printf "%s" "${VERSION_CODENAME}")"
 
 # Get the version number for this codename, for example: 10, 20.04, 3.12.4
+# shellcheck source=/dev/null
 what_version_id="$(source /etc/os-release && printf "%s" "${VERSION_ID%_*}")"
 
 # Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
@@ -114,6 +117,7 @@ multi_arch_options[riscv64]="riscv64"
 #######################################################################################################################################################
 _set_default_values() {
 	# Source env vars from a file if it exists
+	# shellcheck source=/dev/null
 	[[ -f "${PWD}/.qbt_env" ]] && source "${PWD}/.qbt_env"
 
 	# For docker deploys to not get prompted to set the timezone.
