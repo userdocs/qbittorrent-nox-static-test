@@ -293,7 +293,7 @@ _set_default_values() {
 
 	# Don't remove the icu module if it was provided as a positional parameter.
 	# else skip icu by default unless the -i flag is provided.
-	if [[ "${*}" =~ ([[:space:]]|^)"icu"([[:space:]]|$) ]]; then
+	if [[ "${qbt_skip_icu}" != 'yes' && "${*}" =~ ([[:space:]]|^)"icu"([[:space:]]|$) ]]; then
 		qbt_skip_icu="no"
 	elif [[ "${qbt_skip_icu}" != "no" ]]; then
 		delete+=("icu")
