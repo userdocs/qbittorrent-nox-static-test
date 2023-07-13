@@ -46,9 +46,9 @@ jobs:
             riscv64,
           ]
         qbt_libtorrent_version: ["1.2", "2.0"]
-        qbt_build_tool: ["", cmake]
-        qbt_boost_tag: [boost-1.83.0.beta1]
-        qbt_qbittorrent_tag: ["4.6.0beta1", "4.5.4" ]
+        qbt_build_tool: ["", "cmake"]
+        qbt_boost_tag: ["boost-1.83.0.beta1"]
+        qbt_qbittorrent_tag: ["4.5.4"]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: "qt5-"
