@@ -90,7 +90,7 @@ jobs:
           printf '%s\n' "qbt_build_tool=${{ matrix.qbt_build_tool }}" >> env.custom
           printf '%s\n' "qbt_cross_name=${{ matrix.qbt_cross_name }}" >> env.custom
           printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
-          printf '%s\n' "qbt_skip_icu=no" >> env.custom
+          printf '%s\n' "qbt_skip_icu=yes" >> env.custom
           # printf '%s\n' "qbt_boost_tag=" >> env.custom
           # printf '%s\n' "qbt_libtorrent_tag=" >> env.custom
           # printf '%s\n' "qbt_qt_tag=" >> env.custom
@@ -263,4 +263,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Trigger rerun workflow on job failures
-        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${{ inputs.retries }}
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}
