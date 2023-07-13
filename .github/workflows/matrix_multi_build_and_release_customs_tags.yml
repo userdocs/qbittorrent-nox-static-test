@@ -30,7 +30,6 @@ jobs:
         os_version_id: [edge]
         qbt_cross_name:
           [
-            armel,
             armhf,
             armv7,
             aarch64,
