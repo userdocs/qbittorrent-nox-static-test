@@ -17,7 +17,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.0"
+script_version="2.0.2"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -50,7 +50,7 @@ cend="\e[0m" # [c]olor[end]
 
 _color_test() {
 	colour_array=("${cr}red" "${clr}light red" "${cg}green" "${clg}light green" "${cy}yellow" "${cly}light yellow" "${cb}blue" "${clb}ligh blue" "${cm}magenta" "${clm}light magenta" "${cc}cyan" "${clc}light cyan")
-	formatting_array=("${tb}Text Bold" "${td}Text Dim" "${tu}Text Undelrine" "${tn}New line" "${tbk}Text Blink")
+	formatting_array=("${tb}Text Bold" "${td}Text Dim" "${tu}Text Underline" "${tn}New line" "${tbk}Text Blink")
 	unicode_array=("${urc}" "${ulrc}" "${ugc}" "${ulgc}" "${uyc}" "${ulyc}" "${ubc}" "${ulbc}" "${umc}" "${ulmc}" "${ucc}" "${ulcc}" "${ugrc}" "${ulgrcc}")
 	printf '\n'
 	for colours in "${colour_array[@]}" "${formatting_array[@]}" "${unicode_array[@]}"; do
@@ -84,12 +84,12 @@ if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 fi
 
 ## Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|focal|jammy)$ ]] || [[ "${what_version_codename}" =~ ^(alpine)$ && "${what_version_id//\./}" -lt "${alpline_min_version:-3100}" ]]; then
+if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|mantic)$ ]] || [[ "${what_version_codename}" =~ ^(alpine)$ && "${what_version_id//\./}" -lt "${alpline_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${urc} ${cy} This is not a supported OS. There is no reason to continue.${cend}"
 	printf '%b\n\n' " id: ${td}${cly}${what_id}${cend} codename: ${td}${cly}${what_version_codename}${cend} version: ${td}${clr}${what_version_id}${cend}"
 	printf '%b\n\n' " ${uyc} ${td}These are the supported platforms${cend}"
-	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend}"
-	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend}"
+	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend} - ${clb}bookworm${cend}"
+	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} -  - ${clb}mantic${cend}"
 	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} or greater"
 	exit 1
 fi
@@ -169,7 +169,7 @@ _set_default_values() {
 	qbt_cache_dir="${qbt_cache_dir%/}"
 
 	# Env setting for the icu tag
-	qbt_skip_icu="${qbt_skip_icu:-no}"
+	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
 	# Env setting for the boost tag
 	qbt_boost_tag="${qbt_boost_tag:-}"
@@ -632,7 +632,7 @@ _script_version() {
 
 	if [[ "$(semantic_version "${script_version}")" -lt "$(semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${tbk}${urc}${cend} Script update available! Versions - ${cly}local:${clr}${script_version}${cend} ${cly}remote:${clg}${script_version_remote}${cend}"
-		printf '\n%b\n' " ${ugc} curl -sLo ~/qbittorrent-nox-static.sh https://git.io/qbstatic${cend}"
+		printf '\n%b\n' " ${ugc} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${cend}"
 	else
 		printf '\n%b\n' " ${ugc} Script version: ${clg}${script_version}${cend}"
 	fi
@@ -706,8 +706,8 @@ _set_module_urls() {
 	declare -gA github_tag
 	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		if [[ "${what_version_codename}" =~ ^(jammy)$ ]]; then
-			github_tag[glibc]="glibc-2.37"
+		if [[ "${what_version_codename}" =~ ^(jammy|mantic|bookworm)$ ]]; then
+			github_tag[glibc]="glibc-2.38"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 			github_tag[glibc]="glibc-2.31"
 		fi
@@ -759,7 +759,7 @@ _set_module_urls() {
 	source_archive_url[iconv]="https://mirrors.dotsrc.org/gnu/libiconv/$(grep -Eo 'libiconv-([0-9]{1,3}[.]?)([0-9]{1,3}[.]?)([0-9]{1,3}?)\.tar.gz' <(_curl https://mirrors.dotsrc.org/gnu/libiconv/) | sort -V | tail -1)"
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
 	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
-	source_archive_url[openssl]="https://github.com/openssl/openssl/archive/${github_tag[openssl]}.tar.gz"
+	source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
 	source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${github_tag[boost]/boost-/}/source/${github_tag[boost]//[-\.]/_}.tar.gz"
 	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
 
@@ -1232,8 +1232,9 @@ _multi_arch() {
 							qbt_zlib_arch="armv5"
 							;;&
 						debian | ubuntu)
-							qbt_cross_host="arm-linux-gnueabi"
-							;;&
+							printf '\n%b\n\n' " ${urc} The arch ${cly}${qbt_cross_name}${cend} can only be cross built on and Alpine OS Host"
+							exit 1
+							;;
 						*)
 							bitness="32"
 							cross_arch="armel"
@@ -1470,7 +1471,7 @@ _multi_arch() {
 							qbt_zlib_arch="mips64"
 							;;&
 						debian | ubuntu)
-							printf '\n%b\n\n' " ${urc} This arch - ${cly}${qbt_cross_target}${cend} - can only be cross built on and Alpine OS Host"
+							printf '\n%b\n\n' " ${urc} The arch ${cly}${qbt_cross_name}${cend} can only be cross built on and Alpine OS Host"
 							exit 1
 							;;
 						*)
@@ -1609,9 +1610,9 @@ _release_info() {
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == s390x ]] && printf '%s\n' "|    s390x    |     s390x-linux-musl     |    zEC12    |                  --with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float                  |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == powerpc ]] && printf '%s\n' "|   powerpc   |    powerpc-linux-musl    |     ppc     |                                          --enable-secureplt --enable-decimal-float=no                                           |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == ppc64el ]] && printf '%s\n' "| powerpc64le |  powerpc64le-linux-musl  |    ppc64    |                 --with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux                  |"
-		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips ]] && printf '%s\n' "|    mips     |     mips-linux-musl      |    mips     |                               --with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips ]] && printf '%s\n' "|    mips     |     mips-linux-musl      |    mips32     |                               --with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == mipsel ]] && printf '%s\n' "|   mipsel    |    mipsel-linux-musl     |   mips32    |                                -with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32                                |"
-		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64 ]] && printf '%s\n' "|   mips64    |    mips64-linux-musl     |   mips32    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
+		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64 ]] && printf '%s\n' "|   mips64    |    mips64-linux-musl     |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == mips64el ]] && printf '%s\n' "|  mips64el   |   mips64el-linux-musl    |   mips64    |                      --with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64                       |"
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == riscv64 ]] && printf '%s\n' "|   riscv64   |    riscv64-linux-musl    |   rv64gc    |                                 --with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic                                 |"
 		printf '\n'
@@ -1736,10 +1737,10 @@ set -- "${params1[@]}"
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
 _check_dependencies        # see functions
-_script_version            # see functions
 _test_url
 _set_build_directory    # see functions
 _set_module_urls "${@}" # see functions
+_script_version         # see functions
 #######################################################################################################################################################
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
@@ -1954,7 +1955,7 @@ while (("${#}")); do
 			printf '%b\n' " ${td}${clm}openssl${cend} ${td}------------${cend} ${td}${clr}required${cend} ${td}Build openssl locally${cend}"
 			printf '%b\n' " ${td}${clm}boost${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Download, extract and build the boost library files${cend}"
 			printf '%b\n' " ${td}${clm}libtorrent${cend} ${td}---------${cend} ${td}${clr}required${cend} ${td}Build libtorrent locally${cend}"
-			printf '%b\n' " ${td}${clm}double_conversion${cend} ${td}--${cend} ${td}${clr}required${cend} ${td}A cmakke + Qt6 build compenent on modern OS only.${cend}"
+			printf '%b\n' " ${td}${clm}double_conversion${cend} ${td}--${cend} ${td}${clr}required${cend} ${td}A cmake + Qt6 build component on modern OS only.${cend}"
 			printf '%b\n' " ${td}${clm}qtbase${cend} ${td}-------------${cend} ${td}${clr}required${cend} ${td}Build qtbase locally${cend}"
 			printf '%b\n' " ${td}${clm}qttools${cend} ${td}------------${cend} ${td}${clr}required${cend} ${td}Build qttools locally${cend}"
 			printf '%b\n' " ${td}${clm}qbittorrent${cend} ${td}--------${cend} ${td}${clr}required${cend} ${td}Build qbittorrent locally${cend}"
