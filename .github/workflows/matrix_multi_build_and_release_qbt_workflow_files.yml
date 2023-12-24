@@ -198,9 +198,18 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         run: |
-          paste -d '\n' 1.2/qt5-*-release.md | uniq > 1.2/tmp-release.md
-          paste -d '\n' 2.0/qt6-*-release.md | uniq > 2.0/tmp-release.md
-          paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
+          for release in 1\.2/*-release.md; do
+              paste -d '\n' ${release} | uniq > 1.2/tmp-release.md
+          done
+
+          for release in 2\.0/*-release.md; do
+              paste -d '\n' ${release} | uniq > 2.0/tmp-release.md
+          done
+
+          [[ -d "1.2" && -d "2.0" ]] && paste -d '\n' 1.2/tmp-release.md 2.0/tmp-release.md | uniq > tmp-release.md
+          [[ -d "1.2" && ! -d "2.0" ]] && paste -d '\n' 1.2/tmp-release.md | uniq > tmp-release.md
+          [[ ! -d "1.2" && -d "2.0" ]] && paste -d '\n' 2.0/tmp-release.md | uniq > tmp-release.md
+
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
 
           paste -d '\n' 1.2/qt5-dependency-version.json 2.0/qt6-dependency-version.json | uniq > dependency-version.json
