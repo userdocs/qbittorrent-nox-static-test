@@ -183,6 +183,7 @@ jobs:
           curl -sLo- "https://github.com/jgm/pandoc/releases/latest/download/pandoc-${pandoc_git_tag}-linux-amd64.tar.gz" | tar xzf - --strip-components 2 -C "$(pwd)" --exclude="share"
 
       - name: Host - Download 1.2 qbittorrent-nox artifacts ${{ github.event.inputs.distinct_id }}
+        if: matrix.qbt_libtorrent_version == "1.2"
         uses: actions/download-artifact@v4
         with:
           path: "1.2"
@@ -190,6 +191,7 @@ jobs:
           merge-multiple: true
 
       - name: Host - Download 2.0 qbittorrent-nox artifacts ${{ github.event.inputs.distinct_id }}
+        if: matrix.qbt_libtorrent_version == "2.0"
         uses: actions/download-artifact@v4
         with:
           path: "2.0"
@@ -198,13 +200,13 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         run: |
-          if [[ ${{ matrix.qbt_libtorrent_version }} -eq "1.2" ]]; then
+          if [[ ${{ matrix.qbt_libtorrent_version }} == "1.2" ]]; then
             for release in 1\.2/*-release.md; do
               [[ -f "${release}" ]] && release+=("${release}")
             done
           fi
 
-          if [[ ${{ matrix.qbt_libtorrent_version }} -eq "2.0" ]]; then
+          if [[ ${{ matrix.qbt_libtorrent_version }} == "2.0" ]]; then
             for release in 2\.0/*-release.md; do
               [[ -f "${release}" ]] && release+=("${release}")
             done
