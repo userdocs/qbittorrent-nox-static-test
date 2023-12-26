@@ -1625,17 +1625,7 @@ _release_info() {
 
 		🟡 Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 
-		🟠 [To see the build combinations that the script automates please check the build table. for more info](https://github.com/userdocs/qbittorrent-nox-static#build-table---dependencies---arch---os---build-tools)
-
-		<!--
-		declare -A current_build_version
-		current_build_version[openssl]="${app_version[openssl]}"
-		current_build_version[boost]="${app_version[boost]}"
-		current_build_version[libtorrent_${qbt_libtorrent_version//\./_}]="${app_version[libtorrent]}"
-		current_build_version[qt${qt_version_short_array[0]}]="${app_version[qtbase]}"
-		current_build_version[qbittorrent]="${app_version[qbittorrent]}"
-		current_build_version[revision]="${qbt_revision_version:-0}"
-		-->
+		🟠 Qbittorrent v5 won't support qmake (Qt5) builds so Qt6 (cmake) will become default and Qt5 builds will be legacy.
 	RELEASE_INFO
 
 	return
