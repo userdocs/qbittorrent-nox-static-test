@@ -17,7 +17,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.2"
+script_version="2.0.3"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -89,7 +89,7 @@ if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|man
 	printf '%b\n\n' " id: ${td}${cly}${what_id}${cend} codename: ${td}${cly}${what_version_codename}${cend} version: ${td}${clr}${what_version_id}${cend}"
 	printf '%b\n\n' " ${uyc} ${td}These are the supported platforms${cend}"
 	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend} - ${clb}bookworm${cend}"
-	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} -  - ${clb}mantic${cend}"
+	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}mantic${cend}"
 	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} or greater"
 	exit 1
 fi
@@ -961,7 +961,6 @@ _apply_patches() {
 				if _curl --create-dirs "${patch_jamfile_url}" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"; then
 					printf '%b\n\n' " ${ugc}${cr} Using downloaded custom Jamfile file${cend}"
 				else
-
 					printf '%b\n\n' " ${ugc}${cr} Using libtorrent ${github_tag[libtorrent]} Jamfile file${cend}"
 				fi
 			fi
@@ -1232,9 +1231,8 @@ _multi_arch() {
 							qbt_zlib_arch="armv5"
 							;;&
 						debian | ubuntu)
-							printf '\n%b\n\n' " ${urc} The arch ${cly}${qbt_cross_name}${cend} can only be cross built on and Alpine OS Host"
-							exit 1
-							;;
+							qbt_cross_host="arm-linux-gnueabi"
+							;;&
 						*)
 							bitness="32"
 							cross_arch="armel"
@@ -1470,10 +1468,13 @@ _multi_arch() {
 							qbt_cross_host="riscv64-linux-musl"
 							qbt_zlib_arch="mips64"
 							;;&
-						debian | ubuntu)
+						debian)
 							printf '\n%b\n\n' " ${urc} The arch ${cly}${qbt_cross_name}${cend} can only be cross built on and Alpine OS Host"
 							exit 1
 							;;
+						ubuntu)
+							qbt_cross_host="riscv64-linux-gnu"
+							;;&
 						*)
 							bitness="64"
 							cross_arch="riscv64"
@@ -1579,6 +1580,10 @@ _release_info() {
 		}
 	DEPENDENCY_INFO
 
+	[[ ${qbt_workflow_files} == "no" && ${qbt_workflow_artifacts} == "no" ]] && source_text="source files - direct"
+	[[ ${qbt_workflow_files} == "yes" ]] && source_text="source files - workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)"
+	[[ ${qbt_workflow_artifacts} == "yes" ]] && source_text="source files - artifacts: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)"
+
 	cat > "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md" <<- RELEASE_INFO
 		## Build info
 
@@ -1593,9 +1598,11 @@ _release_info() {
 
 		## Architecture and build info
 
-		🔵 These source code files are used for workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)
+		> [!NOTE]
+		> ${source_text}
 
-		🔵 These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+		> [!NOTE]
+		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
 	RELEASE_INFO
 
 	{
@@ -1619,13 +1626,16 @@ _release_info() {
 	} >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md"
 
 	cat >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md" <<- RELEASE_INFO
-		## Info about the build matrixes for qbittorrent-nox-static
+		## General Info
 
-		🟡 With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported.
+		> [!WARNING]
+		> With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported or qBitorrent V5 is released.
 
-		🟡 Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
+		> [!WARNING]
+		> Qbittorrent v5 won't support qmake (Qt5) builds so Qt6 (cmake) will become default and Qt5 builds will no longer be released.
 
-		🟠 Qbittorrent v5 won't support qmake (Qt5) builds so Qt6 (cmake) will become default and Qt5 builds will be legacy.
+		> [!WARNING]
+		> Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 	RELEASE_INFO
 
 	return
@@ -2003,7 +2013,7 @@ while (("${#}")); do
 			;;
 		-h-bs-ma | --help-boot-strap-multi-arch)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${urc}${clr} Github action and ALpine specific. You probably dont need it${cend}"
+			printf '\n%b\n' " ${urc}${clr} Github action and Alpine specific. You probably dont need it${cend}"
 			printf '\n%b\n' " This switch bootstraps the musl cross build files needed for any provided and supported architecture"
 			printf '\n%b\n' " ${uyc} armhf"
 			printf '%b\n' " ${uyc} armv7"
@@ -2014,7 +2024,7 @@ while (("${#}")); do
 			;;
 		-h-bs-a | --help-boot-strap-all)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${urc}${clr} Github action specific and Apine only. You probably dont need it${cend}"
+			printf '\n%b\n' " ${urc}${clr} Github action specific and Alpine only. You probably dont need it${cend}"
 			printf '\n%b\n' " Performs all bootstrapping options"
 			printf '\n%b\n' "${clg} Usage:${cend} ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clb}-bs-a${cend}"
 			printf '\n%b\n' " ${uyc} ${cly}Patches${cend}"
@@ -2081,7 +2091,7 @@ while (("${#}")); do
 			;;
 		-h-ma | --help-multi-arch)
 			printf '\n%b\n' " ${ulcc} ${tb}${tu}Here is the help description for this flag:${cend}"
-			printf '\n%b\n' " ${urc}${clr} Github action and ALpine specific. You probably dont need it${cend}"
+			printf '\n%b\n' " ${urc}${clr} Github action and Alpine specific. You probably dont need it${cend}"
 			printf '\n%b\n' " This switch will make the script use the cross build configuration for these supported architectures"
 			printf '\n%b\n' " ${uyc} armhf"
 			printf '%b\n' " ${uyc} armv7"
@@ -2257,8 +2267,8 @@ _glibc() {
 _zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
-		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does detect the arch correctly.
-		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-x86_64}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
+		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does not detect the arch correctly on Alpine.
+		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-$(apk --print-arch)}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_CXX_STANDARD="${standard}" \
@@ -2271,8 +2281,8 @@ _zlib() {
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
-		# force set some ARCH when using zlib-ng, configure and musl-cross since it does detect the arch correctly.
-		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-x86_64}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
+		# force set some ARCH when using zlib-ng, configure and musl-cross since it does not detect the arch correctly on Alpine.
+		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-$(apk --print-arch)}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
 		./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
