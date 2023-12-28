@@ -236,7 +236,7 @@ jobs:
 
           readarray -t dependency_version_sorted < <(printf '%s\n' "${dependency_version[@]}" | sort)
 
-          paste -d '\n' "${release_sorted[@]}" | uniq | awk '!(NF && seen[$0]++) || /^> \[/' > "tmp-release.md"
+          paste -d '\n' "${release_sorted[@]}" | uniq | awk '!(NF && seen[$0]++) || /^>&/' > "tmp-release.md"
           paste -d '\n' "${dependency_version_sorted[@]}" | uniq | awk '!(NF && seen[$0]++)' > "dependency-version.json"
 
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md

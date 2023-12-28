@@ -1600,8 +1600,7 @@ _release_info() {
 
 		> [!NOTE]
 		> ${source_text}
-
-		> [!NOTE]
+		>
 		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
 	RELEASE_INFO
 
@@ -1630,11 +1629,9 @@ _release_info() {
 
 		> [!WARNING]
 		> With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported or qBitorrent V5 is released.
-
-		> [!WARNING]
+		>
 		> Qbittorrent v5 won't support qmake (Qt5) builds so Qt6 (cmake) will become default and Qt5 builds will no longer be released.
-
-		> [!WARNING]
+		>
 		> Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 	RELEASE_INFO
 
