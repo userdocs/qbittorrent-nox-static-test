@@ -180,11 +180,11 @@ jobs:
       matrix:
         qbt_libtorrent_version: ["1.2", "2.0"]
         include:
-          - qbt_libtorrent_version: "2.0"
-            preview_release: false
-
           - qbt_libtorrent_version: "1.2"
             preview_release: true
+
+          - qbt_libtorrent_version: "2.0"
+            preview_release: false
 
     name: "Publish release libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
@@ -216,28 +216,30 @@ jobs:
 
       - name: Host - merge release-info ${{ github.event.inputs.distinct_id }}
         run: |
-          for release in 1\.2/*-release.md 2\.0/*-release.md; do
-            [[ -f "${release}" ]] && release+=("${release}")
-          done
+          if [[ ${{ matrix.qbt_libtorrent_version }} == "1.2" ]]; then
+            for release in 1\.2/*-release.md; do
+              [[ -f "${release}" ]] && release+=("${release}")
+            done
+          fi
+
+          if [[ ${{ matrix.qbt_libtorrent_version }} == "2.0" ]]; then
+            for release in 2\.0/*-release.md; do
+              [[ -f "${release}" ]] && release+=("${release}")
+            done
+          fi
+
+          readarray -t release_sorted < <(printf '%s\n' "${release[@]}" | sort)
 
           for dependency_version in 1\.2/*-dependency-version.json 2\.0/*-dependency-version.json; do
             [[ -f "${dependency_version}" ]] && dependency_version+=("${dependency_version}")
           done
 
-          readarray -t release_sorted < <(printf '%s\n' "${release[@]}" | sort)
           readarray -t dependency_version_sorted < <(printf '%s\n' "${dependency_version[@]}" | sort)
 
           paste -d '\n' "${release_sorted[@]}" | uniq | awk '!(NF && seen[$0]++)' > "tmp-release.md"
           paste -d '\n' "${dependency_version_sorted[@]}" | uniq | awk '!(NF && seen[$0]++)' > "dependency-version.json"
 
           ./pandoc --wrap=preserve -f gfm tmp-release.md -t gfm -o release.md
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: yolo
-          path: |
-            1.2/*
-            2.0/*
 
       - name: Host - Bootstrap release tag ${{ github.event.inputs.distinct_id }}
         run: printf '%s\n' "release_tag=$(cat ${{ matrix.qbt_libtorrent_version }}/tag.md)" >> $GITHUB_ENV
