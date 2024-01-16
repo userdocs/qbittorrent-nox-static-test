@@ -108,8 +108,8 @@ jobs:
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
-      - name: Docker - test ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch cp -r patches/* /root/${{ env.qbt_build_dir }}/patches
+      # - name: Docker - test ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root multiarch cp -r patches/* /root/${{ env.qbt_build_dir }}/patches
 
       - name: Docker - test ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
