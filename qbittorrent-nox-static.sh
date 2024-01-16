@@ -903,7 +903,6 @@ _installation_modules() {
 # This function will test to see if a Jamfile patch file exists via the variable patches_github_url for the tag used.
 #######################################################################################################################################################
 _apply_patches() {
-	set -x
 	[[ -n "${1}" ]] && app_name="${1}"
 	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
 	default_jamfile="${app_version[libtorrent]//./\_}"
@@ -986,7 +985,6 @@ _apply_patches() {
 			cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
 		fi
 	fi
-	set +x
 }
 #######################################################################################################################################################
 # A unified download function to handle the processing of various options and directions the script can take.
