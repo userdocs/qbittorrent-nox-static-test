@@ -928,9 +928,12 @@ _apply_patches() {
 		printf '\n%b\n' " ${ucc} If a patch file, named ${clc}patch${cend} is found in these directories it will be applied to the relevant module with a matching tag."
 	else
 		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
+
+		# local
 		patch_file="${patch_dir}/patch"
 		patch_url_file="${patch_dir}/url" # A file with a url to raw patch info
-		patch_file_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/patch"
+		# remote
+		patch_file_remote="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}"
 
 		if [[ "${app_name}" == "libtorrent" ]]; then
 			patch_jamfile="${patch_dir}/Jamfile"
@@ -939,22 +942,28 @@ _apply_patches() {
 
 		# Order of patch file preference
 		# 1. Local patch file - A custom patch file in the module version folder matching the build configuration
-		# 2. Remote patch file using the patch_url_file - A custom url to a raw patch file
-		# 3. Remote patch file using patch_file_url - A url to a raw patch file in the patch repo
+		# 2. Local url file - A custom url to a raw patch file in the module version folder matching the build configuration
+		# 3. Remote patch file using the patch_file_remote/patch - A custom url to a raw patch file
+		# 4. Remote url file using patch_file_remote/url - A url to a raw patch file in the patch repo
 
 		[[ "${source_default[${app_name}]}" == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n' # cosmetics
+
+		_patch_url() {
+			patch_url="$(< "${patch_url_file}")"
+			if _curl --create-dirs "${patch_url}" -o "${patch_file}"; then
+				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - custom${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_url}${cend}"
+			fi
+		}
 
 		if [[ -f "${patch_file}" ]]; then # If the patch file exists in the module version folder matching the build configuration then use this.
 			printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
 		elif [[ -f "${patch_url_file}" ]]; then # If a remote URL file exists in the module version folder matching the build configuration then use this to create the patch file for the next check
-			patch_url="$(< "${patch_url_file}")"
-
-			if _curl --create-dirs "${patch_url}" -o "${patch_file}"; then
-				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - custom${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_url}${cend}"
-			fi
+			_patch_url
 		else # Else check that if there is a remotely host patch file available in the patch repo
-			if _curl --create-dirs "${patch_file_url}" -o "${patch_file}"; then
-				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - repo${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_url}${cend}"
+			if _curl --create-dirs "${patch_file_remote}/patch" -o "${patch_file}"; then
+				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - repo${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_remote}/patch${cend}"
+			elif _curl --create-dirs "${patch_file_remote}/url" -o "${patch_url_file}"; then
+				_patch_url
 			fi
 		fi
 
