@@ -59,22 +59,22 @@ jobs:
       - name: Checkout ${{ github.event.inputs.distinct_id }}
         uses: actions/checkout@v4
 
-      - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
-        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+      # - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
+      #   run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
 
-      - name: Host - set up lunar repo -t lunar ${{ github.event.inputs.distinct_id }}
-        run: |
-          printf '%b\n' 'Package: *\nPin: release n=lunar\nPin-Priority: 50' | sudo tee /etc/apt/preferences
-          printf '%b\n' 'deb http://archive.ubuntu.com/ubuntu/ lunar main universe restricted' | sudo tee /etc/apt/sources.list.d/lunar.list
+      # - name: Host - set up lunar repo -t lunar ${{ github.event.inputs.distinct_id }}
+      #   run: |
+      #     printf '%b\n' 'Package: *\nPin: release n=lunar\nPin-Priority: 50' | sudo tee /etc/apt/preferences
+      #     printf '%b\n' 'deb http://archive.ubuntu.com/ubuntu/ lunar main universe restricted' | sudo tee /etc/apt/sources.list.d/lunar.list
 
-      - name: Host - update ${{ github.event.inputs.distinct_id }}
-        run: sudo apt-get update
+      # - name: Host - update ${{ github.event.inputs.distinct_id }}
+      #   run: sudo apt-get update
 
-      - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
-        run: sudo apt-get -y upgrade
+      # - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
+      #   run: sudo apt-get -y upgrade
 
-      - name: Host - set up qemu-user-static binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
-        run: sudo apt install -t lunar libpipeline1 qemu-user-static binfmt-support
+      # - name: Host - set up qemu-user-static binfmt-support from lunar ${{ github.event.inputs.distinct_id }}
+      #   run: sudo apt install -t lunar libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create Docker template env file ${{ github.event.inputs.distinct_id }}
         run: |
@@ -142,26 +142,26 @@ jobs:
       # - name: Docker - qbittorrent ${{ github.event.inputs.distinct_id }}
       #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
 
-      - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+      # - name: Docker - Set release asset name ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
-      - name: Docker - Release Info ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root/${{ env.qbt_build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
+      # - name: Docker - Release Info ${{ github.event.inputs.distinct_id }}
+      #   run: docker exec -w /root/${{ env.qbt_build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
 
-      - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ github.event.inputs.distinct_id }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
-          path: |
-            ${{ env.qbt_build_dir }}/completed/*
-            !${{ env.qbt_build_dir }}/completed/*.png
+      # - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ github.event.inputs.distinct_id }}
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+      #     path: |
+      #       ${{ env.qbt_build_dir }}/completed/*
+      #       !${{ env.qbt_build_dir }}/completed/*.png
 
-      - name: Host - Upload cmake graphs artifact ${{ github.event.inputs.distinct_id }}
-        if: matrix.qbt_build_tool == 'cmake'
-        uses: actions/upload-artifact@v4
-        with:
-          name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
-          path: "${{ env.qbt_build_dir }}/completed/*.png"
+      # - name: Host - Upload cmake graphs artifact ${{ github.event.inputs.distinct_id }}
+      #   if: matrix.qbt_build_tool == 'cmake'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
+      #     path: "${{ env.qbt_build_dir }}/completed/*.png"
 
   release:
     runs-on: ubuntu-latest
