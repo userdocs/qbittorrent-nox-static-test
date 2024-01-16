@@ -111,6 +111,15 @@ jobs:
       - name: Docker - test ${{ github.event.inputs.distinct_id }}
         run: docker exec -w /root multiarch ls
 
+      - name: Docker - test ${{ github.event.inputs.distinct_id }}
+        run: docker exec -w /root multiarch ls patches
+
+      - name: Docker - test ${{ github.event.inputs.distinct_id }}
+        run: docker exec -w /root multiarch qbt-build/
+
+      - name: Docker - test ${{ github.event.inputs.distinct_id }}
+        run: docker exec -w /root multiarch qbt-build/patches
+
       # - name: Docker - zlib-ng ${{ github.event.inputs.distinct_id }}
       #   run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
 
