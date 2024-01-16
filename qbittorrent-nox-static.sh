@@ -951,17 +951,17 @@ _apply_patches() {
 		_patch_url() {
 			patch_url="$(< "${patch_url_file}")"
 			if _curl --create-dirs "${patch_url}" -o "${patch_file}"; then
-				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - custom${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_url}${cend}"
+				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote:url${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_url}${cend}"
 			fi
 		}
 
 		if [[ -f "${patch_file}" ]]; then # If the patch file exists in the module version folder matching the build configuration then use this.
-			printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
+			printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}local:patch${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
 		elif [[ -f "${patch_url_file}" ]]; then # If a remote URL file exists in the module version folder matching the build configuration then use this to create the patch file for the next check
 			_patch_url
 		else # Else check that if there is a remotely host patch file available in the patch repo
 			if _curl --create-dirs "${patch_file_remote}/patch" -o "${patch_file}"; then
-				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote - repo${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_remote}/patch${cend}"
+				printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}remote:patch${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${cly}${patch_file_remote}/patch${cend}"
 			elif _curl --create-dirs "${patch_file_remote}/url" -o "${patch_url_file}"; then
 				_patch_url
 			fi
