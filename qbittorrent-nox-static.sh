@@ -942,6 +942,8 @@ _apply_patches() {
 		# 2. Remote patch file using the patch_url_file - A custom url to a raw patch file
 		# 3. Remote patch file using patch_file_url - A url to a raw patch file in the patch repo
 
+		[[ "${source_default[${app_name}]}" == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n' # cosmetics
+
 		if [[ -f "${patch_file}" ]]; then # If the patch file exists in the module version folder matching the build configuration then use this.
 			printf '%b\n\n' " ${ugc} ${cr}Patching${cend} from ${clr}local${cend} - ${clm}${app_name}${cend} ${cly}${app_version[${app_name}]}${cend} - ${clc}${patch_file}${cend}"
 		elif [[ -f "${patch_url_file}" ]]; then # If a remote URL file exists in the module version folder matching the build configuration then use this to create the patch file for the next check
@@ -958,9 +960,6 @@ _apply_patches() {
 
 		# Libtorrent specific stuff
 		if [[ "${app_name}" == "libtorrent" ]]; then
-			# cosmetics
-			[[ "${source_default[libtorrent]}" == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n'
-
 			if [[ "${qbt_libtorrent_master_jamfile}" == "yes" ]]; then
 				_curl --create-dirs "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${qbt_dl_folder_path}/${patch_jamfile##*/}"
 				printf '%b\n\n' " ${ugc}${cr} Using libtorrent branch master Jamfile file${cend}"
