@@ -188,7 +188,7 @@ _set_default_values() {
 
 	# Set the CXX standards used to build cxx code.
 	# ${standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
-	standard="20" cxx_standard="c++${standard}"
+	standard="17" cxx_standard="c++${standard}"
 
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
