@@ -84,12 +84,12 @@ if [[ "${what_id}" =~ ^(alpine)$ ]]; then
 fi
 
 ## Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|mantic)$ ]] || [[ "${what_version_codename}" =~ ^(alpine)$ && "${what_version_id//\./}" -lt "${alpline_min_version:-3100}" ]]; then
+if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|mantic|noble)$ ]] || [[ "${what_version_codename}" =~ ^(alpine)$ && "${what_version_id//\./}" -lt "${alpline_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${urc} ${cy} This is not a supported OS. There is no reason to continue.${cend}"
 	printf '%b\n\n' " id: ${td}${cly}${what_id}${cend} codename: ${td}${cly}${what_version_codename}${cend} version: ${td}${clr}${what_version_id}${cend}"
 	printf '%b\n\n' " ${uyc} ${td}These are the supported platforms${cend}"
 	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend} - ${clb}bookworm${cend}"
-	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}mantic${cend}"
+	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}mantic${cend} - ${clb}noble${cend}"
 	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} or greater"
 	exit 1
 fi
