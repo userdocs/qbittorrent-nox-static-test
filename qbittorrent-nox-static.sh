@@ -67,7 +67,11 @@ _color_test() {
 # Function to source /etc/os-release and get info from it on demand.
 get_os_info() {
 	# shellcheck source=/dev/null
-	source /etc/os-release && printf "%s" "${!1%_*}"
+	if source /etc/os-release &> /dev/null; then
+		printf "%s" "${!1%_*}"
+	else
+		printf "%s" "unknown"
+	fi
 }
 
 os_id="$(get_os_info ID)"                                                         # Get the ID for this this OS.
@@ -83,7 +87,7 @@ if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble
 	printf '%b\n\n' " ${uyc} ${td}These are the supported platforms${cend}"
 	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend} - ${clb}bookworm${cend}"
 	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}noble${cend}"
-	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} or greater"
+	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} ${td}or greater${cend}"
 	exit 1
 fi
 #######################################################################################################################################################
