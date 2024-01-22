@@ -63,25 +63,18 @@ _color_test() {
 #######################################################################################################################################################
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
-# Get the main platform name, for example: debian, ubuntu or alpine
-# shellcheck source=/dev/null
-os_id="$(source /etc/os-release && printf "%s" "${ID}")"
 
-# Get the codename for this this OS. Note, Alpine does not have a unique codename.
-# shellcheck source=/dev/null
-os_version_codename="$(source /etc/os-release && printf "%s" "${VERSION_CODENAME}")"
+# Function to source /etc/os-release and get info from it on demand.
+get_os_info() {
+	# shellcheck source=/dev/null
+	source /etc/os-release && printf "%s" "${!1%_*}"
+}
 
-# Get the version number for this codename, for example: 10, 20.04, 3.12.4
-# shellcheck source=/dev/null
-os_version_id="$(source /etc/os-release && printf "%s" "${VERSION_ID%_*}")"
-
-# Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
-[[ "$(wc -w <<< "${os_version_id//\./ }")" -eq "2" ]] && alpine_min_version="310"
-
-# If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
-if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-	os_version_codename="alpine"
-fi
+os_id="$(get_os_info ID)"                                                         # Get the ID for this this OS.
+os_version_codename="$(get_os_info VERSION_CODENAME)"                             # Get the codename for this this OS. Note, Alpine does not have a unique codename.
+os_version_id="$(get_os_info VERSION_ID)"                                         # Get the version number for this codename, for example: 10, 20.04, 3.12.4
+[[ "$(wc -w <<< "${os_version_id//\./ }")" -eq "2" ]] && alpine_min_version="310" # Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
+[[ "${os_id}" =~ ^(alpine)$ ]] && os_version_codename="alpine"                    # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
 ## Check against allowed codenames or if the codename is alpine version greater than 3.10
 if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3100}" ]]; then
