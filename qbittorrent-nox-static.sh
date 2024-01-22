@@ -65,31 +65,31 @@ _color_test() {
 #######################################################################################################################################################
 # Get the main platform name, for example: debian, ubuntu or alpine
 # shellcheck source=/dev/null
-what_id="$(source /etc/os-release && printf "%s" "${ID}")"
+os_id="$(source /etc/os-release && printf "%s" "${ID}")"
 
 # Get the codename for this this OS. Note, Alpine does not have a unique codename.
 # shellcheck source=/dev/null
-what_version_codename="$(source /etc/os-release && printf "%s" "${VERSION_CODENAME}")"
+os_version_codename="$(source /etc/os-release && printf "%s" "${VERSION_CODENAME}")"
 
 # Get the version number for this codename, for example: 10, 20.04, 3.12.4
 # shellcheck source=/dev/null
-what_version_id="$(source /etc/os-release && printf "%s" "${VERSION_ID%_*}")"
+os_version_id="$(source /etc/os-release && printf "%s" "${VERSION_ID%_*}")"
 
 # Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
-[[ "$(wc -w <<< "${what_version_id//\./ }")" -eq "2" ]] && alpline_min_version="310"
+[[ "$(wc -w <<< "${os_version_id//\./ }")" -eq "2" ]] && alpine_min_version="310"
 
 # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
-if [[ "${what_id}" =~ ^(alpine)$ ]]; then
-	what_version_codename="alpine"
+if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+	os_version_codename="alpine"
 fi
 
 ## Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! "${what_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|mantic|noble)$ ]] || [[ "${what_version_codename}" =~ ^(alpine)$ && "${what_version_id//\./}" -lt "${alpline_min_version:-3100}" ]]; then
+if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${urc} ${cy} This is not a supported OS. There is no reason to continue.${cend}"
-	printf '%b\n\n' " id: ${td}${cly}${what_id}${cend} codename: ${td}${cly}${what_version_codename}${cend} version: ${td}${clr}${what_version_id}${cend}"
+	printf '%b\n\n' " id: ${td}${cly}${os_id}${cend} codename: ${td}${cly}${os_version_codename}${cend} version: ${td}${clr}${os_version_id}${cend}"
 	printf '%b\n\n' " ${uyc} ${td}These are the supported platforms${cend}"
 	printf '%b\n' " ${clm}Debian${cend} - ${clb}bullseye${cend} - ${clb}bookworm${cend}"
-	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}mantic${cend} - ${clb}noble${cend}"
+	printf '%b\n' " ${clm}Ubuntu${cend} - ${clb}focal${cend} - ${clb}jammy${cend} - ${clb}noble${cend}"
 	printf '%b\n\n' " ${clm}Alpine${cend} - ${clb}3.10.0${cend} or greater"
 	exit 1
 fi
@@ -135,7 +135,7 @@ _set_default_values() {
 	qbt_cross_name="${qbt_cross_name:-default}"
 
 	# Default to host - we are not really using this for anything other than what it defaults to so no need to set it.
-	qbt_cross_target="${qbt_cross_target:-${what_id}}"
+	qbt_cross_target="${qbt_cross_target:-${os_id}}"
 
 	# yes to create debug build to use with gdb - disables stripping - for some reason libtorrent b2 builds are 200MB or larger. qbt_build_debug=yes or -d
 	qbt_build_debug="${qbt_build_debug:-no}"
@@ -188,7 +188,7 @@ _set_default_values() {
 
 	# Set the CXX standards used to build cxx code.
 	# ${standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
-	standard="17" cxx_standard="c++${standard}"
+	standard="23" cxx_standard="c++${standard}"
 
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
@@ -274,14 +274,14 @@ _set_default_values() {
 	fi
 
 	# if Alpine then delete modules we don't use and set the required packages array
-	if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+	if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 		delete+=("glibc")
 		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("coreutils" "gpg")
 		qbt_required_pkgs=("autoconf" "automake" "bash" "bash-completion" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
 	fi
 
 	# if debian based then set the required packages array
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("autopoint" "gperf")
 		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
 	fi
@@ -343,11 +343,11 @@ _check_dependencies() {
 	# This checks over the qbt_required_pkgs array for the OS specified dependencies to see if they are installed
 	for pkg in "${qbt_required_pkgs[@]}"; do
 
-		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 			pkgman() { apk info -e "${pkg}"; }
 		fi
 
-		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 			pkgman() { dpkg -s "${pkg}"; }
 		fi
 
@@ -367,13 +367,13 @@ _check_dependencies() {
 		if [[ "$(id -un)" == 'root' ]]; then
 			printf '\n%b\n\n' " ${ulbc} ${cg}Updating${cend}"
 
-			if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 				apk update --repository="${CDN_URL}"
 				apk upgrade --repository="${CDN_URL}"
 				apk fix
 			fi
 
-			if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 				apt-get update -y
 				apt-get upgrade -y
 				apt-get autoremove -y
@@ -386,14 +386,14 @@ _check_dependencies() {
 
 			printf '\n%b\n\n' " ${ulbc}${cg} Installing required dependencies${cend}"
 
-			if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 				if ! apk add "${qbt_checked_required_pkgs[@]}" --repository="${CDN_URL}"; then
 					printf '\n'
 					exit 1
 				fi
 			fi
 
-			if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 				if ! apt-get install -y "${qbt_checked_required_pkgs[@]}"; then
 					printf '\n'
 					exit 1
@@ -406,11 +406,11 @@ _check_dependencies() {
 		else
 			printf '\n%b\n' " ${tb}Please request or install the missing core dependencies before using this script${cend}"
 
-			if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 				printf '\n%b\n\n' " ${clr}apk add${cend} ${qbt_checked_required_pkgs[*]}"
 			fi
 
-			if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 				printf '\n%b\n\n' " ${clr}apt-get install -y${cend} ${qbt_checked_required_pkgs[*]}"
 			fi
 
@@ -684,7 +684,7 @@ _set_module_urls() {
 	# Create the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA github_url
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
 	else
@@ -704,9 +704,9 @@ _set_module_urls() {
 	# Create the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
 	##########################################################################################################################################################
 	declare -gA github_tag
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		if [[ "${what_version_codename}" =~ ^(jammy|mantic|bookworm)$ ]]; then
+		if [[ "${os_version_codename}" =~ ^(jammy|mantic|bookworm)$ ]]; then
 			github_tag[glibc]="glibc-2.38"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 			github_tag[glibc]="glibc-2.31"
@@ -729,7 +729,7 @@ _set_module_urls() {
 	# Create the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
 	##########################################################################################################################################################
 	declare -gA app_version
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
@@ -751,8 +751,8 @@ _set_module_urls() {
 	# Create the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA source_archive_url
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
-		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${what_id}-${what_version_codename}-cmake-$(dpkg --print-architecture).tar.xz"
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${os_id}-${os_version_codename}-cmake-$(dpkg --print-architecture).tar.xz"
 		source_archive_url[glibc]="https://ftpmirror.gnu.org/gnu/libc/${github_tag[glibc]}.tar.xz"
 	fi
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
@@ -779,7 +779,7 @@ _set_module_urls() {
 	# Create the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_archive_url
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_archive_url[cmake_ninja]="${source_archive_url[cmake_ninja]}"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
 	fi
@@ -797,7 +797,7 @@ _set_module_urls() {
 	# Workflow override options
 	##########################################################################################################################################################
 	declare -gA qbt_workflow_override
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_override[cmake_ninja]="no"
 		qbt_workflow_override[glibc]="no"
 	fi
@@ -815,7 +815,7 @@ _set_module_urls() {
 	# The default source type we use for the download function
 	##########################################################################################################################################################
 	declare -gA source_default
-	if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_default[cmake_ninja]="file"
 		source_default[glibc]="file"
 	fi
@@ -1210,7 +1210,7 @@ _cmake() {
 		printf '\n%b\n' " ${ulbc} ${clb}Checking if cmake and ninja need to be installed${cend}"
 		mkdir -p "${qbt_install_dir}/bin"
 
-		if [[ "${what_id}" =~ ^(debian|ubuntu)$ ]]; then
+		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
 				_download cmake_ninja
 				_post_command "Debian cmake and ninja installation"
@@ -1220,7 +1220,7 @@ _cmake() {
 			fi
 		fi
 
-		if [[ "${what_id}" =~ ^(alpine)$ ]]; then
+		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]}" ]]; then
 				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-$(apk info --print-arch)" -o "${qbt_install_dir}/bin/ninja"
 				_post_command ninja
@@ -1239,8 +1239,8 @@ _cmake() {
 #######################################################################################################################################################
 _multi_arch() {
 	if [[ "${multi_arch_options[${qbt_cross_name:-default}]}" == "${qbt_cross_name}" ]]; then
-		if [[ "${what_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
-			[[ "${1}" != "bootstrap" ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${what_id} target: ${qbt_cross_target}${cend}"
+		if [[ "${os_id}" =~ ^(alpine|debian|ubuntu)$ ]]; then
+			[[ "${1}" != "bootstrap" ]] && printf '\n%b\n' " ${ugc}${cly} Using multiarch - arch: ${qbt_cross_name} host: ${os_id} target: ${qbt_cross_target}${cend}"
 			case "${qbt_cross_name}" in
 				armel)
 					case "${qbt_cross_target}" in
@@ -1963,7 +1963,7 @@ while (("${#}")); do
 			printf '\n%b\n' " ${cg}Use:${cend} ${clm}all${cend} ${td}or${cend} ${clm}module-name${cend}          ${cg}Usage:${cend} ${clc}${qbt_working_dir_short}/$(basename -- "$0")${cend} ${clm}all${cend} ${clb}-i${cend}"
 			printf '\n%b\n' " ${td}${clm}all${cend} ${td}----------------${cend} ${td}${cly}optional${cend} ${td}Recommended method to install all modules${cend}"
 			printf '%b\n' " ${td}${clm}install${cend} ${td}------------${cend} ${td}${cly}optional${cend} ${td}Install the ${td}${clc}${qbt_install_dir_short}/completed/qbittorrent-nox${cend} ${td}binary${cend}"
-			[[ "${what_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${td}${clm}glibc${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Build libc locally to statically link nss${cend}"
+			[[ "${os_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${td}${clm}glibc${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Build libc locally to statically link nss${cend}"
 			printf '%b\n' " ${td}${clm}zlib${cend} ${td}---------------${cend} ${td}${clr}required${cend} ${td}Build zlib locally${cend}"
 			printf '%b\n' " ${td}${clm}iconv${cend} ${td}--------------${cend} ${td}${clr}required${cend} ${td}Build iconv locally${cend}"
 			printf '%b\n' " ${td}${clm}icu${cend} ${td}----------------${cend} ${td}${cly}optional${cend} ${td}Build ICU locally${cend}"
@@ -2579,7 +2579,7 @@ _qttools() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _qbittorrent() {
-	[[ "${what_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
+	[[ "${os_id}" =~ ^(alpine)$ ]] && stacktrace="OFF"
 
 	if [[ "${qbt_build_tool}" == 'cmake' ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
