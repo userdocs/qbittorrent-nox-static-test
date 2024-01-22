@@ -88,7 +88,7 @@ jobs:
       - run: bash qbittorrent-nox-static.sh glibc
       - run: bash qbittorrent-nox-static.sh zlib
       - run: bash qbittorrent-nox-static.sh iconv
-      # - run: bash qbittorrent-nox-static.sh icu
+      - run: bash qbittorrent-nox-static.sh icu
       - run: bash qbittorrent-nox-static.sh openssl
       - run: bash qbittorrent-nox-static.sh boost
       - run: bash qbittorrent-nox-static.sh libtorrent
