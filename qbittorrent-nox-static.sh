@@ -441,8 +441,8 @@ _set_cxx_standard() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
 	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "1.2.20")" ]] && cxx_check="yes"
 	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "2.0.10")" ]] && cxx_check="yes"
-	[[ "${cxx_check}" == 'yes' && "${qbt_qt_version}" == "6" && "$(semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(semantic_version "4.6.3")" ]] && qbt_standard="23"
-	qbt_standard="${qbt_standard}" qbt_cxx_standard="c++${qbt_standard}"
+	[[ "${cxx_check}" == 'yes' && "${qbt_qt_version}" == "6" && "$(semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(semantic_version "4.6.3")" ]] && qbt_standard="23" qbt_cxx_standard="c++${qbt_standard}"
+	return
 }
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
