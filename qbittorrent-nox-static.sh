@@ -310,10 +310,26 @@ _set_default_values() {
 	# Set the CXX standards used to build cxx code.
 	# ${standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
 
-	standard="17" cxx_standard="c++${standard}" # working default until libtorrent v2.0.10 or v1.2.20 are released where we can defaults to 23
+	standard="17" # working default until libtorrent v2.0.10 or v1.2.20 are released where we can defaults to 23
+
+	if [[ "${qbt_libtorrent_tag}" =~ ^v ]]; then
+		qbt_libtorrent_tag_semtantic="${qbt_libtorrent_tag/v/}"
+
+		semantic_version() {
+			local test_array
+			read -ra test_array < <(printf "%s" "${@//./ }")
+			printf "%d%03d%03d%03d" "${test_array[@]}"
+		}
+
+		if [[ "${qbt_qt_version}" == "6" ]] && [[ "$(semantic_version "${qbt_libtorrent_tag_semtantic}")" -gt "$(semantic_version "1.2.19")" || "$(semantic_version "${qbt_libtorrent_tag_semtantic}")" -gt "$(semantic_version "2.0.9")" ]]; then
+			standard="23"
+		fi
+	fi
 
 	[[ "${qbt_qt_version}" == "5" && "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && standard="20"
 	[[ "${qbt_qt_version}" == "6" && "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && standard="23"
+
+	cxx_standard="c++${standard}"
 
 	# Set the working dir to our current location and all things well be relative to this location.
 	qbt_working_dir="$(pwd)"
