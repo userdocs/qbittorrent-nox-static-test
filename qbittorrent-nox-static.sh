@@ -220,7 +220,8 @@ _set_default_values() {
 		printf '%b\n' " ${color_yellow_light}  qbt_workflow_artifacts=\"${color_green_light}${qbt_workflow_artifacts}${color_yellow_light}\"${color_end}"
 		printf '%b\n' " ${color_yellow_light}  qbt_cache_dir=\"${color_green_light}${qbt_cache_dir}${color_yellow_light}\"${color_end}"
 		printf '%b\n' " ${color_yellow_light}  qbt_optimise_strip=\"${color_green_light}${qbt_optimise_strip}${color_yellow_light}\"${color_end}"
-		printf '%b\n\n' " ${color_yellow_light}  qbt_build_debug=\"${color_green_light}${qbt_build_debug}${color_yellow_light}\"${color_end}"
+		printf '%b\n' " ${color_yellow_light}  qbt_build_debug=\"${color_green_light}${qbt_build_debug}${color_yellow_light}\"${color_end}"
+		printf '%b\n\n' " ${color_yellow_light}  qbt_standard=\"${color_green_light}${qbt_standard}${color_yellow_light}\"${color_end}"
 	}
 
 	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
@@ -308,28 +309,22 @@ _set_default_values() {
 	fi
 
 	# Set the CXX standards used to build cxx code.
-	# ${standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
+	# ${qbt_standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
 
-	standard="17" # working default until libtorrent v2.0.10 or v1.2.20 are released where we can defaults to 23
+	qbt_standard="17" # working default until libtorrent v2.0.10 or v1.2.20 are released where we can defaults to 23
 
+	# If we are using a tag that is greater than the latest release then we need to use the latest c++ standard.
 	if [[ "${qbt_libtorrent_tag}" =~ ^v ]]; then
-		qbt_libtorrent_tag_semtantic="${qbt_libtorrent_tag/v/}"
-
-		semantic_version() {
-			local test_array
-			read -ra test_array < <(printf "%s" "${@//./ }")
-			printf "%d%03d%03d%03d" "${test_array[@]}"
-		}
-
-		if [[ "${qbt_qt_version}" == "6" ]] && [[ "$(semantic_version "${qbt_libtorrent_tag_semtantic}")" -gt "$(semantic_version "1.2.19")" || "$(semantic_version "${qbt_libtorrent_tag_semtantic}")" -gt "$(semantic_version "2.0.9")" ]]; then
-			standard="23"
-		fi
+		# changes we need to use updated standards depend on changes made in RC branches after v1.2.19 and v2.0.9 releases
+		[[ "${qbt_libtorrent_tag}" =~ ^v1\.2\. && "$(semantic_version "${qbt_libtorrent_tag/v/}")" -gt "$(semantic_version "1.2.19")" ]] && use_latest_standard="yes"
+		[[ "${qbt_libtorrent_tag}" =~ ^v2\.0\. && "$(semantic_version "${qbt_libtorrent_tag/v/}")" -gt "$(semantic_version "2.0.9")" ]] && use_latest_standard="yes"
 	fi
 
-	[[ "${qbt_qt_version}" == "5" && "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && standard="20"
-	[[ "${qbt_qt_version}" == "6" && "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && standard="23"
+	[[ "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && use_latest_standard="yes"
+	[[ "${qbt_qt_version}" == "5" && "${use_latest_standard}" == 'yes' ]] && qbt_standard="20"
+	[[ "${qbt_qt_version}" == "6" && "${use_latest_standard}" == 'yes' ]] && qbt_standard="23"
 
-	cxx_standard="c++${standard}"
+	qbt_cxx_standard="c++${qbt_standard}"
 
 	# Set the working dir to our current location and all things well be relative to this location.
 	qbt_working_dir="$(pwd)"
@@ -446,6 +441,14 @@ _check_dependencies() {
 	if [[ "${deps_installed}" != "no" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle}${text_bold} Dependencies: All checks passed, continuing to build${color_end}"
 	fi
+}
+#######################################################################################################################################################
+# # This function converts a version string to a number for comparison purposes.
+#######################################################################################################################################################
+semantic_version() {
+	local test_array
+	read -ra test_array < <(printf "%s" "${@//./ }")
+	printf "%d%03d%03d%03d" "${test_array[@]}"
 }
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
@@ -608,13 +611,13 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} -static -w -Wno-psabi -I${include_dir}"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} -static -w -Wno-psabi -I${include_dir}"
 	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }-static -w -Wno-psabi -I${include_dir}"
 	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }-static ${qbt_strip_flags} -L${lib_dir} -pthread"
 }
 
 _custom_flags_reset() {
-	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} } -w -std=${cxx_standard}"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} } -w -std=${qbt_cxx_standard}"
 	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} } -w"
 	LDFLAGS=""
 }
@@ -648,15 +651,11 @@ _install_qbittorrent() {
 _script_version() {
 	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
 
-	semantic_version() {
-		local test_array
-		read -ra test_array < <(printf "%s" "${@//./ }")
-		printf "%d%03d%03d%03d" "${test_array[@]}"
-	}
-
 	if [[ "$(semantic_version "${script_version}")" -lt "$(semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end} Script update available! Versions - ${color_yellow_light}local:${color_red_light}${script_version}${color_end} ${color_yellow_light}remote:${color_green_light}${script_version_remote}${color_end}"
 		printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${color_end}"
+	elif [[ "$(semantic_version "${script_version}")" -gt "$(semantic_version "${script_version_remote}")" ]]; then
+		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_red_light}${script_version}-dev${color_end}"
 	else
 		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_green_light}${script_version}${color_end}"
 	fi
@@ -914,7 +913,7 @@ _installation_modules() {
 
 		python_short_version="${python_major}.${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
@@ -1564,7 +1563,7 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
@@ -2310,7 +2309,7 @@ _zlib() {
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-$(apk --print-arch)}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
-			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D ZLIB_COMPAT=ON \
@@ -2415,7 +2414,7 @@ _libtorrent() {
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="Release" \
-			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
@@ -2446,7 +2445,7 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness:-$(getconf LONG_BIT)}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness:-$(getconf LONG_BIT)}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${qbt_standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static cxxflags="${CXXFLAGS}" cflags="${CPPFLAGS}" linkflags="${LDFLAGS}" install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
@@ -2535,7 +2534,7 @@ _qtbase() {
 			-D FEATURE_androiddeployqt=OFF -D FEATURE_animation=OFF \
 			-D QT_FEATURE_testlib=off -D QT_BUILD_EXAMPLES=off -D QT_BUILD_TESTS=off \
 			-D QT_BUILD_EXAMPLES_BY_DEFAULT=OFF -D QT_BUILD_TESTS_BY_DEFAULT=OFF \
-			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
@@ -2556,7 +2555,7 @@ _qtbase() {
 		# Don't strip by default by disabling these options. We will set it as off by default and use it with a switch
 		printf '%b\n' "CONFIG                 += ${qbt_strip_qmake}" >> "mkspecs/common/linux.conf"
 		./configure "${multi_qtbase[@]}" -prefix "${qbt_install_dir}" "${icu[@]}" -opensource -confirm-license -release \
-			-openssl-linked -static -c++std "${cxx_standard}" -qt-pcre \
+			-openssl-linked -static -c++std "${qbt_cxx_standard}" -qt-pcre \
 			-no-feature-glib -no-feature-opengl -no-feature-dbus -no-feature-gui -no-feature-widgets -no-feature-testlib -no-compile-examples \
 			-skip tests -nomake tests -skip examples -nomake examples \
 			-I "${include_dir}" -L "${lib_dir}" QMAKE_LFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -2578,7 +2577,7 @@ _qttools() {
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
-			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
@@ -2590,7 +2589,7 @@ _qttools() {
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ "${qbt_qt_version}" =~ ^5 ]]; then
 		"${qbt_install_dir}/bin/qmake" -set prefix "${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-		"${qbt_install_dir}/bin/qmake" QMAKE_CXXFLAGS="-std=${cxx_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/bin/qmake" QMAKE_CXXFLAGS="-std=${qbt_cxx_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -2613,7 +2612,7 @@ _qbittorrent() {
 			-D CMAKE_BUILD_TYPE="release" \
 			-D QT6="${qbt_use_qt6}" \
 			-D STACKTRACE="${stacktrace:-ON}" \
-			-D CMAKE_CXX_STANDARD="${standard}" \
+			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
