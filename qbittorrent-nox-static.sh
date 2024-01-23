@@ -308,23 +308,7 @@ _set_default_values() {
 		[[ "${qbt_skip_icu}" != "no" ]] && delete+=("icu")
 	fi
 
-	# Set the CXX standards used to build cxx code.
-	# ${qbt_standard} - Set the CXX standard. You may need to set c++14 for older versions of some apps, like qt 5.12
-
-	qbt_standard="17" # working default until libtorrent v2.0.10 or v1.2.20 are released where we can defaults to 23
-
-	# If we are using a tag that is greater than the latest release then we need to use the latest c++ standard.
-	if [[ "${qbt_libtorrent_tag}" =~ ^v ]]; then
-		# changes we need to use updated standards depend on changes made in RC branches after v1.2.19 and v2.0.9 releases
-		[[ "${qbt_libtorrent_tag}" =~ ^v1\.2\. && "$(semantic_version "${qbt_libtorrent_tag/v/}")" -gt "$(semantic_version "1.2.19")" ]] && use_latest_standard="yes"
-		[[ "${qbt_libtorrent_tag}" =~ ^v2\.0\. && "$(semantic_version "${qbt_libtorrent_tag/v/}")" -gt "$(semantic_version "2.0.9")" ]] && use_latest_standard="yes"
-	fi
-
-	[[ "${qbt_libtorrent_tag}" =~ ^(RC_1_2|RC_2_0)$ ]] && use_latest_standard="yes"
-	[[ "${qbt_qt_version}" == "5" && "${use_latest_standard}" == 'yes' ]] && qbt_standard="20"
-	[[ "${qbt_qt_version}" == "6" && "${use_latest_standard}" == 'yes' ]] && qbt_standard="23"
-
-	qbt_cxx_standard="c++${qbt_standard}"
+	qbt_standard="${qbt_standard:-17}" qbt_cxx_standard="c++${qbt_standard}"
 
 	# Set the working dir to our current location and all things well be relative to this location.
 	qbt_working_dir="$(pwd)"
@@ -443,12 +427,22 @@ _check_dependencies() {
 	fi
 }
 #######################################################################################################################################################
-# # This function converts a version string to a number for comparison purposes.
+# This function converts a version string to a number for comparison purposes.
 #######################################################################################################################################################
 semantic_version() {
 	local test_array
 	read -ra test_array < <(printf "%s" "${@//./ }")
 	printf "%d%03d%03d%03d" "${test_array[@]}"
+}
+#######################################################################################################################################################
+# This function sets the cxx standard dynmically based on the libtorrent tag and the qt version
+#######################################################################################################################################################
+_set_cxx_standard() {
+	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
+	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "1.2.20")" ]] && cxx_check="yes"
+	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "2.0.10")" ]] && cxx_check="yes"
+	[[ "${cxx_check}" == 'yes' && "${qbt_qt_version}" == "6" && "$(semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(semantic_version "4.6.3")" ]] && qbt_standard="23"
+	qbt_standard="${qbt_standard}" qbt_cxx_standard="c++${qbt_standard}"
 }
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
@@ -1873,7 +1867,7 @@ while (("${#}")); do
 		-lt | --libtorrent-tag)
 			if [[ -n "${2}" ]]; then
 				github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "$2")"
-				[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]}"
+				[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="${github_tag[libtorrent]/RC_/}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
 				[[ "${github_tag[libtorrent]}" =~ ^libtorrent- ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent-}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
 				[[ "${github_tag[libtorrent]}" =~ ^libtorrent_ ]] && app_version[libtorrent]="${github_tag[libtorrent]#libtorrent_}" app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
 				[[ "${github_tag[libtorrent]}" =~ ^v[0-9] ]] && app_version[libtorrent]="${github_tag[libtorrent]#v}"
@@ -2269,6 +2263,7 @@ _error_tag
 #######################################################################################################################################################
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
 #######################################################################################################################################################
+_set_cxx_standard
 _debug "${@}"                # requires shifted params from options block 2
 _installation_modules "${@}" # requires shifted params from options block 2
 #######################################################################################################################################################
