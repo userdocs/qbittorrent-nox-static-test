@@ -308,6 +308,7 @@ _set_default_values() {
 		[[ "${qbt_skip_icu}" != "no" ]] && delete+=("icu")
 	fi
 
+	# The default is 17 but can be manually defined via the env qbt_standard - this will be overridden by the _set_cxx_standard function in specific cases
 	qbt_standard="${qbt_standard:-17}" qbt_cxx_standard="c++${qbt_standard}"
 
 	# Set the working dir to our current location and all things well be relative to this location.
