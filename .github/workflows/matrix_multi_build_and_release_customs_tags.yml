@@ -46,10 +46,10 @@ jobs:
           #   qbt_qt_tag: "v6.7.0-beta1"
 
           - qbt_libtorrent_version: "2.0"
-            libtorrent_tag: "RC_2_0"
+            qbt_libtorrent_tag: "RC_2_0"
 
           - qbt_libtorrent_version: "1.2"
-            libtorrent_tag: "RC_1_2"
+            qbt_libtorrent_tag: "RC_1_2"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
