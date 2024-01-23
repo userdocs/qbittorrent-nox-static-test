@@ -1877,10 +1877,12 @@ while (("${#}")); do
 					source_default[libtorrent]="folder"
 				fi
 				qbt_workflow_override[libtorrent]="yes"
-
-				read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
-				qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
-
+				if [[ "${github_tag[libtorrent]}" =~ ^RC_ ]]; then
+					qbt_libtorrent_version="RC_${app_version[libtorrent]//./_}"
+				else
+					read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
+					qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
+				fi
 				_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
 				shift 2
 			else
