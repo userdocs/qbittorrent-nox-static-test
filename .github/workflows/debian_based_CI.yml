@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
-        description: "distinct_id"
+        description: "Distinct id"
       skip_rerun:
         description: "Skip rerun?"
         required: true
@@ -30,10 +30,12 @@ jobs:
       fail-fast: false
       matrix:
         container_id: [debian, ubuntu]
-        container_codename: [bullseye, bookworm, jammy, noble]
+        container_codename: [bullseye, bookworm, focal, jammy, noble]
         qbt_build_tool: ["qmake", "cmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         exclude:
+          - container_id: debian
+            container_codename: focal
           - container_id: debian
             container_codename: jammy
           - container_id: debian
@@ -98,7 +100,15 @@ jobs:
       - run: bash qbittorrent-nox-static.sh qttools
       - run: bash qbittorrent-nox-static.sh qbittorrent
 
+      - name: Host - qBittorrent v5 transition
+        run: |
+          # When qBittorrent v5 is released, remove this
+          if [[ -f ${{ env.qbt_build_dir }}/release_info/disable-qt5 ]]; then
+            printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
+          fi
+
       - name: Archive code coverage results
+        if: env.disable_qt5 != 'yes' # When qBittorrent v5 is released, remove this
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
