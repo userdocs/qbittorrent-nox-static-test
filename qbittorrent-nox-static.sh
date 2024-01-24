@@ -430,20 +430,52 @@ _check_dependencies() {
 #######################################################################################################################################################
 # This function converts a version string to a number for comparison purposes.
 #######################################################################################################################################################
-semantic_version() {
+_semantic_version() {
 	local test_array
 	read -ra test_array < <(printf "%s" "${@//./ }")
 	printf "%d%03d%03d%03d" "${test_array[@]}"
 }
 #######################################################################################################################################################
-# This function sets the cxx standard dynmically based on the libtorrent tag and the qt version
+# These functions set the cxx standard dynmically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
-_set_cxx_standard() {
+_qt_std_cons() {
+	[[ "${qbt_qt_version}" == "6" ]] && cxx_check="yes"
+	printf '%s' "${cxx_check:-no}"
+}
+
+_libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "1.2.20")" ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(semantic_version "2.0.10")" ]] && cxx_check="yes"
-	[[ "${cxx_check}" == 'yes' && "${qbt_qt_version}" == "6" && "$(semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(semantic_version "4.6.3")" ]] && qbt_standard="23" qbt_cxx_standard="c++${qbt_standard}"
-	return
+	[[ "${github_tag[libtorrent]}" =~ ^v1\.1\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.1.15")" ]] && cxx_check="yes"
+	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.20")" ]] && cxx_check="yes"
+	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] && cxx_check="yes"
+	printf '%s' "${cxx_check:-no}"
+}
+
+_qbittorrent_std_cons() {
+	[[ "${github_tag[qbittorrent]}" == "master" ]] && cxx_check="yes"
+	[[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]] && cxx_check="yes"
+	printf '%s' "${cxx_check:-no}"
+}
+
+_set_cxx_standard() {
+	[[ $(_qt_std_cons) == "yes" && $(_libtorrent_std_cons) == "yes" && $(_qbittorrent_std_cons) == "yes" ]] && qbt_standard="23" qbt_cxx_standard="c++${qbt_standard}"
+}
+
+#######################################################################################################################################################
+# These functions set some build conditions dynmically based on the libtorrent versions, qt version and qbittorrent combinations
+#######################################################################################################################################################
+_qbittorrent_build_cons() {
+	[[ "${github_tag[qbittorrent]}" == "master" ]] && disable_qt5="yes"
+	[[ "${github_tag[qbittorrent]}" == "v5_0_x" ]] && disable_qt5="yes"
+	[[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "5.0.0")" ]] && disable_qt5="yes"
+	printf '%s' "${disable_qt5:-no}"
+}
+
+_set_build_cons() {
+	if [[ $(_qbittorrent_build_cons) == "yes" && "${qbt_qt_version}" == "5" ]]; then
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support ${color_red}Qt5${color_yellow}. Please use ${color_green}Qt6${color_yellow} or pre v5 tag.${color_end}"
+		exit # non error exit to not upset github actions - just skip the step
+	fi
 }
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
@@ -550,7 +582,7 @@ _git() {
 
 _test_git_ouput() {
 	if [[ "${1}" == 'error_tag' ]]; then
-		printf '\n%b\n' "${color_yellow} Sorry, the provided ${2} tag ${color_red}${3}${color_end}${color_yellow} is not valid${color_end}"
+		printf '\n%b\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}The provided ${2} tag ${color_red}${3}${color_end}${color_yellow} is not valid${color_end}"
 	fi
 }
 #######################################################################################################################################################
@@ -646,10 +678,10 @@ _install_qbittorrent() {
 _script_version() {
 	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
 
-	if [[ "$(semantic_version "${script_version}")" -lt "$(semantic_version "${script_version_remote}")" ]]; then
+	if [[ "$(_semantic_version "${script_version}")" -lt "$(_semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end} Script update available! Versions - ${color_yellow_light}local:${color_red_light}${script_version}${color_end} ${color_yellow_light}remote:${color_green_light}${script_version_remote}${color_end}"
 		printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${color_end}"
-	elif [[ "$(semantic_version "${script_version}")" -gt "$(semantic_version "${script_version_remote}")" ]]; then
+	elif [[ "$(_semantic_version "${script_version}")" -gt "$(_semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_red_light}${script_version}-dev${color_end}"
 	else
 		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_green_light}${script_version}${color_end}"
@@ -2266,6 +2298,7 @@ _error_tag
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
 #######################################################################################################################################################
 _set_cxx_standard
+_set_build_cons
 _debug "${@}"                # requires shifted params from options block 2
 _installation_modules "${@}" # requires shifted params from options block 2
 #######################################################################################################################################################
