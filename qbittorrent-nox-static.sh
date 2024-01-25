@@ -66,18 +66,16 @@ _color_test() {
 		exit 1
 	fi
 }
-[[ "${1}" == "ctest" ]] && _color_test
+[[ "${1}" == "ctest" ]] && _color_test # ./scriptname.sh ctest
 #######################################################################################################################################################
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
-
-# Function to source /etc/os-release and get info from it on demand.
-get_os_info() {
+get_os_info() { # Function to source /etc/os-release and get info from it on demand.
 	# shellcheck source=/dev/null
 	if source /etc/os-release &> /dev/null; then
-		printf "%s" "${!1%_*}"
+		printf "%s" "${!1%_*}" # the exansion part is specific to the Alpine VERSION_ID format 1.2.3_alpha but won't break anything in Debian based format. 12/24.04
 	else
-		printf "%s" "unknown"
+		printf "%s" "unknown" # This will make the script exit on the version check and provide useful reason.
 	fi
 }
 
@@ -87,7 +85,7 @@ os_version_id="$(get_os_info VERSION_ID)"                                       
 [[ "$(wc -w <<< "${os_version_id//\./ }")" -eq "2" ]] && alpine_min_version="310" # Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
 [[ "${os_id}" =~ ^(alpine)$ ]] && os_version_codename="alpine"                    # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
-## Check against allowed codenames or if the codename is alpine version greater than 3.10
+# Check against allowed codenames or if the codename is alpine version greater than 3.10
 if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
@@ -100,9 +98,9 @@ fi
 #######################################################################################################################################################
 # Source env vars from a file if it exists but it will be overridden by switches and flags passed to the script
 #######################################################################################################################################################
-# shellcheck source=/dev/null
 if [[ -f "${PWD}/.qbt_env" ]]; then
 	printf '\n%b\n' " ${unicode_magenta_circle} Sourcing .qbt_env file"
+	# shellcheck source=/dev/null
 	source "${PWD}/.qbt_env"
 fi
 #######################################################################################################################################################
@@ -445,7 +443,6 @@ _qt_std_cons() {
 
 _libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v1\.1\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.1.15")" ]] && cxx_check="yes"
 	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.20")" ]] && cxx_check="yes"
 	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] && cxx_check="yes"
 	printf '%s' "${cxx_check:-no}"
