@@ -151,6 +151,11 @@ jobs:
         if: env.disable_qt5 != 'yes' # When qBittorrent v5 is released, remove this
         run: docker exec -w /root/${{ env.qbt_build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
 
+      # - name: Docker - upx compression ${{ github.event.inputs.distinct_id }}
+      #   run: |
+      #     docker exec -w /root multiarch apk add upx
+      #     docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch upx --brute --no-lzma ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+
       - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ github.event.inputs.distinct_id }}
         if: env.disable_qt5 != 'yes' # When qBittorrent v5 is released, remove this
         uses: actions/upload-artifact@v4
