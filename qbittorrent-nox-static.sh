@@ -240,8 +240,8 @@ _set_default_values() {
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then delete+=("glibc"); fi
 
 		if [[ ${qbt_cross_name} != "default" ]]; then
-			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the static-ish flag with cross compilation${color_end}"
-			exit
+			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
+			exit 1
 		fi
 	else
 		qbt_ldflags_static="-static"
@@ -1790,7 +1790,7 @@ while (("${#}")); do
 				shift
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross compilation"
-				exit
+				exit 1
 			fi
 			;;
 		-s | --strip)
@@ -1803,7 +1803,7 @@ while (("${#}")); do
 				shift
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
-				exit
+				exit 1
 			fi
 			;;
 		-sdu | --script-debug-urls)
