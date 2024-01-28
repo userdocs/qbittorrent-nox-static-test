@@ -236,7 +236,13 @@ _set_default_values() {
 	# staticish builds
 	if [[ ${qbt_static_ish:=no} == "yes" ]]; then
 		qbt_ldflags_static=""
+
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then delete+=("glibc"); fi
+
+		if [[ ${qbt_cross_name} != "default" ]]; then
+			printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the static-ish flag with cross comiplation${color_end}"
+			exit
+		fi
 	else
 		qbt_ldflags_static="-static"
 	fi
@@ -1779,14 +1785,26 @@ while (("${#}")); do
 		-o | --optimize)
 			qbt_optimize="-march=native"
 			shift
+			if [[ -z ${qbt_cross_name} ]]; then
+				qbt_optimize="-march=native"
+				shift
+			else
+				printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross comiplation"
+				exit
+			fi
 			;;
 		-s | --strip)
 			qbt_optimise_strip="yes"
 			shift
 			;;
 		-si | --static-ish)
-			qbt_static_ish="yes"
-			shift
+			if [[ -z ${qbt_cross_name} ]]; then
+				qbt_static_ish="yes"
+				shift
+			else
+				printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross comiplation${color_end}"
+				exit
+			fi
 			;;
 		-sdu | --script-debug-urls)
 			script_debug_urls="yes"
