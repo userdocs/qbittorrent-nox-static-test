@@ -240,7 +240,7 @@ _set_default_values() {
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then delete+=("glibc"); fi
 
 		if [[ ${qbt_cross_name} != "default" ]]; then
-			printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the static-ish flag with cross comiplation${color_end}"
+			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the static-ish flag with cross compilation${color_end}"
 			exit
 		fi
 	else
@@ -1789,7 +1789,7 @@ while (("${#}")); do
 				qbt_optimize="-march=native"
 				shift
 			else
-				printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross comiplation"
+				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross compilation"
 				exit
 			fi
 			;;
@@ -1802,7 +1802,7 @@ while (("${#}")); do
 				qbt_static_ish="yes"
 				shift
 			else
-				printf '%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross comiplation${color_end}"
+				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
 				exit
 			fi
 			;;
