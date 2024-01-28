@@ -77,6 +77,8 @@ jobs:
         qbt_optimise_strip: yes
         qbt_build_debug: no
         qbt_revision_url: ${{ github.repository }}
+        qbt_standard: 17
+        qbt_static_ish: yes
     steps:
       - uses: actions/checkout@v4
 
