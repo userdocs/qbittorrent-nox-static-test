@@ -31,8 +31,9 @@ jobs:
       matrix:
         container_id: [debian, ubuntu]
         container_codename: [bullseye, bookworm, focal, jammy, noble]
-        qbt_build_tool: ["qmake", "cmake"]
+        qbt_build_tool: ["cmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
+        qbt_cross_name: [armhf, armv7, aarch64, x86_64, x86]
         exclude:
           - container_id: debian
             container_codename: focal
@@ -63,7 +64,7 @@ jobs:
         qbt_libtorrent_version: ${{ matrix.qbt_libtorrent_version }}
         qbt_qt_version: ${{ matrix.qbt_qt_version }}
         qbt_build_tool: ${{ matrix.qbt_build_tool }}
-        qbt_cross_name: ""
+        qbt_cross_name: ${{ matrix.qbt_cross_name }}
         qbt_patches_url: ${{ github.repository }}
         qbt_skip_icu: no
         qbt_boost_tag: ""
