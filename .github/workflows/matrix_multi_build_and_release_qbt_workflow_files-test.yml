@@ -29,34 +29,27 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        # qbt_cross_name:
-        #   [
-        #     armel,
-        #     armhf,
-        #     armv7,
-        #     aarch64,
-        #     x86_64,
-        #     x86,
-        #     s390x,
-        #     powerpc,
-        #     ppc64el,
-        #     mips,
-        #     mipsel,
-        #     mips64,
-        #     mips64el,
-        #     riscv64,
-        #   ]
-        qbt_cross_name: [armhf, armv7, aarch64, x86_64, x86]
+        # qbt_cross_name: [armel,armhf,armv7,aarch64,x86_64,x86,s390x,powerpc,ppc64el,mips,mipsel,mips64,mips64el,riscv64]
+        qbt_cross_name: ["armhf", "armv7", "aarch64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "cmake"]
+        # qbt_boost_tag: [boost-1.84.0]
+        qbt_qbittorrent_tag: [master]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: "qt5-"
             qbt_qt_version: "5"
-
+            # qbt_qt_tag: "v5.15.11-lts-lgpl"
           - qbt_build_tool: "cmake"
             qbt_qt_version_name: ""
             qbt_qt_version: "6"
+            # qbt_qt_tag: "v6.7.0-beta1"
+
+          - qbt_libtorrent_version: "2.0"
+            qbt_libtorrent_tag: "RC_2_0"
+
+          - qbt_libtorrent_version: "1.2"
+            qbt_libtorrent_tag: "RC_1_2"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
@@ -92,10 +85,10 @@ jobs:
           printf '%s\n' "qbt_cross_name=${{ matrix.qbt_cross_name }}" >> env.custom
           printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
           printf '%s\n' "qbt_skip_icu=yes" >> env.custom
-          printf '%s\n' "qbt_boost_tag=" >> env.custom
-          printf '%s\n' "qbt_libtorrent_tag=" >> env.custom
-          printf '%s\n' "qbt_qt_tag=" >> env.custom
-          printf '%s\n' "qbt_qbittorrent_tag=" >> env.custom
+          printf '%s\n' "qbt_boost_tag=${{ matrix.qbt_boost_tag }}" >> env.custom
+          printf '%s\n' "qbt_libtorrent_tag=${{ matrix.qbt_libtorrent_tag }}" >> env.custom
+          printf '%s\n' "qbt_qt_tag=${{ matrix.qbt_qt_tag }}" >> env.custom
+          printf '%s\n' "qbt_qbittorrent_tag=${{ matrix.qbt_qbittorrent_tag }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=no" >> env.custom
           printf '%s\n' "qbt_workflow_files=yes" >> env.custom
           printf '%s\n' "qbt_workflow_artifacts=no" >> env.custom
