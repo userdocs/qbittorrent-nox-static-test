@@ -1621,7 +1621,6 @@ _multi_arch() {
 # Github Actions release info
 #######################################################################################################################################################
 _release_info() {
-	set -x
 	_error_tag
 
 	printf '\n%b\n' " ${unicode_green_circle} ${color_yellow_light}Release boot-strapped${color_end}"
@@ -1716,7 +1715,6 @@ _release_info() {
 		>
 		> Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 	RELEASE_INFO
-	set +x
 	return
 }
 #######################################################################################################################################################
