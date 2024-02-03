@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
+        description: "Distinct id"
       skip_rerun:
         description: "Skip rerun?"
         required: true
