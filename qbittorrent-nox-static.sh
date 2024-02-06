@@ -17,7 +17,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.6"
+script_version="2.0.7"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -599,6 +599,52 @@ _test_git_ouput() {
 	fi
 }
 #######################################################################################################################################################
+# Boost URL test function
+#######################################################################################################################################################
+_boost_url() {
+	local boost_url_tag="${github_tag[boost]}"
+
+	if [[ "${github_tag[boost]}" =~ \.beta ]]; then
+		local boost_url_tag="${boost_url_tag/beta1/b1}"
+		local boost_url_tag="${boost_url_tag/beta2/b2}"
+		local boost_release_type="beta"
+	else
+		local boost_release_type="release"
+	fi
+
+	if _curl -sfLI "https://boostorg.jfrog.io/artifactory/main/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz" &> /dev/null; then
+		if [[ "${1}" == "status" ]]; then
+			printf '%s' "200"
+		fi
+
+		if [[ "${1}" == "test" ]]; then
+			boost_url_status="200"
+		else
+			printf '%s' "https://boostorg.jfrog.io/artifactory/main/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz"
+		fi
+
+	elif _curl -sfLI "https://archives.boost.io/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz" &> /dev/null; then
+		if [[ "${1}" == "status" ]]; then
+			printf '%s' "200"
+		fi
+
+		if [[ "${1}" == "test" ]]; then
+			boost_url_status="200"
+		else
+			printf '%s' "https://archives.boost.io/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz"
+		fi
+	else
+		if [[ "${1}" == "status" ]]; then
+			printf '%s' "403"
+		fi
+
+		if [[ "${1}" == "test" ]]; then
+			boost_url_status="403"
+			source_default[boost]="folder"
+		fi
+	fi
+}
+#######################################################################################################################################################
 # Debug stuff
 #######################################################################################################################################################
 _debug() {
@@ -797,7 +843,7 @@ _set_module_urls() {
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
 	else
-		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(cmake-)", "");sub("(-r)", ""); print $1 }')"
+		app_version[cmake]="$(apk info -d cmake | awk '/cmake-/{sub("(cmake-)", "");sub("(-r)", ""); print $1 }' | sort -r | head -n1)"
 		app_version[ninja]="${github_tag[ninja]#v}"
 	fi
 	app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
@@ -823,7 +869,7 @@ _set_module_urls() {
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
 	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
 	source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
-	source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${github_tag[boost]/boost-/}/source/${github_tag[boost]//[-\.]/_}.tar.gz"
+	source_archive_url[boost]="$(_boost_url)"
 	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
 
 	read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
@@ -895,7 +941,7 @@ _set_module_urls() {
 	###################################################################################################################################################
 	# Define some test URLs we use to check or test the status of some URLs
 	###################################################################################################################################################
-	boost_url_status="$(_curl -so /dev/null --head --write-out '%{http_code}' "https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//./_}.tar.gz")"
+	boost_url_status="$(_boost_url "status")"
 	return
 }
 #######################################################################################################################################################
@@ -1589,6 +1635,7 @@ _multi_arch() {
 				fi
 
 				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+
 				_fix_multiarch_static_links "${qbt_cross_host}"
 			fi
 
@@ -1715,6 +1762,7 @@ _release_info() {
 		>
 		> Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/#/debugging
 	RELEASE_INFO
+
 	return
 }
 #######################################################################################################################################################
@@ -1883,15 +1931,8 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				github_tag[boost]="$(_git "${github_url[boost]}" -t "${2}")"
 				app_version[boost]="${github_tag[boost]#boost-}"
-				if [[ "${app_version[boost]}" =~ \.beta ]]; then
-					boost_url="${app_version[boost]//\./_}" boost_url="${boost_url/beta1/b1}" boost_url="${boost_url/beta2/b2}"
-					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/beta/${app_version[boost]}/source/boost_${boost_url}.tar.gz"
-				else
-					source_archive_url[boost]="https://boostorg.jfrog.io/artifactory/main/release/${app_version[boost]}/source/boost_${app_version[boost]//\./_}.tar.gz"
-				fi
-				if ! _curl -I "${source_archive_url[boost]}" &> /dev/null; then
-					source_default[libtorrent]="folder"
-				fi
+				source_archive_url[boost]="$(_boost_url)"
+				_boost_url test
 				qbt_workflow_override[boost]="yes"
 				_test_git_ouput "${github_tag[boost]}" "boost" "${2}"
 				shift 2
