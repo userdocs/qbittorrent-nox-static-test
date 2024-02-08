@@ -602,47 +602,30 @@ _test_git_ouput() {
 # Boost URL test function
 #######################################################################################################################################################
 _boost_url() {
-	local boost_url_tag="${github_tag[boost]}"
-
 	if [[ "${github_tag[boost]}" =~ \.beta ]]; then
-		local boost_url_tag="${boost_url_tag/beta1/b1}"
-		local boost_url_tag="${boost_url_tag/beta2/b2}"
-		local boost_release_type="beta"
+		local boost_asset="${github_tag[boost]/\.beta/\.b}"
+		local boost_asset_type="beta"
 	else
-		local boost_release_type="release"
+		local boost_asset="${github_tag[boost]}"
+		local boost_asset_type="release"
 	fi
 
-	if _curl -sfLI "https://boostorg.jfrog.io/artifactory/main/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz" &> /dev/null; then
-		if [[ "${1}" == "status" ]]; then
-			printf '%s' "200"
-		fi
+	local boost_url_array=(
+		"https://boostorg.jfrog.io/artifactory/main/${boost_asset_type}/${github_tag[boost]/boost-/}/source/${boost_asset//[-\.]/_}.tar.gz"
+		"1https://archives.boost.io/${boost_asset_type}/${github_tag[boost]/boost-/}/source/${boost_asset//[-\.]/_}.tar.gz"
+	)
 
-		if [[ "${1}" == "test" ]]; then
+	for url in "${boost_url_array[@]}"; do
+		if _curl -sfLI "${url}" &> /dev/null; then
 			boost_url_status="200"
+			source_archive_url[boost]="${url}"
+			source_default[boost]="file"
+			break
 		else
-			printf '%s' "https://boostorg.jfrog.io/artifactory/main/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz"
-		fi
-
-	elif _curl -sfLI "https://archives.boost.io/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz" &> /dev/null; then
-		if [[ "${1}" == "status" ]]; then
-			printf '%s' "200"
-		fi
-
-		if [[ "${1}" == "test" ]]; then
-			boost_url_status="200"
-		else
-			printf '%s' "https://archives.boost.io/${boost_release_type}/${github_tag[boost]/boost-/}/source/${boost_url_tag//[-\.]/_}.tar.gz"
-		fi
-	else
-		if [[ "${1}" == "status" ]]; then
-			printf '%s' "403"
-		fi
-
-		if [[ "${1}" == "test" ]]; then
 			boost_url_status="403"
 			source_default[boost]="folder"
 		fi
-	fi
+	done
 }
 #######################################################################################################################################################
 # Debug stuff
@@ -790,9 +773,12 @@ _set_module_urls() {
 	# Update check url for the _script_version function
 	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/master/qbittorrent-nox-static.sh"
 	##########################################################################################################################################################
-	# Create the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
+	# Create all the arrays now
 	##########################################################################################################################################################
-	declare -gA github_url
+	declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url qbt_workflow_override source_default
+	##########################################################################################################################################################
+	# Configure the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
+	##########################################################################################################################################################
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
@@ -810,9 +796,8 @@ _set_module_urls() {
 	github_url[qttools]="https://github.com/qt/qttools.git"
 	github_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent.git"
 	##########################################################################################################################################################
-	# Create the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
+	# Configure the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
 	##########################################################################################################################################################
-	declare -gA github_tag
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 		if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
@@ -835,9 +820,8 @@ _set_module_urls() {
 	github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/{sub("refs/tags/", "");sub("(.*)(-a|-b|-r)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[qbittorrent]="$(_git_git ls-remote -q -t --refs "${github_url[qbittorrent]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	##########################################################################################################################################################
-	# Create the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
+	# Configure the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
 	##########################################################################################################################################################
-	declare -gA app_version
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
 		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
@@ -857,9 +841,8 @@ _set_module_urls() {
 	app_version[qttools]="$(printf '%s' "${github_tag[qttools]#v}" | sed 's/-lts-lgpl//g')"
 	app_version[qbittorrent]="${github_tag[qbittorrent]#release-}"
 	##########################################################################################################################################################
-	# Create the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
+	# Configure the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
 	##########################################################################################################################################################
-	declare -gA source_archive_url
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${os_id}-${os_version_codename}-cmake-$(dpkg --print-architecture).tar.xz"
 		source_archive_url[glibc]="https://ftpmirror.gnu.org/gnu/libc/${github_tag[glibc]}.tar.xz"
@@ -869,7 +852,7 @@ _set_module_urls() {
 	source_archive_url[icu]="https://github.com/unicode-org/icu/releases/download/${github_tag[icu]}/icu4c-${app_version[icu]/-/_}-src.tgz"
 	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
 	source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
-	source_archive_url[boost]="$(_boost_url)"
+	_boost_url # function to test and set the boost url and more
 	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
 
 	read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
@@ -885,9 +868,8 @@ _set_module_urls() {
 
 	source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/tags/${github_tag[qbittorrent]}.tar.gz"
 	##########################################################################################################################################################
-	# Create the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
+	# Configure the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
-	declare -gA qbt_workflow_archive_url
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_archive_url[cmake_ninja]="${source_archive_url[cmake_ninja]}"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
@@ -903,9 +885,8 @@ _set_module_urls() {
 	qbt_workflow_archive_url[qttools]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qt${qbt_qt_version:0:1}tools.tar.xz"
 	qbt_workflow_archive_url[qbittorrent]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qbittorrent.tar.xz"
 	##########################################################################################################################################################
-	# Workflow override options
+	# Configure workflow override options
 	##########################################################################################################################################################
-	declare -gA qbt_workflow_override
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		qbt_workflow_override[cmake_ninja]="no"
 		qbt_workflow_override[glibc]="no"
@@ -921,9 +902,8 @@ _set_module_urls() {
 	qbt_workflow_override[qttools]="no"
 	qbt_workflow_override[qbittorrent]="no"
 	##########################################################################################################################################################
-	# The default source type we use for the download function
+	# Configure the default source type we use for the download function
 	##########################################################################################################################################################
-	declare -gA source_default
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		source_default[cmake_ninja]="file"
 		source_default[glibc]="file"
@@ -938,10 +918,9 @@ _set_module_urls() {
 	source_default[qtbase]="file"
 	source_default[qttools]="file"
 	source_default[qbittorrent]="file"
-	###################################################################################################################################################
-	# Define some test URLs we use to check or test the status of some URLs
-	###################################################################################################################################################
-	boost_url_status="$(_boost_url "status")"
+	##########################################################################################################################################################
+	#
+	##########################################################################################################################################################
 	return
 }
 #######################################################################################################################################################
@@ -958,7 +937,7 @@ _installation_modules() {
 
 	# For any modules params passed, test that they exist in the qbt_modules array or set qbt_modules_test to fail
 	for passed_params in "${@}"; do
-		if [[ ! "${qbt_modules[*]}" =~ ${passed_params} ]]; then
+		if [[ ! "${qbt_modules[*]}" =~ (^|[^[:alpha:]])${passed_params}([^[:alpha:]]|$) ]]; then
 			qbt_modules_test="fail"
 		fi
 	done
@@ -1931,8 +1910,7 @@ while (("${#}")); do
 			if [[ -n "${2}" ]]; then
 				github_tag[boost]="$(_git "${github_url[boost]}" -t "${2}")"
 				app_version[boost]="${github_tag[boost]#boost-}"
-				source_archive_url[boost]="$(_boost_url)"
-				_boost_url test
+				_boost_url
 				qbt_workflow_override[boost]="yes"
 				_test_git_ouput "${github_tag[boost]}" "boost" "${2}"
 				shift 2
