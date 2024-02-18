@@ -106,7 +106,7 @@ fi
 #######################################################################################################################################################
 # Multi arch stuff
 #######################################################################################################################################################
-# Define all available multi arches we use from here https://github.com/userdocs/qbt-musl-cross-make#readme
+# Define all available multi arches we use from here https://github.com/userdocs/musl-cross-make#readme
 declare -gA multi_arch_options
 multi_arch_options[default]="skip"
 multi_arch_options[armel]="armel"
@@ -1607,8 +1607,8 @@ _multi_arch() {
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${color_end}"
-					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/userdocs/musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${color_end}"
+					_curl --create-dirs "https://github.com/userdocs/musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				else
 					printf '\n%b\n' " ${unicode_blue_light_circle} Extracting ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${color_end}"
 				fi
@@ -1708,7 +1708,7 @@ _release_info() {
 		> [!NOTE]
 		> ${source_text}
 		>
-		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/musl-cross-make/releases/latest) for:
 	RELEASE_INFO
 
 	{
