@@ -35,7 +35,7 @@ jobs:
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "cmake"]
         qbt_boost_tag: [boost-1.85.0.beta1]
-        qbt_qbittorrent_tag: [release-5.0.0beta1]
+        qbt_qbittorrent_tag: [release-4.6.4]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: "qt5-"
