@@ -17,7 +17,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.7"
+script_version="2.0.8"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -1809,8 +1809,6 @@ while (("${#}")); do
 			shift 2
 			;;
 		-o | --optimize)
-			qbt_optimize="-march=native"
-			shift
 			if [[ -z ${qbt_cross_name} ]]; then
 				qbt_optimize="-march=native"
 				shift
@@ -2463,7 +2461,7 @@ _icu() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _openssl() {
-	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
