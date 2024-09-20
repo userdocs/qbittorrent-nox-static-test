@@ -40,39 +40,6 @@
 #include "base/utils/password.h"
 #include "webapplication.h"
 
-/*
- * fix for broken synology-kernel NAS devices that stole a bunch of syscall
- * numbers for their own MSDOS emulation purposes. link into application
- * to block SYS_statx and all newer/later syscalls with seccomp. */
-
-#include <stddef.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/syscall.h>
-#include <errno.h>
-
-#include <sys/prctl.h>
-#include <linux/seccomp.h>
-#include <linux/filter.h>
-
-__attribute__((__constructor__))
-static void fix_synology(void)
-{
-	struct sock_filter filter[4];
-	struct sock_fprog prog = {
-		.len = sizeof filter / sizeof *filter,
-		.filter = filter,
-	};
-
-	filter[0] = (struct sock_filter)BPF_STMT(BPF_LD|BPF_W|BPF_ABS, offsetof(struct seccomp_data, nr));
-	filter[1] = (struct sock_filter)BPF_JUMP(BPF_JMP|BPF_JGE|BPF_K, SYS_statx, 0, 1);
-	filter[2] = (struct sock_filter)BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_ERRNO|ENOSYS);
-	filter[3] = (struct sock_filter)BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_ALLOW);
-
-	prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &prog)) abort();
-}
-
 WebUI::WebUI(IApplication *app, const QByteArray &tempPasswordHash)
     : ApplicationComponent(app)
     , m_passwordHash {tempPasswordHash}
@@ -84,22 +51,21 @@ WebUI::WebUI(IApplication *app, const QByteArray &tempPasswordHash)
 void WebUI::configure()
 {
     m_isErrored = false; // clear previous error state
-    m_errorMsg.clear();
 
     const Preferences *pref = Preferences::instance();
-    m_isEnabled = pref->isWebUIEnabled();
+    const bool isEnabled = pref->isWebUIEnabled();
     const QString username = pref->getWebUIUsername();
     if (const QByteArray passwordHash = pref->getWebUIPassword(); !passwordHash.isEmpty())
         m_passwordHash = passwordHash;
 
-    if (m_isEnabled && (username.isEmpty() || m_passwordHash.isEmpty()))
+    if (isEnabled && (username.isEmpty() || m_passwordHash.isEmpty()))
     {
         setError(tr("Credentials are not set"));
     }
 
     const QString portForwardingProfile = u"webui"_s;
 
-    if (m_isEnabled && !m_isErrored)
+    if (isEnabled && !m_isErrored)
     {
         const quint16 port = pref->getWebUIPort();
 
@@ -200,12 +166,7 @@ void WebUI::setError(const QString &message)
     LogMsg(logMessage, Log::CRITICAL);
     qCritical() << logMessage;
 
-    emit error(m_errorMsg);
-}
-
-bool WebUI::isEnabled() const
-{
-    return m_isEnabled;
+    emit fatalError();
 }
 
 bool WebUI::isErrored() const
@@ -216,22 +177,4 @@ bool WebUI::isErrored() const
 QString WebUI::errorMessage() const
 {
     return m_errorMsg;
-}
-
-bool WebUI::isHttps() const
-{
-    if (!m_httpServer) return false;
-    return m_httpServer->isHttps();
-}
-
-QHostAddress WebUI::hostAddress() const
-{
-    if (!m_httpServer) return {};
-    return m_httpServer->serverAddress();
-}
-
-quint16 WebUI::port() const
-{
-    if (!m_httpServer) return 0;
-    return m_httpServer->serverPort();
 }
