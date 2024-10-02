@@ -49,7 +49,7 @@ jobs:
           - qbt_build_tool: "cmake"
             qbt_qt_version_name: ""
             qbt_qt_version: "6"
-          # qbt_qt_tag: "v6.8.0-rc1"
+            qbt_qt_tag: "v6.8.0-rc1"
           # - qbt_libtorrent_version: "2.0"
           #   # qbt_libtorrent_tag: "v2.0.9"
           # - qbt_libtorrent_version: "1.2"
