@@ -1580,7 +1580,7 @@ _multi_arch() {
 					case "${qbt_cross_target}" in
 						alpine)
 							qbt_cross_host="riscv64-linux-musl"
-							qbt_zlib_arch="mips64"
+							qbt_zlib_arch="riscv64"
 							;;&
 						debian)
 							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine OS Host"
