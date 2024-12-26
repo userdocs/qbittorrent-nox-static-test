@@ -1,27 +1,32 @@
 name: ci - debian
 on:
   workflow_call:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+    inputs:
+      container_id:
+        type: string
+      container_codename:
+        type: string
+      qbt_build_tool:
+        type: string
+      qbt_libtorrent_version:
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
+    name: "${{ inputs.container_id }}-${{ inputs.container_codename }}-${{ inputs.qbt_libtorrent_version }}-qt-${{ inputs.qbt_qt_version }}-${{ inputs.qbt_build_tool }}"
     env:
       build_dir: "qbt-build"
-      artifact_name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
+      artifact_name: "${{ inputs.container_id }}-${{ inputs.container_codename }}-${{ inputs.qbt_libtorrent_version }}-qt-${{ inputs.qbt_qt_version }}-${{ inputs.qbt_build_tool }}-nox"
     container:
-      image: ${{ matrix.container_id }}:${{ matrix.container_codename }}
+      image: ${{ inputs.container_id }}:${{ inputs.container_codename }}
       env:
         LANG: en_GB.UTF-8
         DEBIAN_FRONTEND: noninteractive
         TZ: Europe/London
-        qbt_libtorrent_version: ${{ matrix.qbt_libtorrent_version }}
-        qbt_qt_version: ${{ matrix.qbt_qt_version }}
-        qbt_build_tool: ${{ matrix.qbt_build_tool }}
+        qbt_libtorrent_version: ${{ inputs.qbt_libtorrent_version }}
+        qbt_qt_version: ${{ inputs.qbt_qt_version }}
+        qbt_build_tool: ${{ inputs.qbt_build_tool }}
         qbt_cross_name: ""
         qbt_patches_url: ${{ github.repository }}
         qbt_skip_icu: no

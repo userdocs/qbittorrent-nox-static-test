@@ -100,6 +100,16 @@ jobs:
             container_codename: bookworm
     uses: ./.github/workflows/ci-debian.yml
     secrets: inherit
+    with:
+      container_id: ${{ matrix.container_id }}
+      container_codename: ${{ matrix.container_codename }}
+      qbt_build_tool: ${{ matrix.qbt_build_tool }}
+      qbt_libtorrent_version: ${{ matrix.qbt_libtorrent_version }}
+
+  artifacts:
+    needs: [skip_duplicate_job]
+    if: github.event.inputs.artifacts == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    uses: ./.github/workflows/ci-artifacts.yml
 
   alpine:
     needs: [skip_duplicate_job]
@@ -119,11 +129,33 @@ jobs:
     uses: ./.github/workflows/ci-alpine.yml
     secrets: inherit
     with:
-      artifacts: ${{ inputs.artifacts }}
-      workflows: ${{ inputs.workflows }}
-      debug: ${{ inputs.debug }}
-      upx: ${{ inputs.upx }}
+      artifacts: ${{ inputs.artifacts == 'true' && 'yes' || 'no' }}
+      workflows: ${{ inputs.workflows == 'true' && 'yes' || 'no' }}
+      debug: ${{ inputs.debug == 'true' && 'yes' || 'no' }}
+      upx: ${{ inputs.upx == 'true' && 'yes' || 'no' }}
       custom: ${{ inputs.custom }}
+      os_id: ${{ matrix.os_id }}
+      os_version_id: ${{ matrix.os_version_id }}
+      qbt_qt_version_name: ${{ matrix.qbt_qt_version_name }}
+      qbt_libtorrent_version: ${{ matrix.qbt_libtorrent_version }}
+      qbt_qt_version: ${{ matrix.qbt_qt_version }}
+      qbt_build_tool: ${{ matrix.qbt_build_tool }}
+      qbt_cross_name: ${{ matrix.qbt_cross_name }}
+      qbt_patches_url: ${{ github.repository }}
+      qbt_skip_icu: ${{ matrix.qbt_skip_icu }}
+      qbt_boost_tag: ${{ matrix.qbt_boost_tag }}
+      qbt_libtorrent_tag: ${{ matrix.qbt_libtorrent_tag }}
+      qbt_qt_tag: ${{ matrix.qbt_qt_tag }}
+      qbt_qbittorrent_tag: ${{ matrix.qbt_qbittorrent_tag }}
+      qbt_libtorrent_master_jamfile: ${{ matrix.qbt_libtorrent_master_jamfile }}
+      qbt_workflow_files: ${{ matrix.qbt_workflow_files }}
+      qbt_workflow_artifacts: ${{ matrix.qbt_workflow_artifacts }}
+      qbt_cache_dir: ${{ matrix.qbt_cache_dir }}
+      qbt_optimise_strip: ${{ matrix.qbt_optimise_strip }}
+      qbt_build_debug: ${{ matrix.qbt_build_debug }}
+      qbt_revision_url: ${{ github.repository }}
+      qbt_standard: ${{ matrix.qbt_standard }}
+      qbt_static_ish: ${{ matrix.qbt_static_ish }}
 
   release:
     needs: [debian, alpine]
