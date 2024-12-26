@@ -1,4 +1,4 @@
-name: Debian Based CI
+name: ci - debian
 on:
   # push:
   #   paths:

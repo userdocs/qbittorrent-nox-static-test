@@ -1,4 +1,4 @@
-name: sh-checker
+name: ci - sh-checker
 on:
   push:
   pull_request:

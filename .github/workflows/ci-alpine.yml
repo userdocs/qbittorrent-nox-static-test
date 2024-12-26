@@ -1,5 +1,5 @@
 # @credits https://github.com/c0re100/qBittorrent-Enhanced-Edition
-name: Alpine - matrix build and release
+name: ci - alpine
 
 on:
   workflow_call:

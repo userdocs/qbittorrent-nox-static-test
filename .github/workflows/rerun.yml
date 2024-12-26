@@ -1,4 +1,4 @@
-name: rerun failed jobs with gh cli
+name: ci - rerun
 
 on:
   workflow_dispatch:
