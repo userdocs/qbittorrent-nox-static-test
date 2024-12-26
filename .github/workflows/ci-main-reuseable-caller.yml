@@ -112,8 +112,11 @@ jobs:
     uses: ./.github/workflows/ci-artifacts.yml
 
   alpine:
-    needs: [skip_duplicate_job]
-    if: github.event.inputs.alpine == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: [skip_duplicate_job, artifacts]
+    if: |
+      github.event.inputs.alpine == 'true' &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true' &&
+      (always() || needs.artifacts.result == 'success' || needs.artifacts.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
