@@ -79,7 +79,7 @@ jobs:
 
   debian:
     needs: [skip_duplicate_job]
-    if: github.event.inputs.debian && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    if: github.event.inputs.debian == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +103,7 @@ jobs:
 
   alpine:
     needs: [skip_duplicate_job]
-    if: github.event.inputs.alpine && needs.skip_duplicate_job.outputs.should_skip != 'true'
+    if: github.event.inputs.alpine == 'true' && needs.skip_duplicate_job.outputs.should_skip != 'true'
     strategy:
       fail-fast: false
       matrix:
