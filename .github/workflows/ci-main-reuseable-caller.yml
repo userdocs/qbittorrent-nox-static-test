@@ -3,6 +3,11 @@ name: ci - main reusable caller
 on:
   workflow_dispatch:
     inputs:
+      force:
+        description: "force run"
+        required: true
+        default: false
+        type: boolean
       debian:
         description: "Debian CI"
         required: true
@@ -69,11 +74,29 @@ jobs:
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
+      - name: bootstrap
+        run: |
+          if [[ ${{ github.event.inputs.force == 'true' }} ]]; then
+            "concurrent_skipping=never"  >> $GITHUB_ENV
+            "cancel_others=true" >> $GITHUB_ENV
+          else
+            "concurrent_skipping=always"  >> $GITHUB_ENV
+            "cancel_others=false" >> $GITHUB_ENV
+          fi
+
+      - name: skip-duplicate check
+        id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: ${{ env.concurrent_skipping }}
+          cancel_others: ${{ env.cancel_others }}
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5
         with:
-          concurrent_skipping: "always"
-          cancel_others: "false"
+          concurrent_skipping: ${{ env.concurrent_skipping }}
+          cancel_others: ${{ env.cancel_others }}
           skip_after_successful_duplicate: false
           do_not_skip: ""
 
