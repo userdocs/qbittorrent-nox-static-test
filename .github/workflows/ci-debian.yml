@@ -1,23 +1,6 @@
 name: ci - debian
 on:
-  # push:
-  #   paths:
-  #     - "qbittorrent-nox-static.sh"
-  # pull_request:
-  workflow_dispatch:
-    inputs:
-      distinct_id:
-        description: "Distinct id"
-      skip_rerun:
-        description: "Skip rerun?"
-        required: true
-        type: boolean
-      retries:
-        description: "Number of rerun retries"
-        required: true
-        default: "1"
-        type: choice
-        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,30 +9,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        container_id: [debian, ubuntu]
-        container_codename: [bookworm, jammy, noble]
-        qbt_build_tool: ["qmake", "cmake"]
-        qbt_libtorrent_version: ["1.2", "2.0"]
-        exclude:
-          - container_id: debian
-            container_codename: focal
-          - container_id: debian
-            container_codename: jammy
-          - container_id: debian
-            container_codename: noble
-          - container_id: ubuntu
-            container_codename: bullseye
-          - container_id: ubuntu
-            container_codename: bookworm
-        include:
-          - qbt_build_tool: "qmake"
-            qbt_qt_version: "5"
-          - qbt_build_tool: "cmake"
-            qbt_qt_version: "6"
-
     name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
     env:
       build_dir: "qbt-build"

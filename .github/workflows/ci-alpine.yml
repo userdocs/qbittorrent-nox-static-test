@@ -12,6 +12,8 @@ on:
         type: string
       upx:
         type: string
+      custom:
+        type: string
 
 jobs:
   bootstrap:
@@ -141,41 +143,41 @@ jobs:
         run: docker exec -w /root multiarch apk add bash
 
       - name: Docker - Bootstrap ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} -bs-a
 
       - name: Docker - Copy repo patches to build folder ${{ github.event.inputs.distinct_id }}
         run: if [[ -d patches ]]; then docker exec -w /root multiarch cp -r patches/* /root/${{ env.qbt_build_dir }}/patches; fi
 
       - name: Docker - zlib-ng ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} zlib
 
       - name: Docker - iconv ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh iconv
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} iconv
 
       - name: Docker - icu ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh icu
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} icu
 
       - name: Docker - openssl ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh openssl
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} openssl
 
       - name: Docker - boost ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh boost
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} boost
 
       - name: Docker - libtorrent ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh libtorrent
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} libtorrent
 
       - name: Docker - double_conversion ${{ github.event.inputs.distinct_id }}
         if: matrix.qbt_build_tool == ''
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} double_conversion
 
       - name: Docker - qtbase ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} qtbase
 
       - name: Docker - qttools ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} qttools
 
       - name: Docker - qbittorrent ${{ github.event.inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh ${{ inputs.custom }} qbittorrent
 
       - name: Host - qBittorrent v5 transition
         run: |
