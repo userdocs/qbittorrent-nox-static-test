@@ -30,7 +30,7 @@ on:
         type: boolean
       custom:
         description: "custom build commands"
-        required: true
+        required: false
         type: string
       upx:
         description: "upx compress builds"
