@@ -16,7 +16,7 @@ on:
         type: string
 
 jobs:
-  bootstrap:
+  bootstrap-artifacts:
     if: inputs.artifacts == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -39,7 +39,8 @@ jobs:
           path: "*.tar.xz"
 
   build:
-    needs: bootstrap
+    needs: bootstrap-artifacts
+    if: success() || needs.bootstrap-artifacts.result == 'skipped'
     runs-on: ubuntu-latest
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
