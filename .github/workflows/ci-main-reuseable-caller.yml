@@ -161,7 +161,7 @@ jobs:
       qbt_static_ish: ${{ matrix.qbt_static_ish }}
 
   release:
-    needs: [debian, alpine]
+    needs: [alpine]
     if: github.event.inputs.release && needs.skip_duplicate_job.outputs.should_skip != 'true'
     strategy:
       fail-fast: false
