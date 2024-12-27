@@ -77,10 +77,10 @@ jobs:
       - name: bootstrap
         run: |
           if [[ ${{ github.event.inputs.force == 'true' }} ]]; then
-            "concurrent_skipping=never"  >> $GITHUB_ENV
+            "concurrent_skipping=never" >> $GITHUB_ENV
             "cancel_others=true" >> $GITHUB_ENV
           else
-            "concurrent_skipping=always"  >> $GITHUB_ENV
+            "concurrent_skipping=always" >> $GITHUB_ENV
             "cancel_others=false" >> $GITHUB_ENV
           fi
 
