@@ -5,12 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       workflows:
-        description: "Alpine: wf files"
+        description: "Alpine: workflow files"
         required: true
         default: true
         type: boolean
       artifacts:
-        description: "Alpine: wf artifacts"
+        description: "Alpine: workflows artifacts"
         required: true
         default: false
         type: boolean
