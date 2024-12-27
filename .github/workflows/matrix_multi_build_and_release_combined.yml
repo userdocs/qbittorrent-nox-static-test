@@ -179,17 +179,17 @@ jobs:
           printf '%s\n' "qbt_build_tool=${{ matrix.qbt_build_tool }}" >> env.custom
           printf '%s\n' "qbt_cross_name=${{ matrix.qbt_cross_name }}" >> env.custom
           printf '%s\n' "qbt_patches_url=${{ github.repository }}" >> env.custom
-          printf '%s\n' "qbt_skip_icu=${{ github.event.inputs.icu == 'true' && "no" || "yes" }}" >> env.custom
+          printf '%s\n' "qbt_skip_icu=${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}" >> env.custom
           printf '%s\n' "qbt_boost_tag=" >> env.custom
           printf '%s\n' "qbt_libtorrent_tag=" >> env.custom
           printf '%s\n' "qbt_qt_tag=" >> env.custom
           printf '%s\n' "qbt_qbittorrent_tag=" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=" >> env.custom
-          printf '%s\n' "qbt_workflow_files=${{ github.event.inputs.workflow == 'true' && "yes" || "yes" }}" >> env.custom
-          printf '%s\n' "qbt_workflow_artifacts=${{ github.event.inputs.artifacts == 'true' && "yes" || "no" }}" >> env.custom
+          printf '%s\n' "qbt_workflow_files=${{ github.event.inputs.workflow == 'true' && 'yes' || 'no' }}" >> env.custom
+          printf '%s\n' "qbt_workflow_artifacts=${{ github.event.inputs.artifacts == 'true' && 'yes' || 'no' }}" >> env.custom
           printf '%s\n' "qbt_cache_dir=" >> env.custom
-          printf '%s\n' "qbt_optimise_strip=${{ github.event.inputs.debug == 'true' && "no" || "yes" }}" >> env.custom
-          printf '%s\n' "qbt_build_debug=${{ github.event.inputs.debug == 'true' && "yes" || "no" }}" >> env.custom
+          printf '%s\n' "qbt_optimise_strip=${{ github.event.inputs.debug == 'true' && 'no' || 'yes' }}" >> env.custom
+          printf '%s\n' "qbt_build_debug=${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}" >> env.custom
           printf '%s\n' "qbt_revision_url=${{ github.repository }}" >> env.custom
           printf '%s\n' "qbt_standard=" >> env.custom
           printf '%s\n' "qbt_static_ish=" >> env.custom
