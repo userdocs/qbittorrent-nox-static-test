@@ -1,0 +1,79 @@
+name: ci - reusable artifacts
+on:
+  workflow_call:
+    inputs:
+      which-job:
+        description: "Which job to run"
+        required: true
+        type: string
+
+jobs:
+  bootstrap-artifacts:
+    if: github.event.inputs.which-job == 'bootstrap-artifacts'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq -y
+
+      - name: Download Assets
+        run: |
+          mapfile -t assets < <(curl -sL "https://api.github.com/repos/userdocs/qbt-workflow-files/releases/latest" | jq -r ".assets | .[].browser_download_url")
+          for urls in "${assets[@]}"; do
+              curl -sLO "${urls}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: "*.tar.xz"
+
+  configure-artifacts:
+    if: github.event.inputs.which-job == 'configure-artifacts'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Host - artifacts - create build dir ${{ github.event.inputs.distinct_id }}
+        run: mkdir -p ${{ env.qbt_build_dir }}
+
+      - name: Host - artifacts - Download all ${{ github.event.inputs.distinct_id }}
+        uses: actions/download-artifact@v4
+
+      - name: Host - artifacts - organise libtorrent files ${{ github.event.inputs.distinct_id }}
+        run: |
+
+          libtorrent_1_2_github_tag="$(git ls-remote -q -t --refs "https://github.com/arvidn/libtorrent.git" | awk '/\/v1/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+          libtorrent_2_0_github_tag="$(git ls-remote -q -t --refs "https://github.com/arvidn/libtorrent.git" | awk '/\/v2/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+
+          if [[ "${{ matrix.qbt_libtorrent_version }}" =~ ^1\.2 ]]; then
+              mv -f artifact/libtorrent.${libtorrent_1_2_github_tag/v/}.tar.xz artifact/libtorrent.tar.xz
+              rm -f artifact/libtorrent.${libtorrent_2_0_github_tag/v/}.tar.xz
+          fi
+
+          if [[ "${{ matrix.qbt_libtorrent_version }}" =~ ^2\.0 ]]; then
+              mv -f artifact/libtorrent.${libtorrent_2_0_github_tag/v/}.tar.xz artifact/libtorrent.tar.xz
+              rm -f artifact/libtorrent.${libtorrent_1_2_github_tag/v/}.tar.xz
+          fi
+
+      - name: Host - artifacts - organise qt files ${{ github.event.inputs.distinct_id }}
+        run: |
+          if [[ "${{ matrix.qbt_qt_version }}" =~ ^5 ]]; then
+              mv -f artifact/qt5base.tar.xz artifact/qtbase.tar.xz
+              mv -f artifact/qt5tools.tar.xz artifact/qttools.tar.xz
+              rm -f artifact/qt6base.tar.xz artifact/qt6tools.tar.xz
+          fi
+
+          if [[ "${{ matrix.qbt_qt_version }}" =~ ^6 ]]; then
+              mv -f artifact/qt6base.tar.xz artifact/qtbase.tar.xz
+              mv -f artifact/qt6tools.tar.xz artifact/qttools.tar.xz
+              rm -f artifact/qt5base.tar.xz artifact/qt5tools.tar.xz
+          fi
+
+      - name: Host - artifacts - Move organised artifacts to ${{ env.qbt_build_dir }} ${{ github.event.inputs.distinct_id }}
+        run: mv -f artifact/* ${{ env.qbt_build_dir }}
+
+      - name: Host - artifacts - Display structure of downloaded artifacts workspace ${{ github.event.inputs.distinct_id }}
+        run: ls -R
