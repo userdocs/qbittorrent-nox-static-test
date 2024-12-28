@@ -57,9 +57,25 @@ concurrency:
 jobs:
   bootstrap-artifacts:
     if: github.event.inputs.artifacts == 'true'
-    uses: ./.github/workflows/ci-reusable-artifacts.yml
-    with:
-      which-job: "bootstrap-artifacts"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq -y
+
+      - name: Download Assets
+        run: |
+          mapfile -t assets < <(curl -sL "https://api.github.com/repos/userdocs/qbt-workflow-files/releases/latest" | jq -r ".assets | .[].browser_download_url")
+          for urls in "${assets[@]}"; do
+              curl -sLO "${urls}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: "*.tar.xz"
 
   build:
     needs: bootstrap-artifacts
@@ -113,9 +129,9 @@ jobs:
 
       - name: a test
         if: github.event.inputs.artifacts == 'true'
-        uses: ./.github/workflows/ci-reusable-artifacts.yml
+        uses: ./.github/actions/configure-artifacts
         with:
-          which-job: "configure-artifacts"
+          distinct_id: ${{ github.event.inputs.distinct_id }}
 
       ################################
       # Artifacts specific steps end #

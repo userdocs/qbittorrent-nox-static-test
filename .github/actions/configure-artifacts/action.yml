@@ -1,0 +1,54 @@
+name: Host - artifacts - Download all
+description: Download all artifacts from the latest release
+inputs:
+  distinct_id:
+    description: "Distinct ID for the artifacts"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Host - artifacts - create build dir ${{ inputs.distinct_id }}
+      shell: bash
+      run: mkdir -p ${{ env.qbt_build_dir }}
+
+    - name: Host - artifacts - Download all ${{ inputs.distinct_id }}
+      uses: actions/download-artifact@v4
+
+    - name: Host - artifacts - organise libtorrent files ${{ inputs.distinct_id }}
+      shell: bash
+      run: |
+        libtorrent_1_2_github_tag="$(git ls-remote -q -t --refs "https://github.com/arvidn/libtorrent.git" | awk '/\/v1/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+        libtorrent_2_0_github_tag="$(git ls-remote -q -t --refs "https://github.com/arvidn/libtorrent.git" | awk '/\/v2/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+
+        if [[ "${{ matrix.qbt_libtorrent_version }}" =~ ^1\.2 ]]; then
+            mv -f artifact/libtorrent.${libtorrent_1_2_github_tag/v/}.tar.xz artifact/libtorrent.tar.xz
+            rm -f artifact/libtorrent.${libtorrent_2_0_github_tag/v/}.tar.xz
+        fi
+
+        if [[ "${{ matrix.qbt_libtorrent_version }}" =~ ^2\.0 ]]; then
+            mv -f artifact/libtorrent.${libtorrent_2_0_github_tag/v/}.tar.xz artifact/libtorrent.tar.xz
+            rm -f artifact/libtorrent.${libtorrent_1_2_github_tag/v/}.tar.xz
+        fi
+
+    - name: Host - artifacts - organise qt files ${{ inputs.distinct_id }}
+      shell: bash
+      run: |
+        if [[ "${{ matrix.qbt_qt_version }}" =~ ^5 ]]; then
+            mv -f artifact/qt5base.tar.xz artifact/qtbase.tar.xz
+            mv -f artifact/qt5tools.tar.xz artifact/qttools.tar.xz
+            rm -f artifact/qt6base.tar.xz artifact/qt6tools.tar.xz
+        fi
+
+        if [[ "${{ matrix.qbt_qt_version }}" =~ ^6 ]]; then
+            mv -f artifact/qt6base.tar.xz artifact/qtbase.tar.xz
+            mv -f artifact/qt6tools.tar.xz artifact/qttools.tar.xz
+            rm -f artifact/qt5base.tar.xz artifact/qt5tools.tar.xz
+        fi
+
+    - name: Host - artifacts - Move organised artifacts to ${{ env.qbt_build_dir }} ${{ inputs.distinct_id }}
+      shell: bash
+      run: mv -f artifact/* ${{ env.qbt_build_dir }}
+
+    - name: Host - artifacts - Display structure of downloaded artifacts workspace ${{ inputs.distinct_id }}
+      shell: bash
+      run: ls -R
