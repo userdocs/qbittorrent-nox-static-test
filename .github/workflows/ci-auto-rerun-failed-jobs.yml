@@ -16,8 +16,6 @@ on:
 jobs:
   gh-cli-rerun:
     name: rerun - attempt ${{ inputs.attempts }}
-    permissions:
-      actions: write
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

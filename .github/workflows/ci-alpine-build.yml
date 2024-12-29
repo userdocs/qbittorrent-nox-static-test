@@ -32,10 +32,6 @@ on:
 jobs:
   build-alpine:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      attestations: write
     strategy:
       fail-fast: false
       matrix:
