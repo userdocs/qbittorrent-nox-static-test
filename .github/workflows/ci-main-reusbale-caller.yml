@@ -63,6 +63,8 @@ jobs:
   ci-bootstrap-workflow-files-as-artifacts:
     if: github.event.inputs.workflow-files-as-artifacts == 'true'
     uses: ./.github/workflows/ci-bootstrap-workflow-files-as-artifacts.yml
+    with:
+      distinct_id: ${{ github.event.inputs.distinct_id }}
 
   ci-debian-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
@@ -99,6 +101,8 @@ jobs:
       contents: write
     uses: ./.github/workflows/ci-alpine-release.yml
     secrets: inherit
+    with:
+      distinct_id: ${{ github.event.inputs.distinct_id }}
 
   ci-auto-rerun-failed-jobs:
     needs:

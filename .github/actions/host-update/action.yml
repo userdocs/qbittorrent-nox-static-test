@@ -7,18 +7,18 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Host - phased updates ${{ github.event.inputs.distinct_id }}
+    - name: Host - phased updates ${{ inputs.distinct_id }}
       shell: bash
       run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
 
-    - name: Host - update ${{ github.event.inputs.distinct_id }}
+    - name: Host - update ${{ inputs.distinct_id }}
       shell: bash
       run: sudo apt-get update
 
-    - name: Host - upgrade ${{ github.event.inputs.distinct_id }}
+    - name: Host - upgrade ${{ inputs.distinct_id }}
       shell: bash
       run: sudo apt-get -y upgrade
 
-    - name: Host - set up qemu-user-static binfmt-support ${{ github.event.inputs.distinct_id }}
+    - name: Host - set up qemu-user-static binfmt-support ${{ inputs.distinct_id }}
       shell: bash
       run: sudo apt install libpipeline1 qemu-user-static binfmt-support
