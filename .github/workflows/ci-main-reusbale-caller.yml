@@ -1,0 +1,112 @@
+# @credits https://github.com/c0re100/qBittorrent-Enhanced-Edition
+name: multi build and release combined
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow-files:
+        description: "Alpine: workflow files"
+        required: true
+        default: true
+        type: boolean
+      workflow-files-as-artifacts:
+        description: "Alpine: workflow files as artifacts"
+        required: true
+        default: false
+        type: boolean
+      icu:
+        description: "enable icu"
+        required: true
+        default: false
+        type: boolean
+      debug:
+        description: "debug builds"
+        required: true
+        default: false
+        type: boolean
+      upx:
+        description: "upx compress builds"
+        required: true
+        default: false
+        type: boolean
+      release:
+        description: "release assets?"
+        required: true
+        default: true
+        type: boolean
+      distinct_id:
+        description: "Distinct id"
+        required: false
+        type: string
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        default: true
+        type: boolean
+      retries:
+        description: "Number of rerun retries"
+        required: true
+        default: "1"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-bootstrap-workflow-files-as-artifacts:
+    if: github.event.inputs.workflow-files-as-artifacts == 'true'
+    uses: ./.github/workflows/ci-bootstrap-workflow-files-as-artifacts.yml
+
+  ci-debian-build:
+    needs: ci-bootstrap-workflow-files-as-artifacts
+    if: always() && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    uses: ./.github/workflows/ci-debian-build.yml
+    with:
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+      workflow-files: ${{ github.event.inputs.workflow-files }}
+      workflow-files-as-artifacts: ${{ github.event.inputs.artifacts }}
+      icu: ${{ github.event.inputs.icu }}
+      debug: ${{ github.event.inputs.debug }}
+      upx: ${{ github.event.inputs.upx }}
+
+  ci-alpine-build:
+    needs: ci-bootstrap-workflow-files-as-artifacts
+    if: always() && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    uses: ./.github/workflows/ci-alpine-build.yml
+    with:
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+      workflow-files: ${{ github.event.inputs.workflow-files }}
+      workflow-files-as-artifacts: ${{ github.event.inputs.artifacts }}
+      icu: ${{ github.event.inputs.icu }}
+      debug: ${{ github.event.inputs.debug }}
+      upx: ${{ github.event.inputs.upx }}
+
+  ci-alpine-release:
+    needs: [build-alpine]
+    if: always() && github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    uses: ./.github/workflows/ci-alpine-release.yml
+    secrets: inherit
+
+  ci-auto-rerun-failed-jobs:
+    needs:
+      [
+        ci-bootstrap-workflow-files-as-artifacts,
+        ci-debian-build,
+        ci-alpine-build,
+        ci-alpine-release,
+      ]
+    if: failure() && inputs.skip_rerun == '0'
+    name: ci-auto-rerun-failed-jobs
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ github.token }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger rerun workflow on job failures
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run ci-auto-rerun-failed-jobs.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}

@@ -1,27 +1,32 @@
-name: Debian Based CI
+name: ci-debian-build
+
 on:
-  # push:
-  #   paths:
-  #     - "qbittorrent-nox-static.sh"
-  # pull_request:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       distinct_id:
         description: "Distinct id"
-      skip_rerun:
-        description: "Skip rerun?"
+        required: false
+        type: string
+      artifacts:
+        description: "Alpine: workflows artifacts"
         required: true
         type: boolean
-      retries:
-        description: "Number of rerun retries"
+      workflow-files:
+        description: "Alpine: workflow-files files"
         required: true
-        default: "1"
-        type: choice
-        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+        type: boolean
+      icu:
+        description: "enable icu"
+        required: true
+        type: boolean
+      debug:
+        description: "debug builds"
+        required: true
+        type: boolean
+      upx:
+        description: "upx compress builds"
+        required: true
+        type: boolean
 
 jobs:
   build:
@@ -31,7 +36,7 @@ jobs:
       matrix:
         container_id: [debian, ubuntu]
         container_codename: [bookworm, jammy, noble]
-        qbt_build_tool: ["qmake", "cmake"]
+        qbt_build_tool: ["", "qmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         exclude:
           - container_id: debian
@@ -47,7 +52,7 @@ jobs:
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version: "5"
-          - qbt_build_tool: "cmake"
+          - qbt_build_tool: ""
             qbt_qt_version: "6"
 
     name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
@@ -57,34 +62,36 @@ jobs:
     container:
       image: ${{ matrix.container_id }}:${{ matrix.container_codename }}
       env:
-        LANG: en_GB.UTF-8
+        LANG: C.UTF-8
+        LC_ALL: C.UTF-8
         DEBIAN_FRONTEND: noninteractive
-        TZ: Europe/London
         qbt_libtorrent_version: ${{ matrix.qbt_libtorrent_version }}
         qbt_qt_version: ${{ matrix.qbt_qt_version }}
         qbt_build_tool: ${{ matrix.qbt_build_tool }}
         qbt_cross_name: ""
         qbt_patches_url: ${{ github.repository }}
-        qbt_skip_icu: no
+        qbt_skip_icu: ${{ inputs.icu == 'true' && 'no' || 'yes' }}
         qbt_boost_tag: ""
         qbt_libtorrent_tag: ""
         qbt_qt_tag: ""
         qbt_qbittorrent_tag: ""
-        qbt_libtorrent_master_jamfile: no
-        qbt_workflow_files: yes
-        qbt_workflow_artifacts: no
+        qbt_libtorrent_master_jamfile: ""
+        qbt_workflow_files: ${{ inputs.workflow-files == 'true' && 'yes' || 'no' }}
+        qbt_workflow_artifacts: ${{ inputs.artifacts == 'true' && 'yes' || 'no' }}
         qbt_cache_dir: ""
-        qbt_optimise_strip: yes
-        qbt_build_debug: no
+        qbt_optimise_strip: ""
+        qbt_build_debug: ${{ inputs.debug == 'true' && 'yes' || 'no' }}
         qbt_revision_url: ${{ github.repository }}
+        qbt_standard: ""
+        qbt_static_ish: ""
     steps:
       - uses: actions/checkout@v4
 
-      - name: Host - update
-        run: apt-get update
-
-      - name: Host - upgrade
-        run: apt-get -y upgrade
+      - name: Host - update action - ${{ github.event.inputs.distinct_id }}
+        if: github.event.inputs.artifacts == 'true'
+        uses: ./.github/actions/host-update
+        with:
+          distinct_id: ${{ github.event.inputs.distinct_id }}
 
       - run: bash qbittorrent-nox-static.sh -bs-a
       - run: bash qbittorrent-nox-static.sh glibc
@@ -95,17 +102,22 @@ jobs:
       - run: bash qbittorrent-nox-static.sh boost
       - run: bash qbittorrent-nox-static.sh libtorrent
       - run: bash qbittorrent-nox-static.sh double_conversion
-        if: matrix.qbt_build_tool == 'cmake'
+        if: matrix.qbt_build_tool == ''
       - run: bash qbittorrent-nox-static.sh qtbase
       - run: bash qbittorrent-nox-static.sh qttools
       - run: bash qbittorrent-nox-static.sh qbittorrent
 
       - name: Host - qBittorrent v5 transition
         run: |
-          # When qBittorrent v5 is released, remove this
           if [[ -f ${{ env.qbt_build_dir }}/release_info/disable-qt5 ]]; then
             printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
           fi
+
+      - name: Docker - upx compression ${{ github.event.inputs.distinct_id }}
+        if: github.event.inputs.upx == 'yes'
+        uses: ./.github/actions/upx-compression
+        with:
+          distinct_id: ${{ github.event.inputs.distinct_id }}
 
       - name: Archive code coverage results
         if: env.disable_qt5 != 'yes' # When qBittorrent v5 is released, remove this
@@ -113,19 +125,3 @@ jobs:
         with:
           name: ${{ env.artifact_name }}
           path: ${{ env.build_dir }}/completed/qbittorrent-nox
-
-  rerun-on-failure:
-    if: failure() && inputs.skip_rerun == '0'
-    name: rerun-on-failure
-    needs: build
-    permissions:
-      actions: write
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Trigger rerun workflow on job failures
-        run: |
-          inputs_retries="${{ inputs.retries }}"
-          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}

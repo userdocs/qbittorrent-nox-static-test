@@ -1,0 +1,29 @@
+name: ci - bootstrap workflow files as artifacts
+
+on:
+  workflow_call:
+    inputs:
+      artifacts:
+        type: string
+
+jobs:
+  bootstrap-workflow-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq -y
+
+      - name: Download Assets
+        run: |
+          mapfile -t assets < <(curl -sL "https://api.github.com/repos/userdocs/qbt-workflow-files/releases/latest" | jq -r ".assets | .[].browser_download_url")
+          for urls in "${assets[@]}"; do
+              curl -sLO "${urls}"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: "*.tar.xz"

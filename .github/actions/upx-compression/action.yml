@@ -1,0 +1,14 @@
+name: Host - upx compression
+description: Compress release artifacts with upx
+inputs:
+  distinct_id:
+    description: "Distinct ID for the artifacts"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Docker - upx compression ${{ github.event.inputs.distinct_id }}
+      shell: bash
+      run: |
+        docker exec -w /root multiarch apk add upx
+        docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch upx --brute --no-lzma ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
