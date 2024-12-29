@@ -10,23 +10,23 @@ on:
       workflow-files:
         description: "Alpine: workflow-files files"
         required: true
-        type: boolean
+        type: string
       workflow-files-as-artifacts:
         description: "Alpine: workflows artifacts"
         required: true
-        type: boolean
+        type: string
       icu:
         description: "enable icu"
         required: true
-        type: boolean
+        type: string
       debug:
         description: "debug builds"
         required: true
-        type: boolean
+        type: string
       upx:
         description: "upx compress builds"
         required: true
-        type: boolean
+        type: string
 
 jobs:
   build:
