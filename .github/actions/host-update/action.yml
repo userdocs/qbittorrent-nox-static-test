@@ -10,6 +10,11 @@ runs:
     - name: Are we in a container? ${{ inputs.distinct_id }}
       shell: bash
       run: |
+
+        awk -F/ '/docker/ {print $2}' /proc/self/cgroup
+
+        exit 1
+
         if awk -F/ '/docker/ {print $2}' /proc/self/cgroup | grep -q docker; then
             printf '%s\n' "Running inside a Docker container"
             printf '%s\n' "we_are_in_docker=yes" >> $GITHUB_ENV
