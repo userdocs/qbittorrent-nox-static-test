@@ -13,14 +13,14 @@ runs:
         printf '%s\n' "which_os=$(. /etc/os-release && printf '%s' $ID)" >> $GITHUB_ENV
 
     - name: Docker - alpine - upx compression ${{ inputs.distinct_id }}
-      if: ${{ env.which_os == 'alpine' }}
+      if: env.which_os == 'alpine'
       shell: bash
       run: |
         docker exec -w /root multiarch apk add upx
         docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch upx --brute --no-lzma ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
     - name: Docker - debian - upx compression ${{ inputs.distinct_id }}
-      if: ${{ env.which_os == 'alpine' }}
+      if: env.which_os == 'ubuntu' || env.which_os == 'debian'
       shell: bash
       run: |
         apt install upx-ucl
