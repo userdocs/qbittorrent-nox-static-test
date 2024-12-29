@@ -1,4 +1,4 @@
-name: ci debian build
+name: ci - debian build
 
 on:
   workflow_call:
