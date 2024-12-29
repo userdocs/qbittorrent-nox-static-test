@@ -13,6 +13,9 @@ runs:
         if [[ -f /.dockerenv ]]; then
             printf '%s\n' "Running inside a Docker container"
             printf '%s\n' "we_are_in_docker=yes" >> $GITHUB_ENV
+        else
+            printf '%s\n' "Running on a host"
+            printf '%s\n' "we_are_in_docker=no" >> $GITHUB_ENV
         fi
 
     - name: Host - phased updates ${{ inputs.distinct_id }}
