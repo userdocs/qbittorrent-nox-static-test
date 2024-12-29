@@ -69,12 +69,12 @@ jobs:
     if: always() && github.event.inputs.debian-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
     uses: ./.github/workflows/ci-debian-build.yml
     with:
-      distinct_id: ${{ github.event.inputs.distinct_id || 'false' }}
-      workflow-files: ${{ github.event.inputs.workflow-files || 'false' }}
-      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts || 'false' }}
-      icu: ${{ github.event.inputs.icu || 'false' }}
-      debug: ${{ github.event.inputs.debug || 'false' }}
-      upx: ${{ github.event.inputs.upx || 'false' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+      workflow-files: ${{ github.event.inputs.workflow-files && 'yes' || 'no' }}
+      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts && 'yes' || 'no' }}
+      icu: ${{ github.event.inputs.icu && 'no' || 'yes' }}
+      debug: ${{ github.event.inputs.debug && 'yes' || 'no' }}
+      upx: ${{ github.event.inputs.upx && 'yes' || 'no' }}
 
   ci-alpine-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
@@ -85,12 +85,12 @@ jobs:
       attestations: write
     uses: ./.github/workflows/ci-alpine-build.yml
     with:
-      distinct_id: ${{ github.event.inputs.distinct_id || 'false' }}
-      workflow-files: ${{ github.event.inputs.workflow-files || 'false' }}
-      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts || 'false' }}
-      icu: ${{ github.event.inputs.icu || 'false' }}
-      debug: ${{ github.event.inputs.debug || 'false' }}
-      upx: ${{ github.event.inputs.upx || 'false' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+      workflow-files: ${{ github.event.inputs.workflow-files && 'yes' || 'no' }}
+      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts && 'yes' || 'no' }}
+      icu: ${{ github.event.inputs.icu && 'no' || 'yes' }}
+      debug: ${{ github.event.inputs.debug && 'yes' || 'no' }}
+      upx: ${{ github.event.inputs.upx && 'yes' || 'no' }}
 
   ci-alpine-release:
     needs: [ci-alpine-build]
