@@ -8,12 +8,12 @@ on:
         description: "Distinct id"
         required: false
         type: string
-      artifacts:
-        description: "Alpine: workflows artifacts"
-        required: true
-        type: boolean
       workflow-files:
         description: "Alpine: workflow-files files"
+        required: true
+        type: boolean
+      workflow-files-as-artifacts:
+        description: "Alpine: workflows artifacts"
         required: true
         type: boolean
       icu:
