@@ -1,5 +1,5 @@
 # @credits https://github.com/c0re100/qBittorrent-Enhanced-Edition
-name: multi build and release combined
+name: ci - main reusable caller
 
 on:
   workflow_dispatch:
