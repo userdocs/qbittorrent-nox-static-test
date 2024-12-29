@@ -7,7 +7,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Docker - upx compression ${{ github.event.inputs.distinct_id }}
+    - name: Docker - upx compression ${{ inputs.distinct_id }}
       shell: bash
       run: |
         docker exec -w /root multiarch apk add upx
