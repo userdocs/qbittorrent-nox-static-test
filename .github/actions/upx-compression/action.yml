@@ -7,8 +7,21 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Docker - upx compression ${{ inputs.distinct_id }}
+    - name: which OS?
+      shell: bash
+      run: |
+        printf '%s\n' "which_os=$(. /etc/os-release && printf '%s' $ID)" >> $GITHUB_ENV
+
+    - name: Docker - alpine - upx compression ${{ inputs.distinct_id }}
+      if: ${{ env.which_os == 'alpine' }}
       shell: bash
       run: |
         docker exec -w /root multiarch apk add upx
         docker exec -w /root/${{ env.qbt_build_dir }}/completed multiarch upx --brute --no-lzma ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+
+    - name: Docker - debian - upx compression ${{ inputs.distinct_id }}
+      if: ${{ env.which_os == 'alpine' }}
+      shell: bash
+      run: |
+        apt install upx-ucl
+        upx --brute --no-lzma ${{ env.build_dir }}/completed/qbittorrent-nox

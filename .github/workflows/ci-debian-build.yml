@@ -137,7 +137,7 @@ jobs:
           fi
 
       - name: Docker - upx compression ${{ inputs.distinct_id }}
-        if: github.event.inputs.upx == 'yes' && env.disable_qt5 != 'yes'
+        if: inputs.upx == 'yes' && env.disable_qt5 != 'yes'
         uses: ./.github/actions/upx-compression
         with:
           distinct_id: ${{ inputs.distinct_id }}
