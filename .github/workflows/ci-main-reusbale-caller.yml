@@ -84,7 +84,7 @@ jobs:
       upx: ${{ github.event.inputs.upx }}
 
   ci-alpine-release:
-    needs: [build-alpine]
+    needs: [ci-alpine-build]
     if: always() && github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     uses: ./.github/workflows/ci-alpine-release.yml
     secrets: inherit
