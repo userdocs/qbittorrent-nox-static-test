@@ -1,5 +1,5 @@
 # @credits https://github.com/c0re100/qBittorrent-Enhanced-Edition
-name: ci - alpine
+name: ci - alpine build
 
 on:
   workflow_call:
