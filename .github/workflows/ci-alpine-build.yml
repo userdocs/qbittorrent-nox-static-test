@@ -82,7 +82,7 @@ jobs:
           printf '%s\n' "qbt_qbittorrent_tag=" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=" >> env.custom
           printf '%s\n' "qbt_workflow_files=${{ inputs.workflow-files == 'true' && 'yes' || 'no' }}" >> env.custom
-          printf '%s\n' "qbt_workflow_artifacts=${{ inputs.artifacts == 'true' && 'yes' || 'no' }}" >> env.custom
+          printf '%s\n' "qbt_workflow_artifacts=${{ inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}" >> env.custom
           printf '%s\n' "qbt_cache_dir=" >> env.custom
           printf '%s\n' "qbt_optimise_strip=${{ inputs.debug == 'true' && 'no' || 'yes' }}" >> env.custom
           printf '%s\n' "qbt_build_debug=${{ inputs.debug == 'true' && 'yes' || 'no' }}" >> env.custom

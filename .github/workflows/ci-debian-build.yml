@@ -77,7 +77,7 @@ jobs:
         qbt_qbittorrent_tag: ""
         qbt_libtorrent_master_jamfile: ""
         qbt_workflow_files: ${{ inputs.workflow-files == 'true' && 'yes' || 'no' }}
-        qbt_workflow_artifacts: ${{ inputs.artifacts == 'true' && 'yes' || 'no' }}
+        qbt_workflow_artifacts: ${{ inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}
         qbt_cache_dir: ""
         qbt_optimise_strip: ""
         qbt_build_debug: ${{ inputs.debug == 'true' && 'yes' || 'no' }}
