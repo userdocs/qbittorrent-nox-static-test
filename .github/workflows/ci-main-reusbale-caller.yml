@@ -4,6 +4,11 @@ name: ci - main reusable caller
 on:
   workflow_dispatch:
     inputs:
+      debian-build:
+        description: "Debian: build"
+        required: true
+        default: false
+        type: boolean
       workflow-files:
         description: "Alpine: workflow files"
         required: true
@@ -61,7 +66,7 @@ jobs:
 
   ci-debian-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
-    if: always() && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    if: always() && github.event.inputs.debian-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
     uses: ./.github/workflows/ci-debian-build.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
