@@ -110,7 +110,7 @@ jobs:
           echo "2: $qbt_build_dir"
           echo
 
-          if [[ -f "qbt-build/release_info/disable-qt5" ]];
+          if [[ -f "qbt-build/release_info/disable-qt5" ]]; then
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
           fi
 
