@@ -120,9 +120,6 @@ jobs:
       ]
     if: failure() && inputs.skip_rerun == '0'
     name: ci-auto-rerun-failed-jobs
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
     permissions:
       actions: write
     runs-on: ubuntu-latest
