@@ -93,7 +93,7 @@ jobs:
           distinct_id: ${{ inputs.distinct_id }}
 
       - name: Host - configure artifacts ${{ inputs.distinct_id }}
-        if: inputs.workflow-files-as-artifacts == 'true'
+        if: inputs.workflow-files-as-artifacts == 'yes'
         uses: ./.github/workflows/composite-actions/configure-artifacts
         with:
           distinct_id: ${{ inputs.distinct_id }}
@@ -137,7 +137,7 @@ jobs:
         run: bash qbittorrent-nox-static.sh libtorrent
 
       - name: double conversion ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes' && matrix.qbt_build_tool == ''
+        if: env.disable_qt5 != 'yes' && matrix.qbt_build_tool == 'cmake'
         run: bash qbittorrent-nox-static.sh double_conversion
 
       - name: qtbase ${{ inputs.distinct_id }}
