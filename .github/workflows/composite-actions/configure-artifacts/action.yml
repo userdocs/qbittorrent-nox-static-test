@@ -7,10 +7,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Host - artifacts - create build dir ${{ inputs.distinct_id }}
-      shell: bash
-      run: mkdir -p ${{ env.qbt_build_dir }}
-
     - name: Host - artifacts - Download all ${{ inputs.distinct_id }}
       uses: actions/download-artifact@v4
 
