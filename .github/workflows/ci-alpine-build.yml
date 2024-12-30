@@ -59,12 +59,6 @@ jobs:
         with:
           distinct_id: ${{ inputs.distinct_id }}
 
-      - name: Host - configure artifacts ${{ inputs.distinct_id }}
-        if: inputs.workflow-files-as-artifacts == 'yes'
-        uses: ./.github/workflows/composite-actions/configure-artifacts
-        with:
-          distinct_id: ${{ inputs.distinct_id }}
-
       - name: Host - Create Docker template env file ${{ inputs.distinct_id }}
         run: |
           printf '%s\n' "qbt_build_dir=${{ env.qbt_build_dir }}" > env.custom
@@ -106,6 +100,12 @@ jobs:
           if [[ -f "${{ env.qbt_build_dir }}/release_info/disable-qt5" ]]; then
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
           fi
+
+      - name: Host - configure artifacts ${{ inputs.distinct_id }}
+        if: inputs.workflow-files-as-artifacts == 'yes' && env.disable_qt5 != 'yes'
+        uses: ./.github/workflows/composite-actions/configure-artifacts
+        with:
+          distinct_id: ${{ inputs.distinct_id }}
 
       - name: Docker - Copy repo patches to build folder ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
