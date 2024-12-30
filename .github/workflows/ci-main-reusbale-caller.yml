@@ -62,6 +62,9 @@ concurrency:
 jobs:
   ci-bootstrap-workflow-files-as-artifacts:
     if: github.event.inputs.workflow-files-as-artifacts == 'true'
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     uses: ./.github/workflows/ci-bootstrap-workflow-files-as-artifacts.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
@@ -69,6 +72,9 @@ jobs:
   ci-debian-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
     if: always() && github.event.inputs.debian-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     uses: ./.github/workflows/ci-debian-build.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
@@ -80,6 +86,9 @@ jobs:
   ci-alpine-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
     if: always() && github.event.inputs.alpine-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       id-token: write
       contents: read
@@ -95,6 +104,9 @@ jobs:
   ci-alpine-release:
     needs: [ci-alpine-build]
     if: always() && github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       contents: write
     uses: ./.github/workflows/ci-alpine-release.yml
@@ -112,6 +124,9 @@ jobs:
       ]
     if: failure() && inputs.skip_rerun == '0'
     name: ci-auto-rerun-failed-jobs
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     permissions:
       actions: write
     runs-on: ubuntu-latest
