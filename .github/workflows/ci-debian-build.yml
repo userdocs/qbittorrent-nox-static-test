@@ -104,7 +104,21 @@ jobs:
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         shell: bash
         run: |
-          [[ -f "qbt-build/release_info/disable-qt5" ]] && printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
+          export
+          echo
+          echo "1: ${{ env.qbt_build_dir }}"
+          echo "2: $qbt_build_dir"
+          echo
+
+          if [[ -f "qbt-build/release_info/disable-qt5" ]];
+              printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
+          fi
+
+          export
+          echo
+          echo "1: ${{ env.qbt_build_dir }}"
+          echo "2: $qbt_build_dir"
+          echo
 
       - name: glibc ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
