@@ -84,14 +84,14 @@ jobs:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
 
-      - name: Host - update and upgrade via action - ${{ inputs.distinct_id }}
-        uses: ./.github/actions/host-update
+      - name: Host - update and upgrade ${{ inputs.distinct_id }}
+        uses: ./.github/workflows/composite-actions/host-update
         with:
           distinct_id: ${{ inputs.distinct_id }}
 
-      - name: Host - configure artifacts - ${{ inputs.distinct_id }}
+      - name: Host - configure artifacts ${{ inputs.distinct_id }}
         if: inputs.workflow-files-as-artifacts == 'true'
-        uses: ./.github/actions/configure-artifacts
+        uses: ./.github/workflows/composite-actions/configure-artifacts
         with:
           distinct_id: ${{ inputs.distinct_id }}
 
