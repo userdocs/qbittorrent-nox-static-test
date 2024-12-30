@@ -48,7 +48,7 @@ jobs:
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version: "5"
-          - qbt_build_tool: ""
+          - qbt_build_tool: "cmake"
             qbt_qt_version: "6"
 
     name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
