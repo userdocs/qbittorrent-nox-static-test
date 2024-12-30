@@ -12,10 +12,6 @@ on:
         description: "Alpine: workflow-files files"
         required: true
         type: string
-      workflow-files-as-artifacts:
-        description: "Alpine: workflows artifacts"
-        required: true
-        type: string
       icu:
         description: "enable icu"
         required: true
@@ -74,7 +70,7 @@ jobs:
           printf '%s\n' "qbt_qbittorrent_tag=" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=" >> env.custom
           printf '%s\n' "qbt_workflow_files=${{ inputs.workflow-files }}" >> env.custom
-          printf '%s\n' "qbt_workflow_artifacts=${{ inputs.workflow-files-as-artifacts }}" >> env.custom
+          printf '%s\n' "qbt_workflow_artifacts=" >> env.custom
           printf '%s\n' "qbt_cache_dir=" >> env.custom
           printf '%s\n' "qbt_optimise_strip=${{ inputs.debug }}" >> env.custom
           printf '%s\n' "qbt_build_debug=${{ inputs.debug }}" >> env.custom
@@ -91,9 +87,6 @@ jobs:
       - name: Docker - apk install bash ${{ inputs.distinct_id }}
         run: docker exec -w /root multiarch apk add bash
 
-      - name: Host - artifacts prep - create build dir ${{ inputs.distinct_id }}
-        run: mkdir -p ${{ env.qbt_build_dir }}
-
       - name: Docker - Bootstrap ${{ inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
 
@@ -102,12 +95,6 @@ jobs:
           if [[ -f "${{ env.qbt_build_dir }}/release_info/disable-qt5" ]]; then
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
           fi
-
-      - name: Host - configure artifacts ${{ inputs.distinct_id }}
-        if: inputs.workflow-files-as-artifacts == 'yes' && env.disable_qt5 != 'yes'
-        uses: ./.github/workflows/composite-actions/configure-artifacts
-        with:
-          distinct_id: ${{ inputs.distinct_id }}
 
       - name: Docker - Copy repo patches to build folder ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'

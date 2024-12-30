@@ -19,11 +19,6 @@ on:
         required: true
         default: true
         type: boolean
-      workflow-files-as-artifacts:
-        description: "Workflow files as artifacts"
-        required: true
-        default: false
-        type: boolean
       icu:
         description: "enable icu"
         required: true
@@ -60,18 +55,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci-bootstrap-workflow-files-as-artifacts:
-    if: github.event.inputs.workflow-files-as-artifacts == 'true'
-    concurrency:
-      group: ${{ github.workflow }}-ci-bootstrap-workflow-files-as-artifacts-${{ github.ref }}
-      cancel-in-progress: true
-    uses: ./.github/workflows/ci-bootstrap-workflow-files-as-artifacts.yml
-    with:
-      distinct_id: ${{ github.event.inputs.distinct_id }}
-
   ci-debian-build:
-    needs: ci-bootstrap-workflow-files-as-artifacts
-    if: always() && github.event.inputs.debian-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    if: always() && github.event.inputs.debian-build == 'true'
     concurrency:
       group: ${{ github.workflow }}-ci-debian-build-${{ github.ref }}
       cancel-in-progress: true
@@ -79,13 +64,11 @@ jobs:
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
       workflow-files: ${{ github.event.inputs.workflow-files == 'true' && 'yes' || 'no' }}
-      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}
       icu: ${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
 
   ci-alpine-build:
-    needs: ci-bootstrap-workflow-files-as-artifacts
-    if: always() && github.event.inputs.alpine-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    if: always() && github.event.inputs.alpine-build == 'true'
     concurrency:
       group: ${{ github.workflow }}-ci-alpine-build-${{ github.ref }}
       cancel-in-progress: true
@@ -97,7 +80,6 @@ jobs:
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
       workflow-files: ${{ github.event.inputs.workflow-files == 'true' && 'yes' || 'no' }}
-      workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}
       icu: ${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
 
@@ -115,13 +97,7 @@ jobs:
       distinct_id: ${{ github.event.inputs.distinct_id }}
 
   ci-auto-rerun-failed-jobs:
-    needs:
-      [
-        ci-bootstrap-workflow-files-as-artifacts,
-        ci-debian-build,
-        ci-alpine-build,
-        ci-alpine-release,
-      ]
+    needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
     if: failure() && inputs.skip_rerun == '0'
     concurrency:
       group: ${{ github.workflow }}-ci-auto-rerun-failed-jobs-${{ github.ref }}

@@ -11,10 +11,6 @@ on:
         description: "Alpine: workflow-files files"
         required: true
         type: string
-      workflow-files-as-artifacts:
-        description: "Alpine: workflows artifacts"
-        required: true
-        type: string
       icu:
         description: "enable icu"
         required: true
@@ -76,7 +72,7 @@ jobs:
         qbt_qbittorrent_tag: ""
         qbt_libtorrent_master_jamfile: ""
         qbt_workflow_files: ${{ inputs.workflow-files }}
-        qbt_workflow_artifacts: ${{ inputs.workflow-files-as-artifacts }}
+        qbt_workflow_artifacts: ""
         qbt_cache_dir: ""
         qbt_optimise_strip: ""
         qbt_build_debug: ${{ inputs.debug }}
@@ -103,12 +99,6 @@ jobs:
           if [[ -f "${{ env.qbt_build_dir }}/release_info/disable-qt5" ]]; then
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
           fi
-
-      - name: Host - configure artifacts ${{ inputs.distinct_id }}
-        if: inputs.workflow-files-as-artifacts == 'yes' && env.disable_qt5 != 'yes'
-        uses: ./.github/workflows/composite-actions/configure-artifacts
-        with:
-          distinct_id: ${{ inputs.distinct_id }}
 
       - name: glibc ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
