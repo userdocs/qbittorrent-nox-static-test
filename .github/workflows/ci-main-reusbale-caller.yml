@@ -9,6 +9,11 @@ on:
         required: true
         default: false
         type: boolean
+      alpine-build:
+        description: "Alpine: build"
+        required: true
+        default: true
+        type: boolean
       workflow-files:
         description: "Alpine: workflow files"
         required: true
@@ -26,11 +31,6 @@ on:
         type: boolean
       debug:
         description: "debug builds"
-        required: true
-        default: false
-        type: boolean
-      upx:
-        description: "upx compress builds"
         required: true
         default: false
         type: boolean
@@ -76,11 +76,10 @@ jobs:
       workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}
       icu: ${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
-      upx: ${{ github.event.inputs.upx == 'true' && 'yes' || 'no' }}
 
   ci-alpine-build:
     needs: ci-bootstrap-workflow-files-as-artifacts
-    if: always() && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
+    if: always() && github.event.inputs.alpine-build == 'true' && ( needs.ci-bootstrap-workflow-files-as-artifacts.result == 'success' || needs.ci-bootstrap-workflow-files-as-artifacts.result == 'skipped' )
     permissions:
       id-token: write
       contents: read
@@ -92,7 +91,6 @@ jobs:
       workflow-files-as-artifacts: ${{ github.event.inputs.workflow-files-as-artifacts == 'true' && 'yes' || 'no' }}
       icu: ${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
-      upx: ${{ github.event.inputs.upx == 'true' && 'yes' || 'no' }}
 
   ci-alpine-release:
     needs: [ci-alpine-build]
