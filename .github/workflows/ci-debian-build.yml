@@ -32,7 +32,7 @@ jobs:
       matrix:
         container_id: [debian, ubuntu]
         container_codename: [bookworm, jammy, noble]
-        qbt_build_tool: ["", "qmake"]
+        qbt_build_tool: ["cmake", "qmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         exclude:
           - container_id: debian
