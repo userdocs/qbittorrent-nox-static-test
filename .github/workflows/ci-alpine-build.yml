@@ -49,10 +49,17 @@ jobs:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
 
-      - name: Host - update and upgrade ${{ inputs.distinct_id }}
-        uses: ./.github/workflows/composite-actions/host-update
-        with:
-          distinct_id: ${{ inputs.distinct_id }}
+      - name: Host - phased updates ${{ inputs.distinct_id }}
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - update ${{ inputs.distinct_id }}
+        run: sudo apt-get update
+
+      - name: Host - upgrade ${{ inputs.distinct_id }}
+        run: sudo apt-get -y upgrade
+
+      - name: Host - set up qemu-user-static binfmt-support ${{ inputs.distinct_id }}
+        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create Docker template env file ${{ inputs.distinct_id }}
         run: |

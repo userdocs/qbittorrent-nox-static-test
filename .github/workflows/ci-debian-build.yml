@@ -83,11 +83,6 @@ jobs:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
 
-      - name: Host - update and upgrade ${{ inputs.distinct_id }}
-        uses: ./.github/workflows/composite-actions/host-update
-        with:
-          distinct_id: ${{ inputs.distinct_id }}
-
       - name: Bootstrap all ${{ inputs.distinct_id }}
         run: bash qbittorrent-nox-static.sh -bs-a
 
