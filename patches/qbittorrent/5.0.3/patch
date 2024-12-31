@@ -1,5 +1,5 @@
---- qBittorrent/src/webui/webui.cpp	2024-12-31 13:47:25.776737171 +0000
-+++ webui.cpp	2024-12-31 13:53:12.716219464 +0000
+--- src/webui/webui.cpp	2024-12-31 13:47:25.776737171 +0000
++++ ../webui.cpp	2024-12-31 13:53:12.716219464 +0000
 @@ -40,6 +40,39 @@
  #include "base/utils/password.h"
  #include "webapplication.h"
