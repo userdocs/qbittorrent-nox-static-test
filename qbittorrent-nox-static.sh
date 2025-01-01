@@ -2497,7 +2497,7 @@ _openssl() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _boost_bootstrap() {
-	# If using source files and jfrog fails, default to git, if we are not using workflows sources.
+	# If using source files and the source fails, default to git, if we are not using workflows sources.
 	if [[ "${boost_url_status}" =~ (403|404) && "${qbt_workflow_files}" == "no" && "${qbt_workflow_artifacts}" == "no" ]]; then
 		source_default["${app_name}"]="folder"
 	fi
