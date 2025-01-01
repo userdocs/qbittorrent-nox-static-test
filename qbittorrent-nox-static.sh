@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.13"
+script_version="2.0.14"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -176,7 +176,7 @@ _set_default_values() {
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
 	# Env setting for the boost tag
-	if [[ "${qbt_libtorrent_version}" == "1.2" ]]; then
+	if [[ "${qbt_libtorrent_version}" == "1.2" || "${qbt_libtorrent_tag}" =~ ^(v1\.2\.|RC_1_2) ]]; then
 		qbt_boost_tag="${qbt_boost_tag:-boost-1.86.0}"
 	else
 		qbt_boost_tag="${qbt_boost_tag:-}"
@@ -626,7 +626,7 @@ _boost_url() {
 	fi
 
 	local boost_url_array=(
-		"https://boostorg.jfrog.io/artifactory/main/${boost_asset_type}/${github_tag[boost]/boost-/}/source/${boost_asset//[-\.]/_}.tar.gz"
+		"https://github.com/boostorg/boost/${boost_asset_type}s/download/${github_tag[boost]}/${github_tag[boost]}-b2-nodocs.tar.xz"
 		"https://archives.boost.io/${boost_asset_type}/${github_tag[boost]/boost-/}/source/${boost_asset//[-\.]/_}.tar.gz"
 	)
 
@@ -1038,11 +1038,13 @@ _apply_patches() {
 		patch_file="${patch_dir}/patch"
 		patch_url_file="${patch_dir}/url" # A file with a url to raw patch info
 		# remote
-		patch_file_remote="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}"
+		qbt_patches_url_branch="$(_git_git ls-remote -q --symref "https://github.com/${qbt_patches_url}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
+		# qbt_patches_url_branch="$(_curl -sL "https://github.com/${qbt_patches_url}" | sed -n 's/.*"defaultBranch":"\([^"]*\)".*/\1/p')"
+		patch_file_remote="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch}/patches/${app_name}/${app_version[${app_name}]}"
 
 		if [[ "${app_name}" == "libtorrent" ]]; then
 			patch_jamfile="${patch_dir}/Jamfile"
-			patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/master/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
+			patch_jamfile_url="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 		fi
 
 		# Order of patch file preference
