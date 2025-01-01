@@ -20,17 +20,17 @@ on:
         default: true
         type: boolean
       icu:
-        description: "enable icu"
+        description: "Enable icu"
         required: true
         default: false
         type: boolean
       debug:
-        description: "debug builds"
+        description: "Debug builds (symbols)"
         required: true
         default: false
         type: boolean
       release:
-        description: "release assets?"
+        description: "Release assets?"
         required: true
         default: true
         type: boolean
