@@ -1231,7 +1231,7 @@ _download_file() {
 	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" && ! -f "${qbt_dl_file_path}" ]]; then
-		printf '\n%b\n\n' " ${unicode_blue_light_circle} Dowloading ${color_magenta_light}${app_name}${color_end} using ${color_yellow_light}${source_type}${color_end} files to ${color_cyan_light}${qbt_dl_file_path}${color_end} - ${color_yellow_light}${qbt_dl_source_url}${color_end}"
+		printf '\n%b\n\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${app_name}${color_end} using ${color_yellow_light}${source_type}${color_end} files to ${color_cyan_light}${qbt_dl_file_path}${color_end} - ${color_yellow_light}${qbt_dl_source_url}${color_end}"
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && ! -f "${qbt_dl_file_path}" ]]; then
 		printf '\n%b\n' " ${unicode_blue_light_circle} Caching ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${source_type}${color_end} files to ${color_cyan_light}${qbt_cache_dir}/${app_name}.tar.xz${color_end} - ${color_yellow_light}${qbt_dl_source_url}${color_end}"
 	elif [[ -n "${qbt_cache_dir}" && "${qbt_cache_dir_options}" == "bs" && -f "${qbt_dl_file_path}" ]]; then
