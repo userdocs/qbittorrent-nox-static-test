@@ -1090,7 +1090,9 @@ _apply_patches() {
 		fi
 
 		# Patch files
-		[[ -f "${patch_file}" ]] && patch -p1 < "${patch_file}"
+		if [[ -f "${patch_file}" ]]; then
+			patch -p1 < "${patch_file}"
+		fi
 
 		# Copy modified files from source directory
 		if [[ -d "${patch_dir}/source" && "$(ls -A "${patch_dir}/source")" ]]; then
