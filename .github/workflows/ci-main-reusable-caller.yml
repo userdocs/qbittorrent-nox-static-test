@@ -7,17 +7,17 @@ on:
       debian-build:
         description: "Debian: build"
         required: true
-        default: false
+        default: true
         type: boolean
       alpine-build:
         description: "Alpine: build"
         required: true
-        default: true
+        default: false
         type: boolean
       workflow-files:
         description: "Workflow files"
         required: true
-        default: true
+        default: false
         type: boolean
       icu:
         description: "Enable icu"
@@ -32,7 +32,7 @@ on:
       release:
         description: "Release assets?"
         required: true
-        default: true
+        default: false
         type: boolean
       distinct_id:
         description: "Distinct id"
@@ -46,7 +46,7 @@ on:
       retries:
         description: "Number of rerun retries"
         required: true
-        default: "1"
+        default: "2"
         type: choice
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
@@ -129,3 +129,4 @@ jobs:
       run_id: ${{ github.run_id }}
       attempts: ${{ github.run_attempt }}
       retries: ${{ github.event.inputs.retries }}
+      token: ${{ github.token }}
