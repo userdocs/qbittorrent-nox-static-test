@@ -98,7 +98,7 @@ jobs:
 
   ci-auto-rerun-failed-jobs:
     needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
-    if: always() && github.event.inputs.skip_rerun == 'false' && contains(needs.*.result, 'failure')
+    if: failure() && github.event.inputs.skip_rerun == 'false'
     concurrency:
       group: ci-auto-rerun-failed-jobs
       cancel-in-progress: true
@@ -111,5 +111,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Trigger rerun workflow on job failures
         run: |
-          inputs_retries="${{ inputs.retries }}"
+          inputs_retries="${{ github.event.inputs.retries }}"
           gh workflow run ci-auto-rerun-failed-jobs.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}
