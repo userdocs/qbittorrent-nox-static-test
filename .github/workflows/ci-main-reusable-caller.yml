@@ -107,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
-      github_repo: ""
+      github_repo: "userdocs/gh-cli-workflow-reruns"
     steps:
       - uses: actions/checkout@v4
       - name: Trigger rerun workflow on job failures
