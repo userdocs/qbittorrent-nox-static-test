@@ -51,14 +51,14 @@ on:
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 concurrency:
-  group: ${{ github.workflow }}-ci-main-reusable-caller
+  group: ci-main-reusable-caller
   cancel-in-progress: true
 
 jobs:
   ci-debian-build:
     if: always() && github.event.inputs.debian-build == 'true'
     concurrency:
-      group: ${{ github.workflow }}-ci-debian-build
+      group: ci-debian-build
       cancel-in-progress: true
     uses: ./.github/workflows/ci-debian-build.yml
     with:
@@ -70,7 +70,7 @@ jobs:
   ci-alpine-build:
     if: always() && github.event.inputs.alpine-build == 'true'
     concurrency:
-      group: ${{ github.workflow }}-ci-alpine-build
+      group: ci-alpine-build
       cancel-in-progress: true
     permissions:
       id-token: write
@@ -87,7 +87,7 @@ jobs:
     needs: [ci-alpine-build]
     if: always() && github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     concurrency:
-      group: ${{ github.workflow }}-ci-alpine-release
+      group: ci-alpine-release
       cancel-in-progress: true
     permissions:
       contents: write
@@ -100,7 +100,7 @@ jobs:
     needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
     if: always() && github.event.inputs.skip_rerun == 'false'
     concurrency:
-      group: ${{ github.workflow }}-ci-auto-rerun-failed-jobs
+      group: ci-auto-rerun-failed-jobs
       cancel-in-progress: true
     permissions:
       actions: write
