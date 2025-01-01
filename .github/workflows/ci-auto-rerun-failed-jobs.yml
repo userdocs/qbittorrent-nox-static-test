@@ -12,6 +12,23 @@ on:
       retries:
         description: "The number of retries to rerun the workflow"
         required: true
+  workflow_call:
+    inputs:
+      run_id:
+        type: string
+        required: true
+      attempts:
+        type: string
+        required: true
+      retries:
+        type: string
+        required: true
+      distinct_id:
+        type: string
+        required: false
+      github_repo:
+        type: string
+        required: true
 
 jobs:
   gh-cli-rerun:
@@ -20,21 +37,21 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      GH_TOKEN: "${{ secrets.PERSONAL_TOKEN || github.token }}"
     steps:
-      - name: Host - Checkout action
+      - name: Host - Checkout action ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
 
-      - name: gh cli rerun and summaries
+      - name: gh cli rerun and summaries ${{ inputs.distinct_id }}
         if: inputs.attempts <= inputs.retries
         run: |
           failures="$(gh run view ${{ inputs.run_id }} --log-failed | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
           [[ -z "${failures}" ]] && failures="$(gh run view ${{ inputs.run_id }} | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
 
           if [[ "${{ inputs.retries }}" -ge "2" ]]; then
-              gh run rerun "${{ inputs.run_id }}" --failed --debug
+              gh run rerun "${{ inputs.run_id }}" --failed --debug --repo ${{ inputs.github_repo || github.repository }}
           else
-              gh run rerun "${{ inputs.run_id }}" --failed
+              gh run rerun "${{ inputs.run_id }}" --failed --repo ${{ inputs.github_repo || github.repository }}
           fi
 
           printf '%b\n' "# gh cli workflow reruns" >> $GITHUB_STEP_SUMMARY
