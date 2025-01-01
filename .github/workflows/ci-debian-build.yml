@@ -93,7 +93,7 @@ jobs:
           fi
 
       - name: glibc ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes' && env.static_ish != 'yes'
+        if: env.disable_qt5 != 'yes'
         run: bash qbittorrent-nox-static.sh glibc
 
       - name: zlib ${{ inputs.distinct_id }}
