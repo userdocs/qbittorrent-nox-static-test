@@ -129,5 +129,4 @@ jobs:
       run_id: ${{ github.run_id }}
       attempts: ${{ github.run_attempt }}
       retries: ${{ github.event.inputs.retries }}
-      token: ${{ github.token }}
       github_repo: ${{ github.repository }}
