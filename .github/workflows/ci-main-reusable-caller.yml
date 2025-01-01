@@ -107,26 +107,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: "${{ github.token }}"
+      github_repo: ""
     steps:
       - uses: actions/checkout@v4
       - name: Trigger rerun workflow on job failures
         run: |
           inputs_retries="${{ github.event.inputs.retries }}"
-          gh workflow run ci-auto-rerun-failed-jobs.yml --repo "userdocs/gh-cli-workflow-reruns" -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1} -f github_repo=${{ github.repository }}
+          gh workflow run ci-auto-rerun-failed-jobs.yml --repo "${{ env.github_repo || github.repository }}" -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1} -f github_repo=${{ github.repository }} -f distinct_id=${{ github.event.inputs.distinct_id }}
 
-  # ci-auto-rerun-failed-jobs:
-  #   needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
-  #   if: failure() && github.event.inputs.skip_rerun == 'false'
-  #   concurrency:
-  #     group: ci-auto-rerun-failed-jobs
-  #     cancel-in-progress: true
-  #   permissions:
-  #     actions: write
-  #   uses: userdocs/gh-cli-workflow-reruns/.github/workflows/ci-auto-rerun-failed-jobs.yml@main
-  #   secrets: inherit
-  #   with:
-  #     distinct_id: ${{ github.event.inputs.distinct_id }}
-  #     run_id: ${{ github.run_id }}
-  #     attempts: ${{ github.run_attempt }}
-  #     retries: ${{ github.event.inputs.retries }}
-  #     github_repo: ${{ github.repository }}
