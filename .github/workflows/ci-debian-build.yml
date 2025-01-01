@@ -78,10 +78,13 @@ jobs:
         qbt_build_debug: ${{ inputs.debug }}
         qbt_revision_url: ${{ github.repository }}
         qbt_standard: ""
-        qbt_static_ish: ""
+        qbt_static_ish: "yes"
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
+
+      - name: test failure
+        run: exit 1
 
       - name: Bootstrap all ${{ inputs.distinct_id }}
         run: bash qbittorrent-nox-static.sh -bs-a
@@ -93,7 +96,7 @@ jobs:
           fi
 
       - name: glibc ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
+        if: env.disable_qt5 != 'yes' && env.static_ish != 'yes'
         run: bash qbittorrent-nox-static.sh glibc
 
       - name: zlib ${{ inputs.distinct_id }}
