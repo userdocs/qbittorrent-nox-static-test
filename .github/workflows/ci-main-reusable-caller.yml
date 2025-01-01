@@ -98,7 +98,7 @@ jobs:
 
   ci-auto-rerun-failed-jobs:
     needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
-    if: failure() && inputs.skip_rerun == '0'
+    if: always() && github.event.inputs.skip_rerun == 'false'
     concurrency:
       group: ${{ github.workflow }}-ci-auto-rerun-failed-jobs
       cancel-in-progress: true
