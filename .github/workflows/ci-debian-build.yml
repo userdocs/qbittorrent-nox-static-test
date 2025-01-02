@@ -78,7 +78,7 @@ jobs:
         qbt_build_debug: ${{ inputs.debug }}
         qbt_revision_url: ${{ github.repository }}
         qbt_standard: ""
-        qbt_static_ish: "yes"
+        qbt_static_ish: ""
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
