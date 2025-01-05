@@ -82,6 +82,8 @@ jobs:
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Bootstrap all ${{ inputs.distinct_id }}
         run: bash qbittorrent-nox-static.sh -bs-a
