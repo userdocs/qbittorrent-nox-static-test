@@ -23,9 +23,9 @@ jobs:
         run: |
           pip install zizmor
 
-          printf '%b\n' "\`\`\`">> $GITHUB_STEP_SUMMARY
-          zizmor . --gh-token $GITHUB_TOKEN >> $ZIZMOR_REPORT
-          printf '\n%b' "\`\`\`">> $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          zizmor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+          printf '\n%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
 
 
