@@ -121,7 +121,7 @@ jobs:
           distinct_id: ${{ github.event.inputs.distinct_id }}
         run: >
           gh workflow run ci-auto-rerun-failed-jobs-action.yml
-          --repo "${{ env.github_repo || github.repository }}"
+          --repo "${github_repo}"
           -f github_repo=${{ github.repository }}
           -f run_id=${{ github.run_id }}
           -f attempts=${{ github.run_attempt }}
