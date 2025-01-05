@@ -25,7 +25,7 @@ jobs:
 
           printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
           zizmor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
-          printf '\n%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
 
 
