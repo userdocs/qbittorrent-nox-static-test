@@ -140,6 +140,8 @@ jobs:
 
       - name: Archive code coverage results ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
