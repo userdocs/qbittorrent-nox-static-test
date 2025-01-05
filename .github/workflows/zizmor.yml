@@ -1,4 +1,4 @@
-name: zizmor workflow audit
+name: zizmor workflow audits
 on:
   push:
   pull_request:
@@ -10,14 +10,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sh-checker:
+   zizmor-workflow-audits:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: zizmor workflow audit
+      - name: zizmor workflow audits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
