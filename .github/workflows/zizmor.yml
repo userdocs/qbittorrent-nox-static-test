@@ -17,7 +17,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run the sh-checker
+      - name: zizmor workflow audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
