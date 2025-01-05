@@ -1,0 +1,22 @@
+name: zizmor workflow audit
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sh-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run the sh-checker
+        run: zizmor.exe --persona auditor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+
