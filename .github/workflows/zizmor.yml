@@ -20,5 +20,5 @@ jobs:
       - name: Run the sh-checker
         run: |
           pip install zizmor
-          zizmor.exe --persona auditor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+          zizmor --persona auditor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
 
