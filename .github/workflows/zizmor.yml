@@ -18,5 +18,7 @@ jobs:
           persist-credentials: false
 
       - name: Run the sh-checker
-        run: zizmor.exe --persona auditor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+        run: |
+          pip install zizmor
+          zizmor.exe --persona auditor . --gh-token $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
 
