@@ -59,6 +59,7 @@ jobs:
           tth_version=$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/buildkite/terminal-to-html/releases/latest | xargs basename)
           curl -Lo- "https://github.com/buildkite/terminal-to-html/releases/latest/download/terminal-to-html-${tth_version/v}-linux-amd64.gz" | gunzip > tth
 
+          chmod +x ec-linux-amd64 tth
           ./ec-linux-amd64 --exclude '^(docs/.*|patches/.*)$' | ./tth > summary-1.html
 
           cat > summary-2.html <<-TEST
