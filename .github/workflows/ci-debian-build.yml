@@ -98,7 +98,7 @@ jobs:
         run: |
           if [[ -f "${qbt_build_dir}/release_info/disable-qt5" ]]; then
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
-              printf '%s\n' "Found file: \`disable-qt5\`: settings \`disable_qt5=yes\` to yes" >> $GITHUB_STEP_SUMMARY
+              printf '%s\n' "Found file: \`disable-qt5\` -> setting env: \`disable_qt5=yes\`" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: glibc ${{ inputs.distinct_id }}
