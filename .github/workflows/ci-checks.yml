@@ -60,5 +60,5 @@ jobs:
           ./ec-linux-amd64 --exclude '^(docs/.*|patches/.*)$' | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g" >> $GITHUB_STEP_SUMMARY
           printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-
+          [[ ${PIPESTATUS[*]} =~ [1-9] ]] && exit 1 || exit 0
 
