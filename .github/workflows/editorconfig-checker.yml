@@ -23,5 +23,5 @@ jobs:
           curl -Lo- https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/ec.tar.gz | tar xzf - --strip-components=1
 
           printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          ec --exclude '^(docs/.*|patches/.*)$' $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+          ./ec --exclude '^(docs/.*|patches/.*)$' $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
           printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
