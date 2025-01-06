@@ -1,0 +1,27 @@
+name: editorconfig-checker
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editorconfig-checker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: editorconfig-checker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go install github.com/editorconfig-checker/editorconfig-checker/v3/cmd/editorconfig-checker@latest
+
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ec --exclude '^(docs/.*|patches/.*)$' $GITHUB_TOKEN >> $GITHUB_STEP_SUMMARY
+          printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
