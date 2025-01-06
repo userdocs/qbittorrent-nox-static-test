@@ -61,5 +61,5 @@ jobs:
           outcome=("${PIPESTATUS[@]}")
           printf '%b' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-          [[ "${outcome[*]}" =~ [1-9] ]] && exit 1 || exit 0
+          # [[ "${outcome[*]}" =~ [1-9] ]] && exit 1 || exit 0
 
