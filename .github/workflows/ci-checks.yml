@@ -57,9 +57,9 @@ jobs:
           curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/ec-linux-amd64.tar.gz" | tar xzf - --strip-components=1
           curl -LO "https://raw.githubusercontent.com/buildkite/terminal-to-html/refs/heads/main/internal/assets/terminal.css"
           tth_version=$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/buildkite/terminal-to-html/releases/latest | xargs basename)
-          curl -Lo- "https://github.com/buildkite/terminal-to-html/releases/latest/download/terminal-to-html-${tth_version/v}-linux-amd64.gz" | gunzip > ttf
+          curl -Lo- "https://github.com/buildkite/terminal-to-html/releases/latest/download/terminal-to-html-${tth_version/v}-linux-amd64.gz" | gunzip > tth
 
-          ./ec --exclude '^(docs/.*|patches/.*)$' | ./tth > summary-1.html
+          ./ec-linux-amd64 --exclude '^(docs/.*|patches/.*)$' | ./tth > summary-1.html
 
           cat > summary-2.html <<-TEST
           <!DOCTYPE html>
