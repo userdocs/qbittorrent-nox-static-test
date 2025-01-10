@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.14"
+script_version="2.0.15"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -330,7 +330,97 @@ _set_default_values() {
 # This function will check for a list of defined dependencies from the qbt_required_pkgs array. Apps like python3-dev are dynamically set
 #######################################################################################################################################################
 _check_dependencies() {
-	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking if required core dependencies are installed${color_end}"
+
+	_hypen() {
+		width="$2"
+		tool_length="${#1}"
+		((hyphen_count = width - tool_length < 1 ? 1 : width - tool_length))
+		hyphens=$(printf '%s%*s' "◄" "$hyphen_count" "►" | tr ' ' '-')
+	}
+
+	if [[ "$os_id" =~ (debian|ubuntu) ]]; then
+		command_test_tool=("dpkg" "-s")
+		command_install_deps=("apt-get" "install" "-y")
+		command_update_upgrade_os=("bash" "-c" "apt-get update && apt-get upgrade -y && apt-get autoremove -y")
+		install_simulation=("apt" "install" "--simulate")
+	elif [[ "$os_id" = "alpine" ]]; then
+		command_test_tool=("apk" "info" "-e")
+		command_install_deps=("apk" "add" "--no-cache" "--repository=${CDN_URL}")
+		command_update_upgrade_os=("bash" "-c" "apk update --no-cache && apk upgrade --no-cache --repository=${CDN_URL} && apk fix")
+		install_simulation=("apk" "add" "--simulate")
+	fi
+
+	declare -A test_tools
+	test_tools["root"]="false"
+	test_tools["sudo"]="false"
+	test_tools["curl"]="false"
+	test_tools["bash"]="false"
+	test_tools["git"]="false"
+	test_tools["python3"]="false"
+
+	_privilege_check() {
+		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: available privileges${color_end}"
+		_hypen "4" "5"
+
+		if [[ "$(id -un)" == 'root' ]]; then
+			printf '\n%b\n' " $unicode_green_circle ${hyphens} ${color_yellow}root${color_end}"
+			test_tools["root"]="true"
+			command_privilege=()
+		else
+			printf '\n%b\n' " $unicode_red_circle ${hyphens} ${color_yellow}root${color_end}"
+		fi
+
+		if sudo -n true &> /dev/null; then
+			printf '%b\n' " $unicode_green_circle ${hyphens} ${color_yellow}sudo${color_end}"
+			test_tools["sudo"]="true"
+			command_privilege=("sudo")
+		else
+			printf '%b\n' " $unicode_red_circle ${hyphens} ${color_yellow}sudo${color_end}"
+		fi
+	}
+
+	_check_tools_work() {
+		_hypen "${1}" 20
+
+		tool_type="${2}"
+		run_type="${3}"
+		_command_test() {
+			if [[ $tool_type = "test_tools" ]]; then
+				type -P "${tool}"
+			elif [[ $tool_type = "build_tools" ]]; then
+				"${command_test_tool[@]}" "${tool}"
+			fi
+		}
+
+		if _command_test &> /dev/null; then
+			if [[ "${run_type}" != "silent" ]]; then
+				printf "%b %s %b\n" " $unicode_green_circle" "$hyphens" "${color_yellow}${1}${color_end}"
+			fi
+			return 0
+		else
+			if [[ "${run_type}" != "silent" ]]; then
+				printf "%b %s %b\n" " $unicode_red_circle" "$hyphens" "${color_yellow}${1}${color_end}"
+			fi
+			return 1
+		fi
+
+	}
+
+	_check_tools_info() {
+		[[ "${1}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} Checking: ${color_magenta}test_tools${color_end}:"
+		for tool in "${!test_tools[@]}"; do
+			if [[ ! $tool =~ (root|sudo) ]]; then
+				if _check_tools_work "${tool}" "test_tools" "${1}"; then
+					test_tools["${tool}"]="true"
+					unset "build_tools[${tool}]"
+				fi
+			fi
+		done
+	}
+
+	_check_tools_info
+
+	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: core dependencies${color_end}"
 
 	# remove packages in the delete_pkgs from the qbt_required_pkgs array
 	for target in "${delete_pkgs[@]}"; do
@@ -341,23 +431,31 @@ _check_dependencies() {
 		done
 	done
 
+	# remove packages in the delete_pkgs from the qbt_required_pkgs array
+	for target in "${!test_tools[@]}"; do
+		for i in "${!qbt_required_pkgs[@]}"; do
+			if [[ "${qbt_required_pkgs[$i]}" == "${target}" ]]; then
+				if [[ "${test_tools[$target]}" == "true" ]]; then
+					unset 'qbt_required_pkgs[$i]'
+				fi
+			fi
+		done
+	done
+
 	# Rebuild array to sort index from 0
 	qbt_required_pkgs=("${qbt_required_pkgs[@]}")
 
 	# This checks over the qbt_required_pkgs array for the OS specified dependencies to see if they are installed
 	for pkg in "${qbt_required_pkgs[@]}"; do
 
-		width=20
-		tool_length=${#pkg}
-		((hyphen_count = width - tool_length < 1 ? 1 : width - tool_length))
-		hyphens=$(printf '%s%*s' "◄" "$hyphen_count" "►" | tr ' ' '-')
+		_hypen "${pkg}" 20
 
 		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-			pkgman() { apk info -e "${pkg}"; }
+			pkgman() { "${command_privilege[@]}" apk info -e "${pkg}"; }
 		fi
 
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-			pkgman() { dpkg -s "${pkg}"; }
+			pkgman() { "${command_privilege[@]}" dpkg -s "${pkg}"; }
 		fi
 
 		if pkgman > /dev/null 2>&1; then
@@ -365,51 +463,102 @@ _check_dependencies() {
 		else
 			if [[ -n "${pkg}" ]]; then
 				deps_installed="no"
-				printf '%b\n' " ${unicode_red_circle} ${pkg}"
+				printf '%b\n' " ${unicode_red_circle} ${hyphens} ${color_magenta}${pkg}${color_end}"
 				qbt_checked_required_pkgs+=("$pkg")
+			fi
+		fi
+	done
+
+	_privilege_check
+
+	if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
+		printf '\n%b\n\n' " $unicode_blue_circle ${color_blue}Info:${color_end} $script_full_path"
+		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}update${color_end} - update host"
+		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} - install test deps"
+		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} - install core build deps"
+		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap${color_end} - update + install (test + core)"
+	else
+		printf '%b\n\n' " $unicode_yellow_circle${color_magenta} test_tools${color_end} ${color_blue}are required to access basic features of the script.${color_end}"
+		printf '%b\n' "$unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
+	fi
+
+	for i in "${qbt_modules[@]}"; do
+		if [[ "${*}" =~ ([[:space:]]|^)${i}([[:space:]]|$) ]]; then
+			if [[ "${deps_installed}" == "no" ]]; then
+				printf '\n%b\n\n' "$unicode_red_circle ${color_yellow}Missing critical ${color_blue}build_tools${color_end}${color_yellow} requirements${color_end}"
+				exit 1
 			fi
 		fi
 	done
 
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 	if [[ "${deps_installed}" == "no" ]]; then
-		if [[ "$(id -un)" == 'root' ]]; then
-			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
+		if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
+			_install_tools() {
+				# We don't want to run update every time. Only if the the installation command cannot work without an update being run first
+				if ! "${install_simulation[@]}" curl &> /dev/null; then _update_os; fi
+				#!/bin/bash
 
-			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-				apk update --repository="${CDN_URL}"
-				apk upgrade --repository="${CDN_URL}"
-				apk fix
-			fi
+				if [[ "${1}" = "test" ]]; then
+					for test_tools in "${!test_tools[@]}"; do
+						if [[ $test_tools != "root" && $test_tools != "sudo" ]]; then
+							"${command_install_deps[@]}" "$test_tools"
+						fi
+					done
+				fi
 
-			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-				apt-get update -y
-				apt-get upgrade -y
-				apt-get autoremove -y
-			fi
-
-			[[ -f /var/run/reboot-required ]] && {
-				printf '\n%b\n\n' " ${color_red}This machine requires a reboot to continue installation. Please reboot now.${color_end}"
-				exit
+				if [[ "${1}" = "core" ]]; then
+					"${command_install_deps[@]}" "${qbt_checked_required_pkgs[@]}"
+				fi
 			}
 
-			printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing required dependencies${color_end}"
-
-			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-				if ! apk add "${qbt_checked_required_pkgs[@]}" --repository="${CDN_URL}"; then
-					printf '\n'
-					exit 1
+			_update_os() {
+				if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
+					printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
+					"${command_privilege[@]}" "${command_update_upgrade_os[@]}"
 				fi
+			}
+
+			if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
+				printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
+				_update_os
 			fi
 
-			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-				if ! apt-get install -y "${qbt_checked_required_pkgs[@]}"; then
-					printf '\n'
-					exit 1
-				fi
+			if [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
+				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing test dependencies${color_end}"
+				_install_tools test
 			fi
 
-			printf '\n%b\n' " ${unicode_green_circle}${color_green} Dependencies installed!${color_end}"
+			if [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
+				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing core dependencies${color_end}"
+				_install_tools core
+			fi
+
+			if [[ $* =~ ([[:space:]]|^)(bootstrap)([[:space:]]|$) ]]; then
+				printf '\n%b\n' " ${unicode_green_circle}${color_green} Dependencies installed!${color_end}"
+				_update_os
+				_install_tools core
+			fi
+
+			_check_tools_info silent
+
+			if [[ "${test_tools[curl]}" == 'false' || "${test_tools[git]}" == 'false' || "${test_tools[python3]}" == 'false' ]]; then
+				printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}test_tools${color_end}${color_yellow} requirements${color_end}"
+				exit 1
+			fi
+
+			# Remove these positional parameters from the array after they are used as they are not needed and confuse later checks
+
+			args=("$@")
+			new_args=()
+
+			for arg in "${args[@]}"; do
+				if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install" && "$arg" != "bootstrap" ]]; then
+					new_args+=("$arg")
+				fi
+			done
+
+			set -- "${new_args[@]}"
 
 			deps_installed="yes"
 		else
@@ -1877,7 +2026,7 @@ set -- "${params1[@]}"
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
-_check_dependencies        # see functions
+_check_dependencies "${@}" # see functions
 _test_url
 _set_build_directory    # see functions
 _set_module_urls "${@}" # see functions
