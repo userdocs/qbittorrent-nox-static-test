@@ -52,3 +52,7 @@ jobs:
           else
             echo "curl is not installed"
           fi
+
+      - name: test qbittorrent-nox-static.sh
+        shell: bash {0}
+        run: ./qbittorrent-nox-static.sh
