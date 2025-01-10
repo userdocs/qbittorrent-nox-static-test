@@ -53,6 +53,10 @@ jobs:
             echo "curl is not installed"
           fi
 
+      - uses: actions/checkout@v4
+
       - name: test qbittorrent-nox-static.sh
         shell: bash {0}
-        run: ./qbittorrent-nox-static.sh
+        run: |
+
+          ./qbittorrent-nox-static.sh
