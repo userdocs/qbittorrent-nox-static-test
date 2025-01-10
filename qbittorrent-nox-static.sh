@@ -356,7 +356,7 @@ _check_dependencies() {
 	test_tools["curl"]="false"
 	test_tools["bash"]="false"
 	test_tools["git"]="false"
-	test_tools["python3"]="false"
+	# test_tools["python3"]="false"
 
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: available privileges${color_end}"
@@ -485,95 +485,99 @@ _check_dependencies() {
 	for i in "${qbt_modules[@]}"; do
 		if [[ "${*}" =~ ([[:space:]]|^)${i}([[:space:]]|$) ]]; then
 			if [[ "${deps_installed}" == "no" ]]; then
-				printf '\n%b\n\n' "$unicode_red_circle ${color_yellow}Missing critical ${color_blue}build_tools${color_end}${color_yellow} requirements${color_end}"
-				exit 1
+				printf '\n%b\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}build_tools${color_end}${color_yellow} requirements${color_end}"
+				build_tools_check="false"
 			fi
 		fi
 	done
 
+	if [[ "${test_tools[curl]}" == 'false' || "${test_tools[git]}" == 'false' || "${test_tools[python3]}" == 'false' ]]; then
+		printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}test_tools${color_end}${color_yellow} requirements${color_end}"
+	elif [[ "${deps_installed}" == "no" ]]; then
+		printf '\n'
+	fi
+
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
-	if [[ "${deps_installed}" == "no" ]]; then
-		if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
-			_install_tools() {
-				# We don't want to run update every time. Only if the the installation command cannot work without an update being run first
-				if ! "${install_simulation[@]}" curl &> /dev/null; then _update_os; fi
-				#!/bin/bash
 
-				if [[ "${1}" = "test" ]]; then
-					for test_tools in "${!test_tools[@]}"; do
-						if [[ $test_tools != "root" && $test_tools != "sudo" ]]; then
-							"${command_install_deps[@]}" "$test_tools"
-						fi
-					done
-				fi
+	if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
 
-				if [[ "${1}" = "core" ]]; then
-					"${command_install_deps[@]}" "${qbt_checked_required_pkgs[@]}"
-				fi
-			}
+		_update_os() {
+			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
+			"${command_privilege[@]}" "${command_update_upgrade_os[@]}"
+			declare -fx _update_os
+		}
 
-			_update_os() {
-				if [[ ${test_tools["root"]} == "true" || ${test_tools["sudo"]} == "true" ]]; then
-					printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
-					"${command_privilege[@]}" "${command_update_upgrade_os[@]}"
-				fi
-			}
+		_install_tools() {
+			# We don't want to run update every time. Only if the the installation command cannot work without an update being run first
+			if ! "${install_simulation[@]}" curl &> /dev/null; then _update_os; fi
+			#!/bin/bash
 
-			if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
-				printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
-				_update_os
-			fi
-
-			if [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
+			if [[ "${1}" = "test" ]]; then
 				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing test dependencies${color_end}"
-				_install_tools test
-			fi
-
-			if [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
+			elif [[ "${1}" = "core" ]]; then
 				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing core dependencies${color_end}"
-				_install_tools core
 			fi
 
-			if [[ $* =~ ([[:space:]]|^)(bootstrap)([[:space:]]|$) ]]; then
-				printf '\n%b\n' " ${unicode_green_circle}${color_green} Dependencies installed!${color_end}"
-				_update_os
-				_install_tools core
+			if [[ "${1}" = "test" ]]; then
+				for test_tools in "${!test_tools[@]}"; do
+					if [[ $test_tools != "root" && $test_tools != "sudo" ]]; then
+						"${command_install_deps[@]}" "$test_tools"
+					fi
+				done
 			fi
 
-			_check_tools_info silent
-
-			if [[ "${test_tools[curl]}" == 'false' || "${test_tools[git]}" == 'false' || "${test_tools[python3]}" == 'false' ]]; then
-				printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}test_tools${color_end}${color_yellow} requirements${color_end}"
-				exit 1
+			if [[ "${1}" = "core" ]]; then
+				"${command_install_deps[@]}" "${qbt_checked_required_pkgs[@]}"
 			fi
+			declare -fx _install_tools
+		}
 
-			# Remove these positional parameters from the array after they are used as they are not needed and confuse later checks
-
-			args=("$@")
-			new_args=()
-
-			for arg in "${args[@]}"; do
-				if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install" && "$arg" != "bootstrap" ]]; then
-					new_args+=("$arg")
-				fi
-			done
-
-			set -- "${new_args[@]}"
-
-			deps_installed="yes"
-		else
-			printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
-
-			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-				printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_checked_required_pkgs[*]}"
-			fi
-
-			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-				printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_checked_required_pkgs[*]}"
-			fi
-
-			exit
+		if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
+			_update_os
 		fi
+
+		if [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
+			_install_tools test
+		fi
+
+		if [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
+			_install_tools core
+		fi
+
+		if [[ $* =~ ([[:space:]]|^)(bootstrap)([[:space:]]|$) ]]; then
+			_update_os
+			_install_tools core
+		fi
+
+		_check_tools_info silent
+		# Remove these positional parameters from the array after they are used as they are not needed and confuse later checks
+
+		if [[ "${test_tools[curl]}" == 'false' || "${test_tools[git]}" == 'false' || "${test_tools[python3]}" == 'false' ]] || [[ ${build_tools_check} == "false" ]]; then
+			exit 1
+		fi
+
+		args=("$@")
+		new_args=()
+
+		for arg in "${args[@]}"; do
+			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap" ]]; then
+				new_args+=("$arg")
+			fi
+		done
+
+		set -- "${new_args[@]}"
+	else
+		printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
+
+		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+			printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_checked_required_pkgs[*]}"
+		fi
+
+		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_checked_required_pkgs[*]}"
+		fi
+
+		exit
 	fi
 
 	# All dependency checks passed print
@@ -2045,19 +2049,27 @@ _script_version         # see functions
 while (("${#}")); do
 	case "${1}" in
 		-bs-p | --boot-strap-patches)
+			_update_os
+			_install_tools test
 			_apply_patches bootstrap
 			shift
 			;;
 		-bs-c | --boot-strap-cmake)
+			_update_os
+			_install_tools test
 			_cmake
 			shift
 			;;
 		-bs-r | --boot-strap-release)
+			_update_os
+			_install_tools test
 			_release_info
 			shift
 			;;
 		-bs-ma | --boot-strap-multi-arch)
 			if [[ "${multi_arch_options[${qbt_cross_name}]}" == "${qbt_cross_name}" ]]; then
+				_update_os
+				_install_tools test
 				_multi_arch
 				shift
 			else
@@ -2070,6 +2082,8 @@ while (("${#}")); do
 			fi
 			;;
 		-bs-a | --boot-strap-all)
+			_update_os
+			_install_tools core
 			_apply_patches bootstrap
 			_release_info
 			_cmake
