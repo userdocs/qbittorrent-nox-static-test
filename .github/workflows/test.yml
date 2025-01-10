@@ -1,0 +1,23 @@
+name: test
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-1:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: test
+        run: |
+          curl --version
+
+  test-2:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: test
+        shell: bash {0}
+        run: |
+          git --version
