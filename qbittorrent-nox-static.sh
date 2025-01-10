@@ -330,7 +330,6 @@ _set_default_values() {
 # This function will check for a list of defined dependencies from the qbt_required_pkgs array. Apps like python3-dev are dynamically set
 #######################################################################################################################################################
 _check_dependencies() {
-
 	_hypen() {
 		width="$2"
 		tool_length="${#1}"
@@ -356,7 +355,6 @@ _check_dependencies() {
 	test_tools["curl"]="false"
 	test_tools["bash"]="false"
 	test_tools["git"]="false"
-	# test_tools["python3"]="false"
 
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: available privileges${color_end}"
