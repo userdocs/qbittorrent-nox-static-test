@@ -81,6 +81,11 @@ get_os_info() { # Function to source /etc/os-release and get info from it on dem
 	fi
 }
 
+script_full_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_basename="${script_full_path##*/}"
+script_path="${script_full_path%/*}"
+libtorrent_version='2.0' # Set this here so it is easy to see and change
+
 os_id="$(get_os_info ID)"                                                         # Get the ID for this this OS.
 os_version_codename="$(get_os_info VERSION_CODENAME)"                             # Get the codename for this this OS. Note, Alpine does not have a unique codename.
 os_version_id="$(get_os_info VERSION_ID)"                                         # Get the version number for this codename, for example: 10, 20.04, 3.12.4
@@ -344,6 +349,11 @@ _check_dependencies() {
 	# This checks over the qbt_required_pkgs array for the OS specified dependencies to see if they are installed
 	for pkg in "${qbt_required_pkgs[@]}"; do
 
+		width=20
+		tool_length=${#pkg}
+		((hyphen_count = width - tool_length < 1 ? 1 : width - tool_length))
+		hyphens=$(printf '%s%*s' "◄" "$hyphen_count" "►" | tr ' ' '-')
+
 		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 			pkgman() { apk info -e "${pkg}"; }
 		fi
@@ -353,7 +363,7 @@ _check_dependencies() {
 		fi
 
 		if pkgman > /dev/null 2>&1; then
-			printf '%b\n' " ${unicode_green_circle} ${pkg}"
+			printf '%b\n' " ${unicode_green_circle} ${hyphens} ${color_magenta}${pkg}${color_end}"
 		else
 			if [[ -n "${pkg}" ]]; then
 				deps_installed="no"
@@ -1001,7 +1011,7 @@ _installation_modules() {
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
 
 		# Some basic help
-		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Script help${color_end} : ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-h${color_end}"
+		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Script help${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-h${color_end}"
 	fi
 }
 #######################################################################################################################################################
@@ -1274,25 +1284,22 @@ _download_file() {
 #######################################################################################################################################################
 _fix_static_links() {
 	log_name="${app_name}"
-	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
+	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -type f -name '*.a' -exec basename {} \;)
 	for file in "${library_list[@]}"; do
-		if [[ "$(readlink "${lib_dir}/${file}.so")" != "${file}.a" ]]; then
-			ln -fsn "${file}.a" "${lib_dir}/${file}.so"
-			printf '%b\n' "${lib_dir}${file}.so changed to point to ${file}.a" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
-		fi
+		ln -fsn "${file}" "${lib_dir}/${file%\.a}.so"
+		printf '%b\n' "${lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 	done
 	return
 }
+
 _fix_multiarch_static_links() {
 	if [[ -d "${qbt_install_dir}/${qbt_cross_host}" ]]; then
 		log_name="${app_name}"
 		multiarch_lib_dir="${qbt_install_dir}/${qbt_cross_host}/lib"
-		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -exec bash -c 'basename "$0" ".${0##*.}"' {} \; | sort | uniq -d)
+		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -type f -name '*.a' -exec basename {} \;)
 		for file in "${library_list[@]}"; do
-			if [[ "$(readlink "${multiarch_lib_dir}/${file}.so")" != "${file}.a" ]]; then
-				ln -fsn "${file}.a" "${multiarch_lib_dir}/${file}.so"
-				printf '%b\n' "${multiarch_lib_dir}${file}.so changed to point to ${file}.a" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
-			fi
+			ln -fsn "${file}" "${multiarch_lib_dir}/${file%\.a}.so"
+			printf '%b\n' "${multiarch_lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 		done
 		return
 	fi
@@ -2082,7 +2089,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--strip${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-strip${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--workflow${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-workflow${color_end}"
 			printf '\n%b\n' " ${text_bold}${text_underlined}Module specific help - flags are used with the modules listed here.${color_end}"
-			printf '\n%b\n' " ${color_green}Use:${color_end} ${color_magenta_light}all${color_end} ${text_dim}or${color_end} ${color_magenta_light}module-name${color_end}          ${color_green}Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_magenta_light}all${color_end} ${color_blue_light}-i${color_end}"
+			printf '\n%b\n' " ${color_green}Use:${color_end} ${color_magenta_light}all${color_end} ${text_dim}or${color_end} ${color_magenta_light}module-name${color_end}          ${color_green}Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_magenta_light}all${color_end} ${color_blue_light}-i${color_end}"
 			printf '\n%b\n' " ${text_dim}${color_magenta_light}all${color_end} ${text_dim}----------------${color_end} ${text_dim}${color_yellow_light}optional${color_end} ${text_dim}Recommended method to install all modules${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}install${color_end} ${text_dim}------------${color_end} ${text_dim}${color_yellow_light}optional${color_end} ${text_dim}Install the ${text_dim}${color_cyan_light}${qbt_install_dir_short}/completed/qbittorrent-nox${color_end} ${text_dim}binary${color_end}"
 			[[ "${os_id}" =~ ^(debian|ubuntu)$ ]] && printf '%b\n' " ${text_dim}${color_magenta_light}glibc${color_end} ${text_dim}--------------${color_end} ${text_dim}${color_red_light}required${color_end} ${text_dim}Build libc locally to statically link nss${color_end}"
@@ -2123,9 +2130,9 @@ while (("${#}")); do
 			printf '\n%b\n' " Default build location: ${color_cyan}${qbt_install_dir_short}${color_end}"
 			printf '\n%b\n' " ${color_blue_light}-b${color_end} or ${color_blue_light}--build-directory${color_end} to set the location of the build directory."
 			printf '\n%b\n' " ${color_yellow}Paths are relative to the script location. I recommend that you use a full path.${color_end}"
-			printf '\n%b\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${text_dim}${color_magenta_light}all${color_end} ${text_dim}- Will install all modules and build libtorrent to the default build location${color_end}"
-			printf '\n%b\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${text_dim}${color_magenta_light}module${color_end} ${text_dim}- Will install a single module to the default build location${color_end}"
-			printf '\n%b\n\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${text_dim}${color_magenta_light}module${color_end} ${color_blue_light}-b${color_end} ${text_dim}${color_cyan_light}\"\$HOME/build\"${color_end} ${text_dim}- will specify a custom build directory and install a specific module use to that custom location${color_end}"
+			printf '\n%b\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/${script_basename}${color_end} ${text_dim}${color_magenta_light}all${color_end} ${text_dim}- Will install all modules and build libtorrent to the default build location${color_end}"
+			printf '\n%b\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/${script_basename}${color_end} ${text_dim}${color_magenta_light}module${color_end} ${text_dim}- Will install a single module to the default build location${color_end}"
+			printf '\n%b\n\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/${script_basename}${color_end} ${text_dim}${color_magenta_light}module${color_end} ${color_blue_light}-b${color_end} ${text_dim}${color_cyan_light}\"\$HOME/build\"${color_end} ${text_dim}- will specify a custom build directory and install a specific module use to that custom location${color_end}"
 			exit
 			;;
 		-h-bs-p | --help-boot-strap-patches)
@@ -2140,7 +2147,7 @@ while (("${#}")); do
 		-h-bs-c | --help-boot-strap-cmake)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " This bootstrap will install cmake and ninja build to the build directory"
-			printf '\n%b\n\n'"${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs-c${color_end}"
+			printf '\n%b\n\n'"${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-c${color_end}"
 			exit
 			;;
 		-h-bs-r | --help-boot-strap-release)
@@ -2148,7 +2155,7 @@ while (("${#}")); do
 			printf '\n%b\n' "${color_red_light} Github action specific. You probably dont need it${color_end}"
 			printf '\n%b\n' " This switch creates some github release template files in this directory"
 			printf '\n%b\n' " ${qbt_install_dir_short}/release_info"
-			printf '\n%b\n\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs-r${color_end}"
+			printf '\n%b\n\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-r${color_end}"
 			exit
 			;;
 		-h-bs-ma | --help-boot-strap-multi-arch)
@@ -2158,7 +2165,7 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_yellow_circle} armhf"
 			printf '%b\n' " ${unicode_yellow_circle} armv7"
 			printf '%b\n' " ${unicode_yellow_circle} aarch64"
-			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs-ma ${qbt_cross_name:-aarch64}${color_end}"
+			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-ma ${qbt_cross_name:-aarch64}${color_end}"
 			printf '\n%b\n\n' " ${unicode_yellow_circle} You can also set it as a variable to trigger cross building: ${color_blue_light}export qbt_cross_name=${qbt_cross_name:-aarch64}${color_end}"
 			exit
 			;;
@@ -2166,13 +2173,13 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " ${unicode_red_circle}${color_red_light} Github action specific and Alpine only. You probably dont need it${color_end}"
 			printf '\n%b\n' " Performs all bootstrapping options"
-			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs-a${color_end}"
+			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-a${color_end}"
 			printf '\n%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Patches${color_end}"
 			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Release info${color_end}"
 			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Cmake and ninja build${color_end} if the ${color_blue_light}-c${color_end} flag is passed"
 			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Multi arch${color_end} if the ${color_blue_light}-ma${color_end} flag is passed"
-			printf '\n%b\n' " Equivalent of doing: ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs -bs-r${color_end}"
-			printf '\n%b\n\n' " And with ${color_blue_light}-c${color_end} and ${color_blue_light}-ma${color_end} : ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs -bs-c -bs-ma -bs-r ${color_end}"
+			printf '\n%b\n' " Equivalent of doing: ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs -bs-r${color_end}"
+			printf '\n%b\n\n' " And with ${color_blue_light}-c${color_end} and ${color_blue_light}-ma${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs -bs-c -bs-ma -bs-r ${color_end}"
 			exit
 			;;
 		-h-bt | --help-boost-version)
@@ -2236,7 +2243,7 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_yellow_circle} armhf"
 			printf '%b\n' " ${unicode_yellow_circle} armv7"
 			printf '%b\n' " ${unicode_yellow_circle} aarch64"
-			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/$(basename -- "$0")${color_end} ${color_blue_light}-bs-ma ${qbt_cross_name:-aarch64}${color_end}"
+			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-ma ${qbt_cross_name:-aarch64}${color_end}"
 			printf '\n%b\n\n' " ${unicode_yellow_circle} You can also set it as a variable to trigger cross building: ${color_blue_light}export qbt_cross_name=${qbt_cross_name:-aarch64}${color_end}"
 			exit
 			;;
@@ -2253,7 +2260,7 @@ while (("${#}")); do
 				printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 				printf '\n%b\n' " Use a provided libtorrent tag when cloning from github."
 				printf '\n%b\n' " ${color_yellow}You can use this flag with this help command to see the value if called before the help option.${color_end}"
-				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end}${color_blue_light} -lt ${color_cyan_light}${github_tag[libtorrent]}${color_end} ${color_blue_light}-h-lt${color_end}"
+				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -lt ${color_cyan_light}${github_tag[libtorrent]}${color_end} ${color_blue_light}-h-lt${color_end}"
 				printf '\n%b\n' " ${text_dim}This flag must be provided with arguments.${color_end}"
 				printf '\n%b\n' " ${color_blue_light}-lt${color_end} ${color_cyan_light}${github_tag[libtorrent]}${color_end}"
 			fi
@@ -2304,7 +2311,7 @@ while (("${#}")); do
 				printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 				printf '\n%b\n' " Use a provided qBittorrent tag when cloning from github."
 				printf '\n%b\n' " ${color_yellow}You can use this flag with this help command to see the value if called before the help option.${color_end}"
-				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end}${color_blue_light} -qt ${color_cyan_light}${github_tag[qbittorrent]}${color_end} ${color_blue_light}-h-qt${color_end}"
+				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -qt ${color_cyan_light}${github_tag[qbittorrent]}${color_end} ${color_blue_light}-h-qt${color_end}"
 				printf '\n%b\n' " ${text_dim}This flag must be provided with arguments.${color_end}"
 				printf '\n%b\n' " ${color_blue_light}-qt${color_end} ${color_cyan_light}${github_tag[qbittorrent]}${color_end}"
 			fi
@@ -2316,7 +2323,7 @@ while (("${#}")); do
 				printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 				printf '\n%b\n' " Use a provided Qt tag when cloning from github."
 				printf '\n%b\n' " ${color_yellow}You can use this flag with this help command to see the value if called before the help option.${color_end}"
-				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/$(basename -- "$0")${color_end}${color_blue_light} -qt ${color_cyan_light}${github_tag[qtbase]}${color_end} ${color_blue_light}-h-qt${color_end}"
+				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -qt ${color_cyan_light}${github_tag[qtbase]}${color_end} ${color_blue_light}-h-qt${color_end}"
 				printf '\n%b\n' " ${text_dim}This flag must be provided with arguments.${color_end}"
 				printf '\n%b\n' " ${color_blue_light}-qt${color_end} ${color_cyan_light}${github_tag[qtbase]}${color_end}"
 			fi
