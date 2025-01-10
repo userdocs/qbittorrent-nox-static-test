@@ -384,7 +384,7 @@ _check_dependencies() {
 		run_type="${3}"
 		_command_test() {
 			if [[ $tool_type = "test_tools" ]]; then
-				type -P "${tool}"
+				command -v "${tool}"
 			elif [[ $tool_type = "build_tools" ]]; then
 				"${command_test_tool[@]}" "${tool}"
 			fi
