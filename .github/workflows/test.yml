@@ -11,7 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: test
+      - name: test git
         run: |
           curl --version
 
@@ -21,7 +21,7 @@ jobs:
             echo "curl is not installed"
           fi
 
-      - name: test
+      - name: test curl
         run: |
           git --version
 
@@ -31,7 +31,7 @@ jobs:
             echo "git is not installed"
           fi
 
-      - name: test
+      - name: test git shell
         shell: bash {0}
         run: |
           git --version
@@ -42,12 +42,12 @@ jobs:
             echo "curl is not installed"
           fi
 
-      - name: test
+      - name: test curl shell
         shell: bash {0}
         run: |
-          git --version
+          curl --version
 
-          if command -v git; then
+          if command -v curl; then
             echo "curl is installed"
           else
             echo "curl is not installed"
