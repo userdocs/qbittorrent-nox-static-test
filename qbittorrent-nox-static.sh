@@ -2047,27 +2047,19 @@ _script_version         # see functions
 while (("${#}")); do
 	case "${1}" in
 		-bs-p | --boot-strap-patches)
-			_update_os
-			_install_tools test
 			_apply_patches bootstrap
 			shift
 			;;
 		-bs-c | --boot-strap-cmake)
-			_update_os
-			_install_tools test
 			_cmake
 			shift
 			;;
 		-bs-r | --boot-strap-release)
-			_update_os
-			_install_tools test
 			_release_info
 			shift
 			;;
 		-bs-ma | --boot-strap-multi-arch)
 			if [[ "${multi_arch_options[${qbt_cross_name}]}" == "${qbt_cross_name}" ]]; then
-				_update_os
-				_install_tools test
 				_multi_arch
 				shift
 			else
@@ -2080,8 +2072,6 @@ while (("${#}")); do
 			fi
 			;;
 		-bs-a | --boot-strap-all)
-			_update_os
-			_install_tools core
 			_apply_patches bootstrap
 			_release_info
 			_cmake

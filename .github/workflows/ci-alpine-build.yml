@@ -97,7 +97,10 @@ jobs:
         run: docker exec -w /root multiarch apk update
 
       - name: Docker - apk install bash ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch apk add bash git curl
+        run: docker exec -w /root multiarch apk add bash
+
+      - name: Docker - apk install bash ${{ inputs.distinct_id }}
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh bootstrap
 
       - name: Docker - Bootstrap ${{ inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a

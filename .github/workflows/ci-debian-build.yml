@@ -89,6 +89,9 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap all ${{ inputs.distinct_id }}
+        run: bash qbittorrent-nox-static.sh bootstrap
+
+      - name: Bootstrap all ${{ inputs.distinct_id }}
         run: bash qbittorrent-nox-static.sh -bs-a
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}

@@ -54,6 +54,9 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: test qbittorrent-nox-static.sh
         shell: bash {0}
