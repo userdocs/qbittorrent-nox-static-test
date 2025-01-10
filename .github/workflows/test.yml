@@ -8,17 +8,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-1:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: test
         run: |
           curl --version
 
-  test-2:
-    runs-on: ubuntu-latest
-    steps:
+          if command -v curl; then
+            echo "curl is installed"
+          else
+            echo "curl is not installed"
+          fi
+
+      - name: test
+        run: |
+          git --version
+
+          if command -v git; then
+            echo "git is installed"
+          else
+            echo "git is not installed"
+          fi
+
       - name: test
         shell: bash {0}
         run: |
           git --version
+
+          if command -v git; then
+            echo "curl is installed"
+          else
+            echo "curl is not installed"
+          fi
+
+      - name: test
+        shell: bash {0}
+        run: |
+          git --version
+
+          if command -v git; then
+            echo "curl is installed"
+          else
+            echo "curl is not installed"
+          fi
