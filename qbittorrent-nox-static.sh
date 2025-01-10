@@ -83,8 +83,6 @@ get_os_info() { # Function to source /etc/os-release and get info from it on dem
 
 script_full_path=$(readlink -f "${BASH_SOURCE[0]}")
 script_basename="${script_full_path##*/}"
-script_path="${script_full_path%/*}"
-libtorrent_version='2.0' # Set this here so it is easy to see and change
 
 os_id="$(get_os_info ID)"                                                         # Get the ID for this this OS.
 os_version_codename="$(get_os_info VERSION_CODENAME)"                             # Get the codename for this this OS. Note, Alpine does not have a unique codename.
