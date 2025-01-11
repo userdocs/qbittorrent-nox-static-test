@@ -76,18 +76,10 @@ _color_test() {
 }
 [[ "${1}" == "ctest" ]] && _color_test # ./scriptname.sh ctest
 #######################################################################################################################################################
-# Check we are on a supported OS and release.
+# Get script basename and full path
 #######################################################################################################################################################
-_sort_modules() {
-	if [ ${#qbt_modules_sorted[@]} -eq 0 ]; then
-		for mod in "${module_order[@]}"; do
-			if [[ -v qbt_modules_install["$mod"] ]]; then
-				qbt_modules_sorted+=("$mod")
-				modules_sorted="yes"
-			fi
-		done
-	fi
-}
+script_full_path=$(readlink -f "${BASH_SOURCE[0]}")
+script_basename="${script_full_path##*/}"
 #######################################################################################################################################################
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
@@ -99,9 +91,6 @@ get_os_info() { # Function to source /etc/os-release and get info from it on dem
 		printf "%s" "unknown" # This will make the script exit on the version check and provide useful reason.
 	fi
 }
-
-script_full_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_basename="${script_full_path##*/}"
 
 os_id="$(get_os_info ID)"                                                         # Get the ID for this this OS.
 os_version_codename="$(get_os_info VERSION_CODENAME)"                             # Get the codename for this this OS. Note, Alpine does not have a unique codename.
@@ -303,8 +292,9 @@ _set_default_values() {
 	####################################################################################################################
 	####################################################################################################################
 	####################################################################################################################
-	qbt_test_tools["root"]="false"
-	qbt_test_tools["sudo"]="false"
+	qbt_privileges_required["root"]="false"
+	qbt_privileges_required["sudo"]="false"
+
 	qbt_test_tools["curl"]="false"
 	qbt_test_tools["bash"]="false"
 	qbt_test_tools["git"]="false"
@@ -317,16 +307,16 @@ _set_default_values() {
 			qbt_deps_delete["gpg"]="true"
 		fi
 
-		qbt_deps_required["autoconf"]="true"
-		qbt_deps_required["build-base"]="true"
-		qbt_deps_required["coreutils"]="true"
-		qbt_deps_required["cmake"]="true"
-		qbt_deps_required["gpg"]="true"
-		qbt_deps_required["linux-headers"]="true"
-		qbt_deps_required["pkgconf"]="true"
-		qbt_deps_required["py${qbt_python_version}-numpy"]="true"
-		qbt_deps_required["py${qbt_python_version}-numpy-dev"]="true"
-		qbt_deps_required["ttf-freefont"]="true"
+		qbt_deps_required["autoconf"]="false"
+		qbt_deps_required["build-base"]="false"
+		qbt_deps_required["coreutils"]="false"
+		qbt_deps_required["cmake"]="false"
+		qbt_deps_required["gpg"]="false"
+		qbt_deps_required["linux-headers"]="false"
+		qbt_deps_required["pkgconf"]="false"
+		qbt_deps_required["py${qbt_python_version}-numpy"]="false"
+		qbt_deps_required["py${qbt_python_version}-numpy-dev"]="false"
+		qbt_deps_required["ttf-freefont"]="false"
 	fi
 
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then # Debian specific dependencies
@@ -340,34 +330,34 @@ _set_default_values() {
 			qbt_deps_delete["gperf"]="true"
 		fi
 
-		qbt_deps_required["autopoint"]="true"
-		qbt_deps_required["gperf"]="true"
-		qbt_deps_required["bison"]="true"
-		qbt_deps_required["build-essential"]="true"
-		qbt_deps_required["crossbuild-essential-${cross_arch}"]="true"
-		qbt_deps_required["gettext"]="true"
-		qbt_deps_required["gawk"]="true"
-		qbt_deps_required["openssl"]="true"
-		qbt_deps_required["pkg-config"]="true"
-		qbt_deps_required["python${qbt_python_version}-numpy"]="true"
-		qbt_deps_required["texinfo"]="true"
-		qbt_deps_required["unzip"]="true"
+		qbt_deps_required["autopoint"]="false"
+		qbt_deps_required["gperf"]="false"
+		qbt_deps_required["bison"]="false"
+		qbt_deps_required["build-essential"]="false"
+		qbt_deps_required["crossbuild-essential-${cross_arch}"]="false"
+		qbt_deps_required["gettext"]="false"
+		qbt_deps_required["gawk"]="false"
+		qbt_deps_required["openssl"]="false"
+		qbt_deps_required["pkg-config"]="false"
+		qbt_deps_required["python${qbt_python_version}-numpy"]="false"
+		qbt_deps_required["texinfo"]="false"
+		qbt_deps_required["unzip"]="false"
 
 	fi
 
 	# Deps with same package name across Alpine and Debian based systems
 
-	qbt_deps_required["perl"]="true"
-	qbt_deps_required["python${qbt_python_version}"]="true"
-	qbt_deps_required["python${qbt_python_version}-dev"]="true"
-	qbt_deps_required["curl"]="true"
-	qbt_deps_required["git"]="true"
-	qbt_deps_required["graphviz"]="true"
-	qbt_deps_required["libtool"]="true"
-	qbt_deps_required["libtool"]="true"
-	qbt_deps_required["bash"]="true"
-	qbt_deps_required["automake"]="true"
-	qbt_deps_required["re2c"]="true"
+	qbt_deps_required["perl"]="false"
+	qbt_deps_required["python${qbt_python_version}"]="false"
+	qbt_deps_required["python${qbt_python_version}-dev"]="false"
+	qbt_deps_required["curl"]="false"
+	qbt_deps_required["git"]="false"
+	qbt_deps_required["graphviz"]="false"
+	qbt_deps_required["libtool"]="false"
+	qbt_deps_required["libtool"]="false"
+	qbt_deps_required["bash"]="false"
+	qbt_deps_required["automake"]="false"
+	qbt_deps_required["re2c"]="false"
 
 	# remove this module by default unless provided as a first argument to the script.
 	if [[ "${1}" != 'install' ]]; then
@@ -439,7 +429,7 @@ _check_dependencies() {
 
 		if [[ "$(id -un)" == 'root' ]]; then
 			printf '\n%b\n' " $unicode_green_circle ${color_red_light}root${color_end}"
-			qbt_test_tools["root"]="true"
+			qbt_privileges_required["root"]="true"
 			command_privilege=()
 		else
 			printf '\n%b\n' " $unicode_red_circle ${color_red_light}root${color_end}"
@@ -447,7 +437,7 @@ _check_dependencies() {
 
 		if sudo -n true &> /dev/null; then
 			printf '%b\n' " $unicode_green_circle ${color_red_light}sudo${color_end}"
-			qbt_test_tools["sudo"]="true"
+			qbt_privileges_required["sudo"]="true"
 			command_privilege=("sudo")
 		else
 			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
@@ -486,11 +476,9 @@ _check_dependencies() {
 		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_yellow}test_tools${color_end}:"
 
 		while IFS= read -r qbt_tt; do
-			if [[ ! $qbt_tt =~ (root|sudo) ]]; then
-				if _check_tools_work "${qbt_tt}" "test_tools" "${silent}"; then
-					qbt_test_tools["${qbt_tt}"]="true"
-					unset "build_tools[${qbt_tt}]"
-				fi
+			if _check_tools_work "${qbt_tt}" "test_tools" "${silent}"; then
+				qbt_test_tools["${qbt_tt}"]="true"
+				unset "build_tools[${qbt_tt}]"
 			fi
 		done < <(printf '%s\n' "${!qbt_test_tools[@]}" | sort)
 
@@ -530,19 +518,29 @@ _check_dependencies() {
 			if [[ -n "${pkg}" ]]; then
 				deps_installed="no"
 				printf '%b\n' " ${unicode_red_circle} ${color_magenta}${pkg}${color_end}"
-				qbt_checked_required_pkgs+=("$pkg")
+				qbt_deps_required_checked+=("$pkg")
 			fi
 		fi
 	done < <(printf '%s\n' "${!qbt_deps_required[@]}" | sort)
 
 	_privilege_check
 
-	if [[ ${qbt_test_tools["root"]} == "true" || ${qbt_test_tools["sudo"]} == "true" ]]; then
-		printf '\n%b\n\n' " $unicode_blue_circle ${color_blue}Info:${color_end} $script_full_path"
-		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}update${color_end} - update host"
-		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} - install test deps"
-		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} - install core build deps"
-		printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap${color_end} - update + install (test + core)"
+	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
+
+		if [[ "${#qbt_deps_required_checked[@]}" -gt "0" ]]; then
+			printf '\n%b\n\n' " $unicode_blue_circle ${color_blue}Info:${color_end} $script_full_path"
+
+			if ! "${install_simulation[@]}" bash &> /dev/null; then
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}update${color_end} ------- update host"
+			fi
+
+			if [[ ${qbt_test_tools[*]} =~ (false) ]]; then
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} - install test deps"
+			fi
+
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} - install core build deps"
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap${color_end} ---- update + install (test + core)"
+		fi
 	else
 		printf '%b\n\n' " $unicode_yellow_circle${color_magenta} test_tools${color_end} ${color_blue}are required to access basic features of the script.${color_end}"
 		printf '%b\n' "$unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
@@ -565,7 +563,7 @@ _check_dependencies() {
 
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 
-	if [[ ${qbt_test_tools["root"]} == "true" || ${qbt_test_tools["sudo"]} == "true" ]]; then
+	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
 
 		_update_os() {
 			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
@@ -575,8 +573,7 @@ _check_dependencies() {
 
 		_install_tools() {
 			# We don't want to run update every time. Only if the the installation command cannot work without an update being run first
-			if ! "${install_simulation[@]}" curl &> /dev/null; then _update_os; fi
-			#!/bin/bash
+			if ! "${install_simulation[@]}" bash &> /dev/null; then _update_os; fi
 
 			if [[ "${1}" = "test" ]]; then
 				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing test dependencies${color_end}"
@@ -585,7 +582,7 @@ _check_dependencies() {
 			fi
 
 			if [[ "${1}" = "test" ]]; then
-				for qbt_tt in "${!qbt_test_tools[@]}"; do
+				for qbt_tt in "${!qbt_privileges_required[@]}"; do
 					if [[ $qbt_tt != "root" && $qbt_tt != "sudo" ]]; then
 						"${command_install_deps[@]}" "$qbt_tt"
 					fi
@@ -593,7 +590,7 @@ _check_dependencies() {
 			fi
 
 			if [[ "${1}" = "core" ]]; then
-				"${command_install_deps[@]}" "${qbt_checked_required_pkgs[@]}"
+				"${command_install_deps[@]}" "${qbt_deps_required_checked[@]}"
 			fi
 			declare -fx _install_tools
 		}
@@ -636,11 +633,11 @@ _check_dependencies() {
 		printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
 
 		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_checked_required_pkgs[*]}"
+			printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_deps_required_checked[*]}"
 		fi
 
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_checked_required_pkgs[*]}"
+			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_deps_required_checked[*]}"
 		fi
 
 		exit
@@ -1162,6 +1159,19 @@ _set_module_urls() {
 	#
 	##########################################################################################################################################################
 	return
+}
+#######################################################################################################################################################
+# A function to take the associative array qbt_modules_install and sort it, after being processed, into  a sorted indexed array
+#######################################################################################################################################################
+_sort_modules() {
+	if [ ${#qbt_modules_sorted[@]} -eq 0 ]; then
+		for mod in "${module_order[@]}"; do
+			if [[ -v qbt_modules_install["$mod"] ]]; then
+				qbt_modules_sorted+=("$mod")
+				modules_sorted="yes"
+			fi
+		done
+	fi
 }
 #######################################################################################################################################################
 # This function verifies the module names from the array qbt_modules_install in the default values function.
@@ -2958,13 +2968,10 @@ _qbittorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
-			-D GUI=OFF
+			-D GUI=OFF \
+			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
-		-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		cmake --build build --target qbt_update_translations
-		cmake --build build
-		cmake --build build --target check
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
