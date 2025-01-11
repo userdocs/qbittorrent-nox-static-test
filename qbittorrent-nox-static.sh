@@ -623,7 +623,7 @@ _check_dependencies() {
 		new_args=()
 
 		for arg in "${args[@]}"; do
-			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap" ]]; then
+			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap_dev" ]]; then
 				new_args+=("$arg")
 			fi
 		done
