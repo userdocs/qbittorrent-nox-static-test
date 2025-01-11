@@ -78,6 +78,19 @@ _color_test() {
 #######################################################################################################################################################
 # Check we are on a supported OS and release.
 #######################################################################################################################################################
+_sort_modules() {
+	if [ ${#qbt_modules_sorted[@]} -eq 0 ]; then
+		for mod in "${module_order[@]}"; do
+			if [[ -v qbt_modules_install["$mod"] ]]; then
+				qbt_modules_sorted+=("$mod")
+				modules_sorted="yes"
+			fi
+		done
+	fi
+}
+#######################################################################################################################################################
+# Check we are on a supported OS and release.
+#######################################################################################################################################################
 get_os_info() { # Function to source /etc/os-release and get info from it on demand.
 	# shellcheck source=/dev/null
 	if source /etc/os-release &> /dev/null; then
@@ -1154,18 +1167,6 @@ _set_module_urls() {
 # This function verifies the module names from the array qbt_modules_install in the default values function.
 #######################################################################################################################################################
 _installation_modules() {
-
-	_sort_modules() {
-		if [ ${#qbt_modules_sorted[@]} -eq 0 ]; then
-			for mod in "${module_order[@]}"; do
-				if [[ -v qbt_modules_install["$mod"] ]]; then
-					qbt_modules_sorted+=("$mod")
-					modules_sorted="yes"
-				fi
-			done
-		fi
-	}
-
 	# Delete modules - using the qbt_modules_delete array to unset them from the qbt_modules_install array
 	for qbt_md in "${!qbt_modules_delete[@]}"; do
 		if [[ "${qbt_modules_delete["$qbt_md"]}" == "true" ]]; then
@@ -1227,7 +1228,6 @@ _installation_modules() {
 	fi
 
 	if [[ "${modules_sorted}" != "yes" ]]; then
-		echo "##################################"
 		_sort_modules
 	fi
 }
@@ -1253,7 +1253,10 @@ _apply_patches() {
 		unset module_patch
 		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
 
-		for patch_info in "${!qbt_modules_install[@]}"; do
+		_sort_modules
+
+		for patch_info in "${qbt_modules_sorted[@]}"; do
+
 			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${color_cyan_light} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${color_end}"
 		done
 		unset patch_info
