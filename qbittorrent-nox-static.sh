@@ -435,22 +435,22 @@ _check_dependencies() {
 	fi
 
 	_privilege_check() {
-		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: available privileges${color_end}"
+		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
 
 		if [[ "$(id -un)" == 'root' ]]; then
-			printf '\n%b\n' " $unicode_green_circle ${color_yellow}root${color_end}"
+			printf '\n%b\n' " $unicode_green_circle ${color_red_light}root${color_end}"
 			qbt_test_tools["root"]="true"
 			command_privilege=()
 		else
-			printf '\n%b\n' " $unicode_red_circle ${color_yellow}root${color_end}"
+			printf '\n%b\n' " $unicode_red_circle ${color_red_light}root${color_end}"
 		fi
 
 		if sudo -n true &> /dev/null; then
-			printf '%b\n' " $unicode_green_circle ${color_yellow}sudo${color_end}"
+			printf '%b\n' " $unicode_green_circle ${color_red_light}sudo${color_end}"
 			qbt_test_tools["sudo"]="true"
 			command_privilege=("sudo")
 		else
-			printf '%b\n' " $unicode_red_circle ${color_yellow}sudo${color_end}"
+			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
 		fi
 	}
 
@@ -483,7 +483,7 @@ _check_dependencies() {
 	_check_tools_info() {
 		local silent="${1:-}"
 
-		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} Checking: ${color_magenta}test_tools${color_end}:"
+		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_yellow}test_tools${color_end}:"
 
 		while IFS= read -r qbt_tt; do
 			if [[ ! $qbt_tt =~ (root|sudo) ]]; then
@@ -499,7 +499,7 @@ _check_dependencies() {
 
 	_check_tools_info
 
-	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: core dependencies${color_end}"
+	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_magenta}core_dependencies${color_end}"
 
 	# remove packages in the qbt_deps_delete arrays from the qbt_deps_required array
 	for qbt_dd in "${!qbt_deps_delete[@]}"; do
@@ -2958,9 +2958,13 @@ _qbittorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
-			-D GUI=OFF \
-			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+			-D GUI=OFF
+
+		-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		cmake --build build --target qbt_update_translations
+		cmake --build build
+		cmake --build build --target check
 		_post_command build
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
