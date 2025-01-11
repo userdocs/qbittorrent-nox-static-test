@@ -1186,6 +1186,7 @@ _installation_modules() {
 		if [[ "${1}" == "all" ]]; then
 			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules_install array to leave only the modules to be activated
 			unset "qbt_modules_install[all]"
+			_sort_modules
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
 			unset "qbt_modules_install[all]"
 			_sort_modules # Call the sort function to sort the modules in an indexed array so the order is correct
@@ -1202,7 +1203,7 @@ _installation_modules() {
 			qbt_modules_sorted=("${@}")
 		fi
 
-		for modules_skip in "${!qbt_modules_install[@]}"; do
+		for modules_skip in "${qbt_modules_sorted[@]}"; do
 			skip_modules["${modules_skip}"]="no"
 		done
 		unset modules_skip
@@ -1247,19 +1248,18 @@ _apply_patches() {
 	fi
 
 	if [[ "${app_name}" == "bootstrap" ]]; then
-		for module_patch in "${!qbt_modules_install[@]}"; do
-			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
-		done
-		unset module_patch
-		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
-
 		_sort_modules
 
-		for patch_info in "${qbt_modules_sorted[@]}"; do
+		for module_patch in "${qbt_modules_sorted[@]}"; do
+			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
+		done && unset module_patch
 
+		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
+
+		for patch_info in "${qbt_modules_sorted[@]}"; do
 			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${color_cyan_light} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${color_end}"
-		done
-		unset patch_info
+		done && unset patch_info
+
 		printf '\n%b\n' " ${unicode_cyan_circle} If a patch file, named ${color_cyan_light}patch${color_end} is found in these directories it will be applied to the relevant module with a matching tag."
 	else
 		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
