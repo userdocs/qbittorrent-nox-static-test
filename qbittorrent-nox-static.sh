@@ -539,7 +539,7 @@ _check_dependencies() {
 			fi
 
 			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} - install core build deps"
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap${color_end} ---- update + install (test + core)"
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install (test + core)"
 		fi
 	else
 		printf '%b\n\n' " $unicode_yellow_circle${color_magenta} test_tools${color_end} ${color_blue}are required to access basic features of the script.${color_end}"

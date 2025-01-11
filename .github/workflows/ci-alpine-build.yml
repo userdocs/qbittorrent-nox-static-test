@@ -100,7 +100,7 @@ jobs:
         run: docker exec -w /root multiarch apk add bash
 
       - name: Docker - Bootstrap deps ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh bootstrap
+        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
         run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a

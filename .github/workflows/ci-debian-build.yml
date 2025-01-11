@@ -89,7 +89,7 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap deps ${{ inputs.distinct_id }}
-        run: bash qbittorrent-nox-static.sh bootstrap
+        run: bash qbittorrent-nox-static.sh bootstrap_deps
 
       - name: Bootstrap build ${{ inputs.distinct_id }}
         run: bash qbittorrent-nox-static.sh -bs-a
