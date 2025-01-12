@@ -607,7 +607,7 @@ _check_dependencies() {
 			_install_tools core
 		fi
 
-		if [[ $* =~ ([[:space:]]|^)(bootstrap_dev)([[:space:]]|$) ]]; then
+		if [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
 			_update_os
 			_install_tools core
 		fi
@@ -623,7 +623,7 @@ _check_dependencies() {
 		new_args=()
 
 		for arg in "${args[@]}"; do
-			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap_dev" ]]; then
+			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap_deps" ]]; then
 				new_args+=("$arg")
 			fi
 		done
