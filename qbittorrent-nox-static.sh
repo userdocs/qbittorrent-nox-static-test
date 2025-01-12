@@ -2682,7 +2682,6 @@ _zlib() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D ZLIB_COMPAT=ON \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D WITH_GTEST=OFF \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -2788,7 +2787,6 @@ _libtorrent() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
@@ -2846,7 +2844,6 @@ _double_conversion() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D CMAKE_INSTALL_LIBDIR=lib \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -2911,7 +2908,6 @@ _qtbase() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -2955,7 +2951,6 @@ _qttools() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -2992,7 +2987,6 @@ _qbittorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
-			-D CMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
 			-D GUI=OFF \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
