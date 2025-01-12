@@ -427,7 +427,7 @@ _check_dependencies() {
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
 
-		if [[ "$(id -un)" == 'root' ]]; then
+		if [[ "$(id -un 2> /dev/null)" == 'root' ]]; then
 			printf '\n%b\n' " $unicode_green_circle ${color_red_light}root${color_end}"
 			qbt_privileges_required["root"]="true"
 			command_privilege=()
@@ -471,7 +471,17 @@ _check_dependencies() {
 	}
 
 	_check_tools_info() {
+
 		local silent="${1:-}"
+
+		echo "###################@" "$@"
+
+		filerterd_params=("$pparam")
+		for pparam in "$@"; do
+			if [[ "$pparam" != "silent" ]]; then
+				filerterd_params+=("$pparam")
+			fi
+		done && unset pparam
 
 		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_yellow}test_tools${color_end}:"
 
@@ -483,9 +493,30 @@ _check_dependencies() {
 		done < <(printf '%s\n' "${!qbt_test_tools[@]}" | sort)
 
 		unset qbt_tt
+
+		# Check if all the test tools are available and set a flag if they are not
+		for qbt_tt in "${!qbt_test_tools[@]}"; do
+			if [[ "${qbt_test_tools[$qbt_tt]}" == "false" ]]; then
+				test_tools_missing="true"
+			else
+				test_tools_missing="false"
+			fi
+		done && unset qbt_tt
+
+		set -x
+		for qbt_mi in "${!qbt_modules_install[@]}"; do
+			if [[ "${filerterd_params[*]}" =~ ([[:space:]]|^)${qbt_mi}([[:space:]]|$) ]]; then
+				if [[ "${qbt_deps_required[*]}" =~ "false" ]]; then
+					tools_yes_deps_no="true"
+				else
+					tools_yes_deps_no="false"
+				fi
+			fi
+		done && unset qbt_mi
+		set +x
 	}
 
-	_check_tools_info
+	_check_tools_info "${@}"
 
 	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_magenta}core_dependencies${color_end}"
 
@@ -514,9 +545,9 @@ _check_dependencies() {
 
 		if pkgman > /dev/null 2>&1; then
 			printf '%b\n' " ${unicode_green_circle} ${color_magenta}${pkg}${color_end}"
+			qbt_deps_required["${pkg}"]="true"
 		else
 			if [[ -n "${pkg}" ]]; then
-				deps_installed="no"
 				printf '%b\n' " ${unicode_red_circle} ${color_magenta}${pkg}${color_end}"
 				qbt_deps_required_checked+=("$pkg")
 			fi
@@ -534,7 +565,7 @@ _check_dependencies() {
 				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}update${color_end} ------- update host"
 			fi
 
-			if [[ ${qbt_test_tools[*]} =~ (false) ]]; then
+			if [[ "${test_tools_missing}" == "true" ]]; then
 				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} - install test deps"
 			fi
 
@@ -542,25 +573,20 @@ _check_dependencies() {
 			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install (test + core)"
 		fi
 	else
-		printf '%b\n\n' " $unicode_yellow_circle${color_magenta} test_tools${color_end} ${color_blue}are required to access basic features of the script.${color_end}"
-		printf '%b\n' "$unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
+		printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
+		printf '%b\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: ${color_magenta}test_tools${color_end} are required to access basic features of the script.${color_end}"
+
 	fi
 
-	for qbt_mi in "${!qbt_modules_install[@]}"; do
-		if [[ "${*}" =~ ([[:space:]]|^)${qbt_mi}([[:space:]]|$) ]]; then
-			if [[ "${deps_installed}" == "no" ]]; then
-				printf '\n%b\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}build_tools${color_end}${color_yellow} requirements${color_end}"
-				build_tools_check="false"
-			fi
-		fi
-	done && unset qbt_mi
-
-	if [[ "${qbt_test_tools[curl]}" == 'false' || "${qbt_test_tools[git]}" == 'false' || "${qbt_test_tools[python3]}" == 'false' ]]; then
-		printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Missing critical ${color_blue}test_tools${color_end}${color_yellow} requirements${color_end}"
-	elif [[ "${deps_installed}" == "no" ]]; then
-		printf '\n'
+	if [[ "${test_tools_missing}" == "true" ]]; then
+		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}test_tools${color_end} requirements${color_end}"
 	fi
 
+	set -x
+	if [[ "${tools_yes_deps_no}" == "true" ]]; then
+		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}build_tools${color_end} requirements${color_end}"
+	fi
+	set +x
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 
 	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
@@ -582,7 +608,7 @@ _check_dependencies() {
 			fi
 
 			if [[ "${1}" = "test" ]]; then
-				for qbt_tt in "${!qbt_privileges_required[@]}"; do
+				for qbt_tt in "${!qbt_test_tools[@]}"; do
 					if [[ $qbt_tt != "root" && $qbt_tt != "sudo" ]]; then
 						"${command_install_deps[@]}" "$qbt_tt"
 					fi
@@ -597,33 +623,22 @@ _check_dependencies() {
 
 		if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
 			_update_os
-		fi
-
-		if [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
+		elif [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
 			_install_tools test
-		fi
-
-		if [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
+		elif [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
 			_install_tools core
-		fi
-
-		if [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
+		elif [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
 			_update_os
 			_install_tools core
 		fi
 
-		_check_tools_info silent
-		# Remove these positional parameters from the array after they are used as they are not needed and confuse later checks
+		_check_tools_info silent "${@}"
 
-		if [[ "${qbt_test_tools[curl]}" == 'false' || "${qbt_test_tools[git]}" == 'false' || "${qbt_test_tools[python3]}" == 'false' ]] || [[ ${build_tools_check} == "false" ]]; then
-			exit 1
-		fi
-
-		args=("$@")
-		new_args=()
-
-		for arg in "${args[@]}"; do
-			if [[ "$arg" != "debug" && "$arg" != "update" && "$arg" != "install_tools" && "$arg" != "install_core" && "$arg" != "bootstrap_deps" ]]; then
+		# Define excluded arguments
+		declare -a excluded_args=("debug" "update" "install_test" "install_core" "bootstrap_deps")
+		# Filter args, keeping only those not in excluded_args
+		for arg in "${@}"; do
+			if [[ ! "${excluded_args[*]}" =~ ([[:space:]]|^)(${arg})([[:space:]]|$) ]]; then
 				new_args+=("$arg")
 			fi
 		done
@@ -643,10 +658,16 @@ _check_dependencies() {
 		exit
 	fi
 
+	if [[ "${test_tools_missing}" == "true" && "${qbt_deps_required[*]}" =~ "false" ]] || [[ "${tools_yes_deps_no}" == "true" ]]; then
+		printf '\n'
+		exit 1
+	fi
+
 	# All dependency checks passed print
-	if [[ "${deps_installed}" != "no" ]]; then
+	if [[ ! "${qbt_deps_required[*]}" =~ "false" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle}${text_bold} Dependencies: All checks passed, continuing to build${color_end}"
 	fi
+
 }
 #######################################################################################################################################################
 # This function converts a version string to a number for comparison purposes.
@@ -936,7 +957,7 @@ _custom_flags_reset() {
 #######################################################################################################################################################
 _install_qbittorrent() {
 	if [[ -f "${qbt_install_dir}/completed/qbittorrent-nox" ]]; then
-		if [[ "$(id -un)" == 'root' ]]; then
+		if [[ "${qbt_privileges_required[root]}" == 'true' ]] || [[ "${qbt_privileges_required[sudo]}" == 'true' ]]; then
 			mkdir -p "/usr/local/bin"
 			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin"
 		else
@@ -946,7 +967,9 @@ _install_qbittorrent() {
 
 		printf '\n%b\n' " ${unicode_blue_light_circle} qbittorrent-nox has been installed!${color_end}"
 		printf '\n%b\n' " Run it using this command:"
-		[[ "$(id -un)" == 'root' ]] && printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}" || printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
+		if [[ "${qbt_privileges_required[root]}" == 'true' ]] || [[ "${qbt_privileges_required[sudo]}" == 'true' ]]; then
+			printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}" || printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
+		fi
 		exit
 	else
 		printf '\n%b\n\n' " ${unicode_red_circle} qbittorrent-nox has not been built to the defined install directory:"
