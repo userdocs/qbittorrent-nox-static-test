@@ -474,8 +474,6 @@ _check_dependencies() {
 
 		local silent="${1:-}"
 
-		echo "###################@" "$@"
-
 		filerterd_params=("$pparam")
 		for pparam in "$@"; do
 			if [[ "$pparam" != "silent" ]]; then
@@ -503,7 +501,6 @@ _check_dependencies() {
 			fi
 		done && unset qbt_tt
 
-		set -x
 		for qbt_mi in "${!qbt_modules_install[@]}"; do
 			if [[ "${filerterd_params[*]}" =~ ([[:space:]]|^)${qbt_mi}([[:space:]]|$) ]]; then
 				if [[ "${qbt_deps_required[*]}" =~ "false" ]]; then
@@ -513,7 +510,6 @@ _check_dependencies() {
 				fi
 			fi
 		done && unset qbt_mi
-		set +x
 	}
 
 	_check_tools_info "${@}"
@@ -550,6 +546,7 @@ _check_dependencies() {
 			if [[ -n "${pkg}" ]]; then
 				printf '%b\n' " ${unicode_red_circle} ${color_magenta}${pkg}${color_end}"
 				qbt_deps_required_checked+=("$pkg")
+				qbt_deps_required["${pkg}"]="false"
 			fi
 		fi
 	done < <(printf '%s\n' "${!qbt_deps_required[@]}" | sort)
@@ -582,13 +579,11 @@ _check_dependencies() {
 		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}test_tools${color_end} requirements${color_end}"
 	fi
 
-	set -x
 	if [[ "${tools_yes_deps_no}" == "true" ]]; then
 		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}build_tools${color_end} requirements${color_end}"
 	fi
-	set +x
-	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 
+	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
 	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
 
 		_update_os() {
@@ -667,7 +662,6 @@ _check_dependencies() {
 	if [[ ! "${qbt_deps_required[*]}" =~ "false" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle}${text_bold} Dependencies: All checks passed, continuing to build${color_end}"
 	fi
-
 }
 #######################################################################################################################################################
 # This function converts a version string to a number for comparison purposes.
