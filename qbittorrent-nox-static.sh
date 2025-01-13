@@ -204,7 +204,8 @@ _set_default_values() {
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
 
-	IFS=' ' read -r -a qbt_optimise <<< "${qbt_optimise:-}"
+	# provide gcc flags for the build - this is not used by default but can be set to provide custom flags for the build.
+	qbt_optimise="${qbt_optimise:-}"
 
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
@@ -391,7 +392,7 @@ _set_default_values() {
 	fi
 
 	# The default is 17 but can be manually defined via the env qbt_standard - this will be overridden by the _set_cxx_standard function in specific cases
-	qbt_standard="${qbt_standard:-17}" qbt_cxx_standard="c++${qbt_standard}"
+	qbt_standard="${qbt_standard:-20}" qbt_cxx_standard="c++${qbt_standard}"
 
 	# Set the working dir to our current location and all things well be relative to this location.
 	qbt_working_dir="$(pwd)"
@@ -702,12 +703,11 @@ _qbittorrent_std_cons() {
 
 _set_cxx_standard() {
 	if [[ $(_qt_std_cons) == "yes" && $(_libtorrent_std_cons) == "yes" && $(_qbittorrent_std_cons) == "yes" ]]; then
-		if [[ "${os_version_codename}" =~ ^(alpine|bookworm|jammy|noble)$ ]]; then
+		if [[ "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]]; then
 			qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
 		fi
 	fi
 }
-
 #######################################################################################################################################################
 # These functions set some build conditions dynmically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
@@ -917,18 +917,19 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3"
-	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
+	CFLAGS="${qbt_optimise/*/${qbt_optimise} }-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	CXXFLAGS="${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	CPPFLAGS="${qbt_optimise/*/${qbt_optimise} }${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3"
+	LDFLAGS="${qbt_optimise/*/${qbt_optimise} }${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
 }
 
 _custom_flags_reset() {
 	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} } -w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
+	CXXFLAGS="${qbt_optimise/*/${qbt_optimise} } -w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	CPPFLAGS="${qbt_optimise/*/${qbt_optimise} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
 	LDFLAGS=""
 }
+
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
 #######################################################################################################################################################
@@ -1037,9 +1038,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
-			github_tag[glibc]="glibc-2.31"
-		elif [[ "${os_version_codename}" =~ ^(bookworm|jammy)$ ]]; then
+		if [[ "${os_version_codename}" =~ ^(bookworm)$ ]]; then
 			github_tag[glibc]="glibc-2.38"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 			github_tag[glibc]="glibc-2.40"
@@ -1232,7 +1231,7 @@ _installation_modules() {
 
 		python_short_version="${python_major}.${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
@@ -1890,7 +1889,7 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
@@ -2069,9 +2068,14 @@ while (("${#}")); do
 			shift 2
 			;;
 		-o | --optimize)
-			if [[ -z ${qbt_cross_name} ]]; then
-				qbt_optimize="-march=native"
-				shift
+			if [[ -z "${qbt_cross_name}" ]]; then
+				if [[ -n "${2}" ]]; then
+					qbt_optimise="-march=native ${2}"
+					shift 2
+				else
+					qbt_optimise="-march=native"
+					shift 1
+				fi
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross compilation"
 				exit 1
