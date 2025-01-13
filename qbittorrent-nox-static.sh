@@ -99,13 +99,13 @@ os_version_id="$(get_os_info VERSION_ID)"                                       
 [[ "${os_id}" =~ ^(alpine)$ ]] && os_version_codename="alpine"                    # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3150}" ]]; then
+if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
 	printf '%b\n\n' " ${unicode_yellow_circle} ${text_dim}These are the supported platforms${color_end}"
-	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bookworm${color_end}"
-	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}noble${color_end}"
-	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.15.0${color_end} ${text_dim}or greater${color_end}"
+	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bullseye${color_end} - ${color_blue_light}bookworm${color_end}"
+	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}focal${color_end} - ${color_blue_light}jammy${color_end} - ${color_blue_light}noble${color_end}"
+	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.10.0${color_end} ${text_dim}or greater${color_end}"
 	exit 1
 fi
 #######################################################################################################################################################
@@ -203,9 +203,6 @@ _set_default_values() {
 
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
-
-	# Provide custom optimisations for gcc - default when activates by -o is "-march=native ${2}" e.g. -o "-march=native -O3"
-	mapfile -d ' ' -t qbt_optimize < <(printf '%s\n' "${qbt_optimize:-}")
 
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
@@ -938,15 +935,15 @@ _debug() {
 #######################################################################################################################################################
 _custom_flags_set() {
 	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimize[*]/*/${qbt_optimize[*]} }-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimize[*]/*/${qbt_optimize[*]} }${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3"
-	LDFLAGS="${qbt_optimize[*]/*/${qbt_optimize[*]} }${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} }${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3"
+	LDFLAGS="${qbt_optimize/*/${qbt_optimize} }${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
 }
 
 _custom_flags_reset() {
 	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimize[*]/*/${qbt_optimize[*]} } -w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimize[*]/*/${qbt_optimize[*]} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
+	CXXFLAGS="${qbt_optimize/*/${qbt_optimize} } -w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	CPPFLAGS="${qbt_optimize/*/${qbt_optimize} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
 	LDFLAGS=""
 }
 #######################################################################################################################################################
@@ -1251,7 +1248,7 @@ _installation_modules() {
 
 		python_short_version="${python_major}.${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize[*]/*/${qbt_optimize[*]} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize[*]/*/${qbt_optimize[*]} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
@@ -1909,7 +1906,7 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize[*]/*/${qbt_optimize[*]} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize[*]/*/${qbt_optimize[*]} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimize/*/${qbt_optimize} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
@@ -2089,13 +2086,7 @@ while (("${#}")); do
 			;;
 		-o | --optimize)
 			if [[ -z ${qbt_cross_name} ]]; then
-				qbt_optimize=("-march=native" "${2}")
-				mapfile -d ' ' -t qbt_optimize < <(printf '%s\n' "-march=native ${2}")
-				echo "#####: ${qbt_optimize[*]}"
-				echo "#####: ${!qbt_optimize[*]}"
-				echo "#####: ${#qbt_optimize[@]}"
-
-				exit
+				qbt_optimize="-march=native"
 				shift
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross compilation"
