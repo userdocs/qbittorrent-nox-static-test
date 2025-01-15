@@ -678,19 +678,22 @@ _print_env() {
 	printf '%b\n' " ${color_yellow_light}  qbt_optimise_strip=\"${color_green_light}${qbt_optimise_strip}${color_yellow_light}\"${color_end}"
 	printf '%b\n' " ${color_yellow_light}  qbt_build_debug=\"${color_green_light}${qbt_build_debug}${color_yellow_light}\"${color_end}"
 	printf '%b\n' " ${color_yellow_light}  qbt_standard=\"${color_green_light}${qbt_standard}${color_yellow_light}\"${color_end}"
-	printf '%b\n\n' " ${color_yellow_light}  qbt_static_ish=\"${color_green_light}${qbt_static_ish}${color_yellow_light}\"${color_end}"
+	printf '%b\n' " ${color_yellow_light}  qbt_static_ish=\"${color_green_light}${qbt_static_ish}${color_yellow_light}\"${color_end}"
+	printf '%b\n\n' " ${color_yellow_light}  qbt_optimise=\"${color_green_light}${qbt_optimise}${color_yellow_light}\"${color_end}"
 }
 #######################################################################################################################################################
-# These functions set the cxx standard dynmically based on the libtorrent versions, qt version and qbittorrent combinations
+# These functions set the cxx standard dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qt_std_cons() {
-	[[ "${qbt_qt_version}" == "6" ]] && cxx_check="yes"
+	if [[ "${qbt_qt_version}" == "6" ]]; then
+		cxx_check="yes"
+	fi
 	printf '%s' "${cxx_check:-no}"
 }
 
 _libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.20")" ]] && cxx_check="yes"
+	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] && cxx_check="yes"
 	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] && cxx_check="yes"
 	printf '%s' "${cxx_check:-no}"
 }
@@ -703,13 +706,13 @@ _qbittorrent_std_cons() {
 
 _set_cxx_standard() {
 	if [[ $(_qt_std_cons) == "yes" && $(_libtorrent_std_cons) == "yes" && $(_qbittorrent_std_cons) == "yes" ]]; then
-		if [[ "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]]; then
-			qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
-		fi
+		qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
+	else
+		qbt_standard="17" qbt_cxx_standard="c++${qbt_standard}"
 	fi
 }
 #######################################################################################################################################################
-# These functions set some build conditions dynmically based on the libtorrent versions, qt version and qbittorrent combinations
+# These functions set some build conditions dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qbittorrent_build_cons() {
 	[[ "${github_tag[qbittorrent]}" == "master" ]] && disable_qt5="yes"
@@ -929,7 +932,6 @@ _custom_flags_reset() {
 	CPPFLAGS="${qbt_optimise/*/${qbt_optimise} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
 	LDFLAGS=""
 }
-
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
 #######################################################################################################################################################
@@ -2084,6 +2086,11 @@ while (("${#}")); do
 		-s | --strip)
 			qbt_optimise_strip="yes"
 			shift
+			;;
+		-bs-env | --bootstrap-env)
+			if [[ -f '.qbt_env' ]]; then printf '\n'; fi
+			_print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/\x1B\[93m//g' -e 's/\x1B\[92m//g' -e 's/\x1B\[0m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > .qbt_env
+			exit
 			;;
 		-si | --static-ish)
 			if [[ -z ${qbt_cross_name} ]]; then
