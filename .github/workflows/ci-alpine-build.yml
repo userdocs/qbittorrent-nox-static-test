@@ -100,10 +100,10 @@ jobs:
         run: docker exec -w /root multiarch apk add bash
 
       - name: Docker - Bootstrap deps ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh bootstrap_deps
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh -bs-a
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash -bs-a
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -118,43 +118,43 @@ jobs:
 
       - name: Docker - zlib-ng ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh zlib
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash zlib
 
       - name: Docker - iconv ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh iconv
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash iconv
 
       - name: Docker - icu ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh icu
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash icu
 
       - name: Docker - openssl ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh openssl
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash openssl
 
       - name: Docker - boost ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh boost
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash boost
 
       - name: Docker - libtorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh libtorrent
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash libtorrent
 
       - name: Docker - double_conversion ${{ inputs.distinct_id }}
         if: matrix.qbt_build_tool == '' && env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh double_conversion
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash double_conversion
 
       - name: Docker - qtbase ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qtbase
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash qtbase
 
       - name: Docker - qttools ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qttools
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash qttools
 
       - name: Docker - qbittorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbittorrent-nox-static.sh qbittorrent
+        run: docker exec -w /root multiarch bash qbt-nox-static.bash qbittorrent
 
       - name: Docker - Set release asset name ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
