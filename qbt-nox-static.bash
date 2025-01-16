@@ -2080,7 +2080,7 @@ while (("${#}")); do
 			shift 2
 			;;
 		-o | --optimize)
-			if [[ "${qbt_cross_name}" == "default" ]]; then
+			if [[ -z "${qbt_cross_name}" ]] || [[ "${qbt_cross_name}" == "default" ]]; then
 				if [[ -n "${2}" ]]; then
 					qbt_optimise="-march=native ${2}"
 					shift 2
@@ -2103,7 +2103,7 @@ while (("${#}")); do
 			exit
 			;;
 		-si | --static-ish)
-			if [[ "${qbt_cross_name}" == "default" ]]; then
+			if [[ -z "${qbt_cross_name}" ]] || [[ "${qbt_cross_name}" == "default" ]]; then
 				qbt_static_ish="yes"
 				shift
 			else
@@ -2179,7 +2179,6 @@ while (("${#}")); do
 			fi
 			;;
 		-bs-a | --bootstrap-all)
-			_print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/\x1B\[93m//g' -e 's/\x1B\[92m//g' -e 's/\x1B\[0m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > .qbt_env
 			_apply_patches bootstrap
 			_release_info
 			_cmake
@@ -2324,7 +2323,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--cmake${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-cmake${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--cache-directory${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-cache-directory${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--debug${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-debug${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-env${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-env${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-env${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-patches${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-cmake${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-cmake${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-release${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-release${color_end}"
@@ -2395,10 +2394,10 @@ while (("${#}")); do
 			;;
 		-h-bs-e | --help-bootstrap-env)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
-			printf '\n%b\n' " Create then env file ${color_cyan}.qbt_env${color_end}"
+			printf '\n%b\n' " Create the template env file ${color_cyan}.qbt_env${color_end}"
 			printf '\n%b\n' " Notes:"
 			printf '\n%b\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-e${color_end} it will create a default env file with empty vars and exit"
-			printf '\n%b\n\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-a${color_end} it will create the env file with the vars set by the script"
+			printf '\n%b\n\n' " ${unicode_yellow_circle} Order of priotiry: script flags > env file > env vars"
 			exit
 			;;
 		-h-bs-p | --help-bootstrap-patches)
