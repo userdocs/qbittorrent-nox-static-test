@@ -945,17 +945,17 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CFLAGS="${qbt_optimise/*/${qbt_optimise} }-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimise/*/${qbt_optimise} }${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3"
-	LDFLAGS="${qbt_optimise/*/${qbt_optimise} }${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
+		CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
+		CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
+		CPPFLAGS="${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3 ${qbt_optimise/*/${qbt_optimise} }"
+		LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
 }
 
 _custom_flags_reset() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CXXFLAGS="${qbt_optimise/*/${qbt_optimise} } -w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	CPPFLAGS="${qbt_optimise/*/${qbt_optimise} } -w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro"
-	LDFLAGS=""
+		CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
+		CXXFLAGS="-w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
+		CPPFLAGS="-w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
+		LDFLAGS=""
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
