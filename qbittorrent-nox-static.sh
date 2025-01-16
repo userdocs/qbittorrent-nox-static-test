@@ -496,6 +496,21 @@ _semantic_version() {
 	printf "%d%03d%03d%03d" "${test_array[@]}"
 }
 #######################################################################################################################################################
+# Script Version check
+#######################################################################################################################################################
+_script_version() {
+	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
+
+	if [[ "$(_semantic_version "${script_version}")" -lt "$(_semantic_version "${script_version_remote}")" ]]; then
+		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end} Script update available! Versions - ${color_yellow_light}local:${color_red_light}${script_version}${color_end} ${color_yellow_light}remote:${color_green_light}${script_version_remote}${color_end}"
+		printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${color_end}"
+	elif [[ "$(_semantic_version "${script_version}")" -gt "$(_semantic_version "${script_version_remote}")" ]]; then
+		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_red_light}${script_version}-dev${color_end}"
+	else
+		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_green_light}${script_version}${color_end}"
+	fi
+}
+#######################################################################################################################################################
 # This function will check for a list of defined dependencies from the qbt_core_deps array. Apps like python3-dev are dynamically set
 #######################################################################################################################################################
 _check_dependencies() {
@@ -575,7 +590,6 @@ _check_dependencies() {
 				unset "build_tools[${qbt_tt}]"
 			fi
 		done < <(printf '%s\n' "${!qbt_test_tools[@]}" | sort)
-		unset qbt_tt
 
 		# remove packages in the qbt_deps_delete arrays from the qbt_core_deps array
 
@@ -614,13 +628,14 @@ _check_dependencies() {
 				fi
 			fi
 		done < <(printf '%s\n' "${!qbt_core_deps[@]}" | sort)
-	} && unset pkg
+	}
 
 	_check_dependency_status "${@}"
 
 	_privilege_check
 
 	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
+
 		if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
 			printf '\n%b\n\n' " $unicode_blue_circle ${color_blue}Info:${color_end} $script_full_path"
 
@@ -635,6 +650,7 @@ _check_dependencies() {
 			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ install core build deps"
 			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install (test + core)"
 		fi
+
 	else
 		printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
 		printf '%b\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: ${color_magenta}test_tools${color_end} are required to access basic features of the script.${color_end}"
@@ -875,41 +891,47 @@ _boost_url() {
 #######################################################################################################################################################
 _debug() {
 	if [[ "${script_debug_urls}" == "yes" ]]; then
-		mapfile -t github_url_sorted < <(printf '%s\n' "${!github_url[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_url${color_end}"
-		for n in "${github_url_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_url[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r github_url_sorted; do
+			for n in "${github_url_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_url[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!github_url[@]}" | sort)
 
-		mapfile -t github_tag_sorted < <(printf '%s\n' "${!github_tag[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_tag${color_end}"
-		for n in "${github_tag_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_tag[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r github_tag_sorted; do
+			for n in "${github_tag_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_tag[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!github_tag[@]}" | sort)
 
-		mapfile -t app_version_sorted < <(printf '%s\n' "${!app_version[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}app_version${color_end}"
-		for n in "${app_version_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${app_version[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r app_version_sorted; do
+			for n in "${app_version_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${app_version[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!app_version[@]}" | sort)
 
-		mapfile -t source_archive_url_sorted < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_archive_url${color_end}"
-		for n in "${source_archive_url_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_archive_url[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r source_archive_url_sorted; do
+			for n in "${source_archive_url_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_archive_url[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
 
-		mapfile -t qbt_workflow_archive_url_sorted < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}qbt_workflow_archive_url${color_end}"
-		for n in "${qbt_workflow_archive_url_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${qbt_workflow_archive_url[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r qbt_workflow_archive_url_sorted; do
+			for n in "${qbt_workflow_archive_url_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${qbt_workflow_archive_url[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
 
-		mapfile -t source_default_sorted < <(printf '%s\n' "${!source_default[@]}" | sort)
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_default${color_end}"
-		for n in "${source_default_sorted[@]}"; do
-			printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_default[$n]}${color_end}" #: ${github_url[$n]}"
-		done
+		while IFS= read -r source_default_sorted; do
+			for n in "${source_default_sorted[@]}"; do
+				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_default[$n]}${color_end}"
+			done
+		done < <(printf '%s\n' "${!source_default[@]}" | sort)
 
 		printf '\n%b\n' " ${unicode_magenta_circle} ${color_yellow_light}Tests${color_end}"
 		printf '\n%b\n' " ${color_green_light}boost_url_status:${color_end} ${color_blue_light}${boost_url_status}${color_end}"
@@ -959,21 +981,6 @@ _install_qbittorrent() {
 		printf '\n%b\n' "${color_green}${qbt_install_dir_short}/completed${color_end}"
 		printf '\n%b\n\n' "Please build it using the script first then install"
 		exit
-	fi
-}
-#######################################################################################################################################################
-# Script Version check
-#######################################################################################################################################################
-_script_version() {
-	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
-
-	if [[ "$(_semantic_version "${script_version}")" -lt "$(_semantic_version "${script_version_remote}")" ]]; then
-		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end} Script update available! Versions - ${color_yellow_light}local:${color_red_light}${script_version}${color_end} ${color_yellow_light}remote:${color_green_light}${script_version_remote}${color_end}"
-		printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${color_end}"
-	elif [[ "$(_semantic_version "${script_version}")" -gt "$(_semantic_version "${script_version_remote}")" ]]; then
-		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_red_light}${script_version}-dev${color_end}"
-	else
-		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_green_light}${script_version}${color_end}"
 	fi
 }
 #######################################################################################################################################################
