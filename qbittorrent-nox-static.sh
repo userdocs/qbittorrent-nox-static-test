@@ -1180,7 +1180,7 @@ _sort_modules() {
 	if [[ ${#qbt_modules_install_sorted[@]} -eq 0 ]]; then
 		for qbt_mo in "${qbt_modules_order[@]}"; do
 			if [[ -v qbt_modules_install["$qbt_mo"] ]]; then
-				qbt_modules_install_sorted+=("$mod")
+				qbt_modules_install_sorted+=("$qbt_mo")
 				modules_sorted="yes"
 			fi
 		done && unset qbt_mo
