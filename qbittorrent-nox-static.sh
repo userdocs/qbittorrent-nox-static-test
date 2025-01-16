@@ -249,7 +249,7 @@ _set_default_values() {
 
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
 
-		if [[ ${qbt_cross_name} != "default" ]]; then
+		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
 			exit 1
 		fi
@@ -1921,7 +1921,7 @@ _multi_arch() {
 _release_info() {
 	_error_tag
 
-	printf '\n%b\n' " ${unicode_green_circle} ${color_yellow_light}Release boot-strapped${color_end}"
+	printf '\n%b\n' " ${unicode_green_circle} ${color_yellow_light}Release bootstrapped${color_end}"
 
 	release_info_dir="${qbt_install_dir}/release_info"
 
@@ -2022,7 +2022,7 @@ while (("${#}")); do
 				exit 1
 			fi
 			;;
-		-bs-c | --boot-strap-cmake)
+		-bs-c | --bootstrap-cmake)
 			qbt_build_tool="cmake"
 			params1+=("-bs-c")
 			shift
@@ -2080,7 +2080,7 @@ while (("${#}")); do
 			shift 2
 			;;
 		-o | --optimize)
-			if [[ -z "${qbt_cross_name}" ]]; then
+			if [[ "${qbt_cross_name}" == "default" ]]; then
 				if [[ -n "${2}" ]]; then
 					qbt_optimise="-march=native ${2}"
 					shift 2
@@ -2103,7 +2103,7 @@ while (("${#}")); do
 			exit
 			;;
 		-si | --static-ish)
-			if [[ -z ${qbt_cross_name} ]]; then
+			if [[ "${qbt_cross_name}" == "default" ]]; then
 				qbt_static_ish="yes"
 				shift
 			else
@@ -2153,19 +2153,19 @@ _script_version         # see functions
 #######################################################################################################################################################
 while (("${#}")); do
 	case "${1}" in
-		-bs-p | --boot-strap-patches)
+		-bs-p | --bootstrap-patches)
 			_apply_patches bootstrap
 			shift
 			;;
-		-bs-c | --boot-strap-cmake)
+		-bs-c | --bootstrap-cmake)
 			_cmake
 			shift
 			;;
-		-bs-r | --boot-strap-release)
+		-bs-r | --bootstrap-release)
 			_release_info
 			shift
 			;;
-		-bs-ma | --boot-strap-multi-arch)
+		-bs-ma | --bootstrap-multi-arch)
 			if [[ "${multi_arch_options[${qbt_cross_name}]}" == "${qbt_cross_name}" ]]; then
 				_multi_arch
 				shift
@@ -2178,7 +2178,8 @@ while (("${#}")); do
 				exit 1
 			fi
 			;;
-		-bs-a | --boot-strap-all)
+		-bs-a | --bootstrap-all)
+			_print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/\x1B\[93m//g' -e 's/\x1B\[92m//g' -e 's/\x1B\[0m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > .qbt_env
 			_apply_patches bootstrap
 			_release_info
 			_cmake
@@ -2323,11 +2324,12 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--cmake${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-cmake${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--cache-directory${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-cache-directory${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--debug${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-debug${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--boot-strap-patches${color_end}    ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-boot-strap-patches${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--boot-strap-cmake${color_end}      ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-boot-strap-cmake${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--boot-strap-release${color_end}    ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-boot-strap-release${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-ma${color_end} ${text_dim}or${color_end} ${color_blue_light}--boot-strap-multi-arch${color_end} ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-ma${color_end} ${text_dim}or${color_end} ${color_blue_light}--help-boot-strap-multi-arch${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-a${color_end}  ${text_dim}or${color_end} ${color_blue_light}--boot-strap-all${color_end}        ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-a${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-boot-strap-all${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-env${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-patches${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-cmake${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-cmake${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-release${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-release${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-ma${color_end} ${text_dim}or${color_end} ${color_blue_light}--bootstrap-multi-arch${color_end}  ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-ma${color_end} ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-multi-arch${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-a${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-all${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-a${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-all${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-i${color_end}     ${text_dim}or${color_end} ${color_blue_light}--icu${color_end}                   ${color_yellow}Help:${color_end} ${color_blue_light}-h-i${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-icu${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-lm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--libtorrent-master${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-lm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-libtorrent-master${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-lt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--libtorrent-tag${color_end}        ${color_yellow}Help:${color_end} ${color_blue_light}-h-lt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-libtorrent-tag${color_end}"
@@ -2391,7 +2393,15 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${text_dim}${unicode_blue_light_circle} Usage example:${color_end} ${text_dim}${color_green}${qbt_working_dir_short}/${script_basename}${color_end} ${text_dim}${color_magenta_light}module${color_end} ${color_blue_light}-b${color_end} ${text_dim}${color_cyan_light}\"\$HOME/build\"${color_end} ${text_dim}- will specify a custom build directory and install a specific module use to that custom location${color_end}"
 			exit
 			;;
-		-h-bs-p | --help-boot-strap-patches)
+		-h-bs-e | --help-bootstrap-env)
+			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
+			printf '\n%b\n' " Create then env file ${color_cyan}.qbt_env${color_end}"
+			printf '\n%b\n' " Notes:"
+			printf '\n%b\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-e${color_end} it will create a default env file with empty vars and exit"
+			printf '\n%b\n\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-a${color_end} it will create the env file with the vars set by the script"
+			exit
+			;;
+		-h-bs-p | --help-bootstrap-patches)
 			_apply_patches bootstrap-help
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " Creates dirs in this structure: ${color_cyan}${qbt_install_dir_short}/patches/app_name/tag/patch${color_end}"
@@ -2400,13 +2410,13 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${color_cyan}${qbt_install_dir_short}/patches/qbittorrent/${app_version[qbittorrent]}/patch${color_end}"
 			exit
 			;;
-		-h-bs-c | --help-boot-strap-cmake)
+		-h-bs-c | --help-bootstrap-cmake)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " This bootstrap will install cmake and ninja build to the build directory"
 			printf '\n%b\n\n'"${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-c${color_end}"
 			exit
 			;;
-		-h-bs-r | --help-boot-strap-release)
+		-h-bs-r | --help-bootstrap-release)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' "${color_red_light} Github action specific. You probably dont need it${color_end}"
 			printf '\n%b\n' " This switch creates some github release template files in this directory"
@@ -2414,7 +2424,7 @@ while (("${#}")); do
 			printf '\n%b\n\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-r${color_end}"
 			exit
 			;;
-		-h-bs-ma | --help-boot-strap-multi-arch)
+		-h-bs-ma | --help-bootstrap-multi-arch)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " ${unicode_red_circle}${color_red_light} Github action and Alpine specific. You probably dont need it${color_end}"
 			printf '\n%b\n' " This switch bootstraps the musl cross build files needed for any provided and supported architecture"
@@ -2425,7 +2435,7 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${unicode_yellow_circle} You can also set it as a variable to trigger cross building: ${color_blue_light}export qbt_cross_name=${qbt_cross_name:-aarch64}${color_end}"
 			exit
 			;;
-		-h-bs-a | --help-boot-strap-all)
+		-h-bs-a | --help-bootstrap-all)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " ${unicode_red_circle}${color_red_light} Github action specific and Alpine only. You probably dont need it${color_end}"
 			printf '\n%b\n' " Performs all bootstrapping options"
@@ -2438,7 +2448,7 @@ while (("${#}")); do
 			printf '\n%b\n\n' " And with ${color_blue_light}-c${color_end} and ${color_blue_light}-ma${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs -bs-c -bs-ma -bs-r ${color_end}"
 			exit
 			;;
-		-h-bt | --help-boost-version)
+		-h-bt | --help-boost-tag)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " This will let you set a specific version of boost to use with older build combos"
 			printf '\n%b\n' " ${unicode_blue_light_circle} Usage example: ${color_blue_light}-bt boost-1.81.0${color_end}"
@@ -2492,7 +2502,7 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${color_blue_light}-lm${color_end}"
 			exit
 			;;
-		-h-ma | --help-multi-arch)
+		-h-ma | --help-multiarch)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " ${unicode_red_circle}${color_red_light} Github action and Alpine specific. You probably dont need it${color_end}"
 			printf '\n%b\n' " This switch will make the script use the cross build configuration for these supported architectures"
