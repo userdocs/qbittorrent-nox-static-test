@@ -2097,8 +2097,8 @@ while (("${#}")); do
 			qbt_optimise_strip="yes"
 			shift
 			;;
-		-bs-env | --bootstrap-env)
-			if [[ -f '.qbt_env' ]]; then printf '\n'; fi
+		-bs-e | --bootstrap-env)
+			printf '\n%b\n\n' " ${unicode_green_light_circle} A template .qbt_env has been created${color_end}"
 			_print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/\x1B\[93m//g' -e 's/\x1B\[92m//g' -e 's/\x1B\[0m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > .qbt_env
 			exit
 			;;
