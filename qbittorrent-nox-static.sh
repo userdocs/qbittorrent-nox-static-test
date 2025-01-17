@@ -363,7 +363,7 @@ _qbittorrent_std_cons() {
 }
 
 _set_cxx_standard() {
-	if [[ "$(_qt_std_cons)" == "yes" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" && "$(_os_std_cons)" ]]; then
+	if [[ "$(_qt_std_cons)" == "yes" && "$(_os_std_cons)" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" ]]; then
 		qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
 	else
 		qbt_standard="17" qbt_cxx_standard="c++${qbt_standard}"
