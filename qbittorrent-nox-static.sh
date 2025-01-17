@@ -108,7 +108,7 @@ if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble
 	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bullseye${color_end} - ${color_blue_light}bookworm${color_end}"
 	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}focal${color_end} - ${color_blue_light}jammy${color_end} - ${color_blue_light}noble${color_end}"
 	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.10.0${color_end} ${text_dim}or greater${color_end}"
-	exit 1
+	exit
 fi
 #######################################################################################################################################################
 # Source env vars from a file if it exists but it will be overridden by switches and flags passed to the script
