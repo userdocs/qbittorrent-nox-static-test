@@ -422,8 +422,9 @@ _qt_std_cons() {
 }
 
 _os_std_cons() {
-	[[ "${os_id}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || printf 'no'
+	[[ "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || printf 'no'
 }
+
 _libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] \
 		|| [[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] \
