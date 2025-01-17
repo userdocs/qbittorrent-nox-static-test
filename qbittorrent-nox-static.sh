@@ -347,8 +347,9 @@ _qt_std_cons() {
 }
 
 _os_std_cons() {
-	[[ "${os_id}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || printf 'no'
+	[[ "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || printf 'no'
 }
+
 _libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] \
 		|| [[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] \
@@ -385,7 +386,7 @@ _set_build_cons() {
 		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
 		exit
 	elif [[ "$(_qbittorrent_build_cons)" == "yes" && "$(_os_std_cons)" == "no" ]]; then
-		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++ std 20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
 		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
 		exit
 	fi
