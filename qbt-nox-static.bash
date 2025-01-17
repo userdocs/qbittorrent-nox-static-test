@@ -418,27 +418,27 @@ _set_default_values() {
 # These functions set the cxx standard dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qt_std_cons() {
-	if [[ "${qbt_qt_version}" == "6" ]]; then
-		cxx_check="yes"
-	fi
-	printf '%s' "${cxx_check:-no}"
+	[[ "${qbt_qt_version}" == "6" ]] && printf "yes" || return
 }
 
+_os_std_cons() {
+	[[ "${os_id}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || return
+}
 _libtorrent_std_cons() {
-	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] && cxx_check="yes"
-	[[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] && cxx_check="yes"
-	printf '%s' "${cxx_check:-no}"
+	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] \
+		|| [[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] \
+		|| [[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] \
+		&& printf "yes" || return
 }
 
 _qbittorrent_std_cons() {
-	[[ "${github_tag[qbittorrent]}" == "master" ]] && cxx_check="yes"
-	[[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]] && cxx_check="yes"
-	printf '%s' "${cxx_check:-no}"
+	[[ "${github_tag[qbittorrent]}" == "master" ]] \
+		|| [[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]] \
+		&& printf "yes" || return
 }
 
 _set_cxx_standard() {
-	if [[ $(_qt_std_cons) == "yes" && $(_libtorrent_std_cons) == "yes" && $(_qbittorrent_std_cons) == "yes" ]]; then
+	if [[ "$(_qt_std_cons)" == "yes" && "$(_os_std_cons)" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" ]]; then
 		qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
 	else
 		qbt_standard="17" qbt_cxx_standard="c++${qbt_standard}"

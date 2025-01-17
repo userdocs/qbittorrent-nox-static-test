@@ -340,7 +340,7 @@ _set_default_values() {
 	fi
 }
 #######################################################################################################################################################
-# These functions set the cxx standard dynmically based on the libtorrent versions, qt version and qbittorrent combinations
+# These functions set the cxx standard dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qt_std_cons() {
 	[[ "${qbt_qt_version}" == "6" ]] && printf "yes" || return
