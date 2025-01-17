@@ -20,7 +20,10 @@ on:
         description: "debug builds"
         required: true
         type: string
-
+      script_name:
+        description: "script name"
+        required: true
+        type: string
 jobs:
   build-alpine:
     runs-on: ubuntu-24.04
@@ -44,6 +47,7 @@ jobs:
 
     env:
       qbt_build_dir: "qbt-build"
+      script_name: ${{ inputs.script_name }}
 
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
@@ -100,10 +104,10 @@ jobs:
         run: docker exec -w /root multiarch apk add bash
 
       - name: Docker - Bootstrap deps ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash bootstrap_deps
+        run: docker exec -w /root multiarch bash ${script_name} bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash -bs-a
+        run: docker exec -w /root multiarch bash ${script_name} -bs-a
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -118,43 +122,43 @@ jobs:
 
       - name: Docker - zlib-ng ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash zlib
+        run: docker exec -w /root multiarch bash ${script_name} zlib
 
       - name: Docker - iconv ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash iconv
+        run: docker exec -w /root multiarch bash ${script_name} iconv
 
       - name: Docker - icu ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash icu
+        run: docker exec -w /root multiarch bash ${script_name} icu
 
       - name: Docker - openssl ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash openssl
+        run: docker exec -w /root multiarch bash ${script_name} openssl
 
       - name: Docker - boost ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash boost
+        run: docker exec -w /root multiarch bash ${script_name} boost
 
       - name: Docker - libtorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash libtorrent
+        run: docker exec -w /root multiarch bash ${script_name} libtorrent
 
       - name: Docker - double_conversion ${{ inputs.distinct_id }}
         if: matrix.qbt_build_tool == '' && env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash double_conversion
+        run: docker exec -w /root multiarch bash ${script_name} double_conversion
 
       - name: Docker - qtbase ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash qtbase
+        run: docker exec -w /root multiarch bash ${script_name} qtbase
 
       - name: Docker - qttools ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash qttools
+        run: docker exec -w /root multiarch bash ${script_name} qttools
 
       - name: Docker - qbittorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -w /root multiarch bash qbt-nox-static.bash qbittorrent
+        run: docker exec -w /root multiarch bash ${script_name} qbittorrent
 
       - name: Docker - Set release asset name ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'

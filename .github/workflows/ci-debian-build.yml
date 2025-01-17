@@ -19,6 +19,10 @@ on:
         description: "debug builds"
         required: true
         type: string
+      script_name:
+        description: "script name"
+        required: true
+        type: string
 
 jobs:
   build:
@@ -45,10 +49,13 @@ jobs:
             qbt_qt_version: "6"
 
     name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
+
     env: # host
       qbt_build_dir: "qbt-build"
       disable_qt5: ""
       artifact_name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
+      script_name: ${{ inputs.script_name }}
+
     container:
       image: ${{ matrix.container_id }}:${{ matrix.container_codename }}
       env: # container
@@ -83,10 +90,10 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap deps ${{ inputs.distinct_id }}
-        run: bash qbt-nox-static.bash bootstrap_deps
+        run: bash ${script_name} bootstrap_deps
 
       - name: Bootstrap build ${{ inputs.distinct_id }}
-        run: bash qbt-nox-static.bash -bs-a
+        run: bash ${script_name} -bs-a
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -100,47 +107,47 @@ jobs:
 
       - name: glibc ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash glibc
+        run: bash ${script_name} glibc
 
       - name: zlib ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash zlib
+        run: bash ${script_name} zlib
 
       - name: iconv ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash iconv
+        run: bash ${script_name} iconv
 
       - name: icu ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash icu
+        run: bash ${script_name} icu
 
       - name: openssl ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash openssl
+        run: bash ${script_name} openssl
 
       - name: boost ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash boost
+        run: bash ${script_name} boost
 
       - name: libtorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash libtorrent
+        run: bash ${script_name} libtorrent
 
       - name: double conversion ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes' && matrix.qbt_build_tool == 'cmake'
-        run: bash qbt-nox-static.bash double_conversion
+        run: bash ${script_name} double_conversion
 
       - name: qtbase ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash qtbase
+        run: bash ${script_name} qtbase
 
       - name: qttools ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash qttools
+        run: bash ${script_name} qttools
 
       - name: qbittorrent ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: bash qbt-nox-static.bash qbittorrent
+        run: bash ${script_name} qbittorrent
 
       - name: Upload ${{ env.artifact_name }} artifacts ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
