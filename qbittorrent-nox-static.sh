@@ -31,9 +31,8 @@ unset qbt_skip_delete qbt_git_proxy qbt_curl_proxy qbt_install_dir qbt_working_d
 #################################################################################################################################################
 # Declare our associative arrays
 #################################################################################################################################################
-declare -gA multi_arch_options qbt_test_tools qbt_core_deps qbt_deps_delete qbt_modules_delete skip_modules qbt_modules_install
+declare -gA multi_arch_options skip_modules
 declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url qbt_workflow_override source_default
-declare -ga qbt_modules_order qbt_modules_install_sorted
 #################################################################################################################################################
 # Color me up Scotty - define some color values to use as variables in the scripts.
 #################################################################################################################################################
@@ -102,13 +101,13 @@ os_version_id="$(get_os_info VERSION_ID)"                                       
 [[ "${os_id}" =~ ^(alpine)$ ]] && os_version_codename="alpine"                    # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! "${os_version_codename}" =~ ^(alpine|bookworm|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3150}" ]]; then
+if [[ ! "${os_version_codename}" =~ ^(alpine|bullseye|bookworm|focal|jammy|noble)$ ]] || [[ "${os_version_codename}" =~ ^(alpine)$ && "${os_version_id//\./}" -lt "${alpine_min_version:-3100}" ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
 	printf '%b\n\n' " ${unicode_yellow_circle} ${text_dim}These are the supported platforms${color_end}"
-	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bookworm${color_end}"
-	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}noble${color_end}"
-	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.15.0${color_end} ${text_dim}or greater${color_end}"
+	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bullseye${color_end} - ${color_blue_light}bookworm${color_end}"
+	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}focal${color_end} - ${color_blue_light}jammy${color_end} - ${color_blue_light}noble${color_end}"
+	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.10.0${color_end} ${text_dim}or greater${color_end}"
 	exit 1
 fi
 #######################################################################################################################################################
@@ -233,6 +232,15 @@ _set_default_values() {
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
 
+	# Define our list of available modules in an array.
+	qbt_modules=("all" "install" "glibc" "zlib" "iconv" "icu" "openssl" "boost" "libtorrent" "double_conversion" "qtbase" "qttools" "qbittorrent")
+
+	# Create this array empty. Modules listed in or added to this array will be removed from the default list of modules, changing the behaviour of all or install
+	delete=()
+
+	# Create this array empty. Packages listed in or added to this array will be removed from the default list of packages, changing the list of installed dependencies
+	delete_pkgs=()
+
 	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
 	if [[ "${qbt_build_debug}" = "yes" ]]; then
 		qbt_optimise_strip="no"
@@ -247,7 +255,7 @@ _set_default_values() {
 	if [[ ${qbt_static_ish:=no} == "yes" ]]; then
 		qbt_ldflags_static=""
 
-		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
+		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then delete+=("glibc"); fi
 
 		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
@@ -294,100 +302,25 @@ _set_default_values() {
 		_multi_arch info_bootstrap
 	else
 		cross_arch="$(uname -m)"
-		qbt_deps_delete["crossbuild-essential-${cross_arch}"]="true"
+		delete_pkgs+=("crossbuild-essential-${cross_arch}")
 	fi
 
-	#######################################################################################################################################################
-	# Create some associative arrays to use with checks to establish, modules, dependencies, privileges and required tools for the script to run.
-	#######################################################################################################################################################
-
-	# Define our list of available modules in a associative array for checks and a indexed array for order.
-	qbt_modules_install["all"]="true" && qbt_modules_order=("all")
-	qbt_modules_install["install"]="true" && qbt_modules_order+=("install")
-	qbt_modules_install["glibc"]="true" && qbt_modules_order+=("glibc")
-	qbt_modules_install["zlib"]="true" && qbt_modules_order+=("zlib")
-	qbt_modules_install["iconv"]="true" && qbt_modules_order+=("iconv")
-	qbt_modules_install["icu"]="true" && qbt_modules_order+=("icu")
-	qbt_modules_install["openssl"]="true" && qbt_modules_order+=("openssl")
-	qbt_modules_install["boost"]="true" && qbt_modules_order+=("boost")
-	qbt_modules_install["libtorrent"]="true" && qbt_modules_order+=("libtorrent")
-	qbt_modules_install["double_conversion"]="true" && qbt_modules_order+=("double_conversion")
-	qbt_modules_install["qtbase"]="true" && qbt_modules_order+=("qtbase")
-	qbt_modules_install["qttools"]="true" && qbt_modules_order+=("qttools")
-	qbt_modules_install["qbittorrent"]="true" && qbt_modules_order+=("qbittorrent")
-
-	# Define our list privilege checks
-	qbt_privileges_required["root"]="false"
-	qbt_privileges_required["sudo"]="false"
-
-	# Define our list of required test tools to performs basic script functions
-	qbt_test_tools["curl"]="false"
-	qbt_test_tools["bash"]="false"
-	qbt_test_tools["git"]="false"
-
-	# Define our list of required dependencies per supported OS for the script to run
-	if [[ "${os_id}" =~ ^(alpine)$ ]]; then # Alpine specific dependencies
-		qbt_modules_delete["glibc"]="true"
-
-		if [[ -z "${qbt_cache_dir}" ]]; then
-			qbt_deps_delete["coreutils"]="true"
-			qbt_deps_delete["gpg"]="true"
-		fi
-
-		qbt_core_deps["autoconf"]="false"
-		qbt_core_deps["build-base"]="false"
-		qbt_core_deps["coreutils"]="false"
-		qbt_core_deps["cmake"]="false"
-		qbt_core_deps["gpg"]="false"
-		qbt_core_deps["linux-headers"]="false"
-		qbt_core_deps["pkgconf"]="false"
-		qbt_core_deps["py${qbt_python_version}-numpy"]="false"
-		qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
-		qbt_core_deps["ttf-freefont"]="false"
+	# if Alpine then delete modules we don't use and set the required packages array
+	if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+		delete+=("glibc")
+		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("coreutils" "gpg")
+		qbt_required_pkgs=("autoconf" "automake" "bash" "bash-completion" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
 	fi
 
-	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then # Debian specific dependencies
-		if [[ -z "${qbt_cache_dir}" ]]; then
-			qbt_deps_delete["autopoint"]="true"
-			qbt_deps_delete["gperf"]="true"
-		fi
-
-		if [[ -z "${qbt_cache_dir}" ]]; then
-			qbt_deps_delete["autopoint"]="true"
-			qbt_deps_delete["gperf"]="true"
-		fi
-
-		qbt_core_deps["autopoint"]="false"
-		qbt_core_deps["gperf"]="false"
-		qbt_core_deps["bison"]="false"
-		qbt_core_deps["build-essential"]="false"
-		qbt_core_deps["crossbuild-essential-${cross_arch}"]="false"
-		qbt_core_deps["gettext"]="false"
-		qbt_core_deps["gawk"]="false"
-		qbt_core_deps["openssl"]="false"
-		qbt_core_deps["pkg-config"]="false"
-		qbt_core_deps["python${qbt_python_version}-numpy"]="false"
-		qbt_core_deps["texinfo"]="false"
-		qbt_core_deps["unzip"]="false"
-
+	# if debian based then set the required packages array
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+		[[ -z "${qbt_cache_dir}" ]] && delete_pkgs+=("autopoint" "gperf")
+		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
 	fi
-
-	# Deps with same package name across Alpine and Debian based systems
-	qbt_core_deps["perl"]="false"
-	qbt_core_deps["python${qbt_python_version}"]="false"
-	qbt_core_deps["python${qbt_python_version}-dev"]="false"
-	qbt_core_deps["curl"]="false"
-	qbt_core_deps["git"]="false"
-	qbt_core_deps["graphviz"]="false"
-	qbt_core_deps["libtool"]="false"
-	qbt_core_deps["libtool"]="false"
-	qbt_core_deps["bash"]="false"
-	qbt_core_deps["automake"]="false"
-	qbt_core_deps["re2c"]="false"
 
 	# remove this module by default unless provided as a first argument to the script.
 	if [[ "${1}" != 'install' ]]; then
-		qbt_modules_delete["install"]="true"
+		delete+=("install")
 	fi
 
 	# Don't remove the icu module if it was provided as a positional parameter.
@@ -395,27 +328,19 @@ _set_default_values() {
 	if [[ "${qbt_skip_icu}" != 'yes' && "${*}" =~ ([[:space:]]|^)"icu"([[:space:]]|$) ]]; then
 		qbt_skip_icu="no"
 	elif [[ "${qbt_skip_icu}" != "no" ]]; then
-		qbt_modules_delete["icu"]="true"
+		delete+=("icu")
 	fi
 
 	# Configure default dependencies and modules if cmake is not specified
 	if [[ "${qbt_build_tool}" != 'cmake' ]]; then
-		qbt_modules_delete["double_conversion"]="true"
-
-		qbt_deps_delete["unzip"]="true"
-		qbt_deps_delete["ttf-freefont"]="true"
-		qbt_deps_delete["graphviz"]="true"
-		qbt_deps_delete["graphviz"]="true"
-		qbt_deps_delete["cmake"]="true"
-		qbt_deps_delete["re2c"]="true"
+		delete+=("double_conversion")
+		delete_pkgs+=("unzip" "ttf-freefont" "graphviz" "cmake" "re2c")
 	else
-		if [[ "${qbt_skip_icu}" != "no" ]]; then
-			qbt_modules_delete["icu"]="true"
-		fi
+		[[ "${qbt_skip_icu}" != "no" ]] && delete+=("icu")
 	fi
 }
 #######################################################################################################################################################
-# These functions set the cxx standard dynamically based on the libtorrent versions, qt version and qbittorrent combinations
+# These functions set the cxx standard dynmically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qt_std_cons() {
 	if [[ "${qbt_qt_version}" == "6" ]]; then
@@ -511,241 +436,105 @@ _script_version() {
 	fi
 }
 #######################################################################################################################################################
-# This function will check for a list of defined dependencies from the qbt_core_deps array. Apps like python3-dev are dynamically set
+# This function will check for a list of defined dependencies from the qbt_required_pkgs array. Apps like python3-dev are dynamically set
 #######################################################################################################################################################
 _check_dependencies() {
-	if [[ "$os_id" =~ (debian|ubuntu) ]]; then
-		local command_test_tool=("dpkg" "-s")
-		local command_install_deps=("apt-get" "install" "-y")
-		local command_update_upgrade_os=("bash" "-c" "apt-get update && apt-get upgrade -y && apt-get autoremove -y")
-		local install_simulation=("apt" "install" "--simulate")
-	elif [[ "$os_id" = "alpine" ]]; then
-		local command_test_tool=("apk" "info" "-e")
-		local command_install_deps=("apk" "add" "--no-cache" "--repository=${CDN_URL}")
-		local command_update_upgrade_os=("bash" "-c" "apk update --no-cache && apk upgrade --no-cache --repository=${CDN_URL} && apk fix")
-		local install_simulation=("apk" "add" "--simulate")
-	fi
+	printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking if required core dependencies are installed${color_end}"
 
-	_privilege_check() {
-		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
+	# remove packages in the delete_pkgs from the qbt_required_pkgs array
+	for target in "${delete_pkgs[@]}"; do
+		for i in "${!qbt_required_pkgs[@]}"; do
+			if [[ "${qbt_required_pkgs[i]}" == "${target}" ]]; then
+				unset 'qbt_required_pkgs[i]'
+			fi
+		done
+	done
 
-		if [[ "$(id -un 2> /dev/null)" == 'root' ]]; then
-			printf '\n%b\n' " $unicode_green_circle ${color_red_light}root${color_end}"
-			qbt_privileges_required["root"]="true"
-			command_privilege=()
-		else
-			printf '\n%b\n' " $unicode_red_circle ${color_red_light}root${color_end}"
+	# Rebuild array to sort index from 0
+	qbt_required_pkgs=("${qbt_required_pkgs[@]}")
+
+	# This checks over the qbt_required_pkgs array for the OS specified dependencies to see if they are installed
+	for pkg in "${qbt_required_pkgs[@]}"; do
+
+		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+			pkgman() { apk info -e "${pkg}"; }
 		fi
 
-		if sudo -n true &> /dev/null; then
-			printf '%b\n' " $unicode_green_circle ${color_red_light}sudo${color_end}"
-			qbt_privileges_required["sudo"]="true"
-			command_privilege=("sudo")
-		else
-			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
-		fi
-	}
-
-	_check_tools_work() {
-		local tool="${1}"
-		local tool_type="${2}"
-		local run_type="${3}"
-		_command_test() {
-			if [[ $tool_type = "test_tools" ]]; then
-				command -v "${tool}"
-			elif [[ $tool_type = "build_tools" ]]; then
-				"${command_test_tool[@]}" "${tool}"
-			fi
-		}
-
-		if _command_test &> /dev/null; then
-			if [[ "${run_type}" != "silent" ]]; then
-				printf "%b\n" " $unicode_green_circle ${color_yellow}${1}${color_end}"
-			fi
-			return 0
-		else
-			if [[ "${run_type}" != "silent" ]]; then
-				printf "%b\n" " $unicode_red_circle ${color_yellow}${1}${color_end}"
-			fi
-			return 1
+		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+			pkgman() { dpkg -s "${pkg}"; }
 		fi
 
-	}
-
-	_check_dependency_status() {
-		local silent="${1:-}"
-
-		filerterd_params=("$pparam")
-		for pparam in "$@"; do
-			if [[ "$pparam" != "silent" ]]; then
-				filerterd_params+=("$pparam")
+		if pkgman > /dev/null 2>&1; then
+			printf '%b\n' " ${unicode_green_circle} ${pkg}"
+		else
+			if [[ -n "${pkg}" ]]; then
+				deps_installed="no"
+				printf '%b\n' " ${unicode_red_circle} ${pkg}"
+				qbt_checked_required_pkgs+=("$pkg")
 			fi
-		done && unset pparam
+		fi
+	done
 
-		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_yellow}test_tools${color_end}"
-
-		while IFS= read -r qbt_tt; do
-			if _check_tools_work "${qbt_tt}" "test_tools" "${silent}"; then
-				qbt_test_tools["${qbt_tt}"]="true"
-				unset "build_tools[${qbt_tt}]"
-			fi
-		done < <(printf '%s\n' "${!qbt_test_tools[@]}" | sort)
-
-		# remove packages in the qbt_deps_delete arrays from the qbt_core_deps array
-
-		for qbt_dd in "${!qbt_deps_delete[@]}"; do
-			unset "qbt_core_deps[${qbt_dd}]"
-		done && unset qbt_dd
-
-		# remove test_tools packages in the qbt_test_tools array from the qbt_core_deps array if available via command -v
-		for qbt_tt in "${!qbt_test_tools[@]}"; do
-			if [[ "${qbt_test_tools[$qbt_tt]}" == "true" ]]; then
-				unset "qbt_core_deps[$qbt_tt]"
-			fi
-		done && unset qbt_tt
-
-		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_magenta}core_dependencies${color_end}"
-
-		# This checks over the qbt_core_deps array for the OS specified dependencies to see if they are installed
-		while IFS= read -r pkg; do
+	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
+	if [[ "${deps_installed}" == "no" ]]; then
+		if [[ "$(id -un)" == 'root' ]]; then
+			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
 
 			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-				pkgman() { "${command_privilege[@]}" apk info -e "${pkg}"; }
+				apk update --repository="${CDN_URL}"
+				apk upgrade --repository="${CDN_URL}"
+				apk fix
 			fi
 
 			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-				pkgman() { "${command_privilege[@]}" dpkg -s "${pkg}"; }
+				apt-get update -y
+				apt-get upgrade -y
+				apt-get autoremove -y
 			fi
 
-			if pkgman > /dev/null 2>&1; then
-				[[ "${silent}" != 'silent' ]] && printf '%b\n' " ${unicode_green_circle} ${color_magenta}${pkg}${color_end}"
-				qbt_core_deps["${pkg}"]="true"
-			else
-				if [[ -n "${pkg}" ]]; then
-					[[ "${silent}" != 'silent' ]] && printf '%b\n' " ${unicode_red_circle} ${color_magenta}${pkg}${color_end}"
-					qbt_core_deps_sorted+=("$pkg")
-					qbt_core_deps["${pkg}"]="false"
+			[[ -f /var/run/reboot-required ]] && {
+				printf '\n%b\n\n' " ${color_red}This machine requires a reboot to continue installation. Please reboot now.${color_end}"
+				exit
+			}
+
+			printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing required dependencies${color_end}"
+
+			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+				if ! apk add "${qbt_checked_required_pkgs[@]}" --repository="${CDN_URL}"; then
+					printf '\n'
+					exit 1
 				fi
 			fi
-		done < <(printf '%s\n' "${!qbt_core_deps[@]}" | sort)
-	}
 
-	_check_dependency_status "${@}"
-
-	_privilege_check
-
-	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
-
-		if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
-			printf '\n%b\n\n' " $unicode_blue_circle ${color_blue}Info:${color_end} $script_full_path"
-
-			if ! "${install_simulation[@]}" bash &> /dev/null; then
-				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}update${color_end} ------------ update host"
+			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+				if ! apt-get install -y "${qbt_checked_required_pkgs[@]}"; then
+					printf '\n'
+					exit 1
+				fi
 			fi
 
-			if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} ------ install test deps"
+			printf '\n%b\n' " ${unicode_green_circle}${color_green} Dependencies installed!${color_end}"
+
+			deps_installed="yes"
+		else
+			printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
+
+			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
+				printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_checked_required_pkgs[*]}"
 			fi
 
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ install core build deps"
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install (test + core)"
+			if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+				printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_checked_required_pkgs[*]}"
+			fi
+
+			exit
 		fi
-
-	else
-		printf '\n%b\n\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: No root or sudo privileges detected. Nothing to do"
-		printf '%b\n' " $unicode_red_circle ${color_yellow}Warning${color_end}: ${color_magenta}test_tools${color_end} are required to access basic features of the script.${color_end}"
 	fi
 
-	if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}test_tools${color_end} requirements${color_end}"
-	fi
-
-	if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
-		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}build_tools${color_end} requirements${color_end}"
-	fi
-
-	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
-	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
-
-		_update_os() {
-			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
-			"${command_privilege[@]}" "${command_update_upgrade_os[@]}"
-			# needed to use these functions in the -bs flags
-			declare -fx _update_os
-		}
-
-		_install_tools() {
-			# We don't want to run update every time. Only if the the installation command cannot work without an update being run first
-			if ! "${install_simulation[@]}" bash &> /dev/null; then _update_os; fi
-
-			if [[ "${1}" = "test" ]]; then
-				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing test dependencies${color_end}"
-			elif [[ "${1}" = "core" ]]; then
-				printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing core dependencies${color_end}"
-			fi
-
-			if [[ "${1}" = "test" ]]; then
-				for qbt_tt in "${!qbt_test_tools[@]}"; do
-					if [[ $qbt_tt != "root" && $qbt_tt != "sudo" ]]; then
-						"${command_install_deps[@]}" "$qbt_tt"
-					fi
-				done && unset qbt_tt
-			fi
-
-			if [[ "${1}" = "core" ]]; then
-				"${command_install_deps[@]}" "${qbt_core_deps_sorted[@]}"
-			fi
-			# needed to use these functions in the -bs flags
-			declare -fx _install_tools
-		}
-
-		if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
-			_update_os
-		elif [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
-			_install_tools test
-		elif [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
-			_install_tools core
-		elif [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
-			_update_os
-			_install_tools core
-		fi
-
-		_check_dependency_status silent "${@}"
-
-	else
-		printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
-		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_core_deps_sorted[*]}"
-		elif [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_core_deps_sorted[*]}"
-		fi
-		exit 1
-	fi
-
-	if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-		printf '\n'
-		exit 1
-	fi
-
-	for qbt_mi in "${!qbt_modules_install[@]}"; do
-		if [[ "${filerterd_params[*]}" =~ ([[:space:]]|^)${qbt_mi}([[:space:]]|$) ]]; then
-			if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
-				printf '\n'
-				exit 1
-			fi
-		fi
-	done && unset qbt_mi
-
-	if [[ ! "${qbt_core_deps[*]}" =~ "false" ]]; then
+	# All dependency checks passed print
+	if [[ "${deps_installed}" != "no" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle}${text_bold} Dependencies: All checks passed, continuing to build${color_end}"
 	fi
-
-	declare -a excluded_args=("debug" "update" "install_test" "install_core" "bootstrap" "bootstrap_deps")
-	for arg in "${@}"; do
-		if [[ ! "${excluded_args[*]}" =~ ([[:space:]]|^)(${arg})([[:space:]]|$) ]]; then
-			declare -g reset_cd_args+=("$arg")
-		fi
-	done
 }
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
@@ -945,24 +734,24 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 _custom_flags_set() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3 ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
+	CFLAGS="${qbt_optimise/*/${qbt_optimise} }"
+	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} ${qbt_optimise/*/${qbt_optimise} }"
+	CPPFLAGS="${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} ${qbt_optimise/*/${qbt_optimise} }"
+	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -z max-page-size=65536 ${qbt_optimise/*/${qbt_optimise} }"
 }
 
 _custom_flags_reset() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CXXFLAGS="-w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="-w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS=""
+	CFLAGS="-O2 -U_FORTIFY_SOURCE"
+	CXXFLAGS="-O2 -U_FORTIFY_SOURCE -w -std=${qbt_cxx_standard} ${qbt_optimise/*/${qbt_optimise} }"
+	CPPFLAGS="-O2 -U_FORTIFY_SOURCE -w ${qbt_optimise/*/${qbt_optimise} }"
+	LDFLAGS="${qbt_optimise/*/${qbt_optimise} }"
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
 #######################################################################################################################################################
 _install_qbittorrent() {
 	if [[ -f "${qbt_install_dir}/completed/qbittorrent-nox" ]]; then
-		if [[ "${qbt_privileges_required[root]}" == 'true' ]] || [[ "${qbt_privileges_required[sudo]}" == 'true' ]]; then
+		if [[ "$(id -un)" == 'root' ]]; then
 			mkdir -p "/usr/local/bin"
 			cp -rf "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin"
 		else
@@ -972,8 +761,10 @@ _install_qbittorrent() {
 
 		printf '\n%b\n' " ${unicode_blue_light_circle} qbittorrent-nox has been installed!${color_end}"
 		printf '\n%b\n' " Run it using this command:"
-		if [[ "${qbt_privileges_required[root]}" == 'true' ]] || [[ "${qbt_privileges_required[sudo]}" == 'true' ]]; then
-			printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}" || printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
+		if [[ "$(id -un)" == 'root' ]]; then
+			printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}"
+		else
+			printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
 		fi
 		exit
 	else
@@ -1050,7 +841,9 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		if [[ "${os_version_codename}" =~ ^(bookworm)$ ]]; then
+		if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
+			github_tag[glibc]="glibc-2.31"
+		elif [[ "${os_version_codename}" =~ ^(bookworm|jammy)$ ]]; then
 			github_tag[glibc]="glibc-2.38"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 			github_tag[glibc]="glibc-2.40"
@@ -1174,33 +967,20 @@ _set_module_urls() {
 	return
 }
 #######################################################################################################################################################
-# A function to take the associative array qbt_modules_install and sort it, after being processed, into  a sorted indexed array
-#######################################################################################################################################################
-_sort_modules() {
-	if [[ ${#qbt_modules_install_sorted[@]} -eq 0 ]]; then
-		for qbt_mo in "${qbt_modules_order[@]}"; do
-			if [[ -v qbt_modules_install["$qbt_mo"] ]]; then
-				qbt_modules_install_sorted+=("$qbt_mo")
-				modules_sorted="yes"
-			fi
-		done && unset qbt_mo
-	fi
-}
-#######################################################################################################################################################
-# This function verifies the module names from the array qbt_modules_install in the default values function.
+# This function verifies the module names from the array qbt_modules in the default values function.
 #######################################################################################################################################################
 _installation_modules() {
-	# Delete modules - using the qbt_modules_delete array to unset them from the qbt_modules_install array
-	for qbt_md in "${!qbt_modules_delete[@]}"; do
-		if [[ "${qbt_modules_delete["$qbt_md"]}" == "true" ]]; then
-			unset "qbt_modules_install[${qbt_md}]"
-		fi
-	done && unset qbt_md
+	# Delete modules - using the the delete array to unset them from the qbt_modules array
+	for target in "${delete[@]}"; do
+		for deactivated in "${!qbt_modules[@]}"; do
+			[[ "${qbt_modules[${deactivated}]}" == "${target}" ]] && unset 'qbt_modules[${deactivated}]'
+		done
+	done
+	unset target deactivated
 
-	# For any modules params passed, test that they exist in the qbt_modules_install array or set qbt_modules_test to fail
+	# For any modules params passed, test that they exist in the qbt_modules array or set qbt_modules_test to fail
 	for passed_params in "${@}"; do
-		# if [[ ! "${!qbt_modules_install[*]}" =~ (^|[^[:alpha:]])${passed_params}([^[:alpha:]]|$) ]]; then
-		if [[ ! "${!qbt_modules_install[*]}" =~ ([[:space:]]|^)(${passed_params})([[:space:]]|$) ]]; then
+		if [[ ! "${qbt_modules[*]}" =~ (^|[^[:alpha:]])${passed_params}([^[:alpha:]]|$) ]]; then
 			qbt_modules_test="fail"
 		fi
 	done
@@ -1208,26 +988,24 @@ _installation_modules() {
 
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
 		if [[ "${1}" == "all" ]]; then
-			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules_install array to leave only the modules to be activated
-			unset "qbt_modules_install[all]"
-			_sort_modules
+			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules array to leave only the modules to be activated
+			unset 'qbt_modules[0]'
+			# Rebuild the qbt_modules array so it is indexed starting from 0 after we have modified and removed items from it previously.
+			qbt_modules=("${qbt_modules[@]}")
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
-			unset "qbt_modules_install[all]"
-			_sort_modules # Call the sort function to sort the modules in an indexed array so the order is correct
-			read -ra qbt_modules_activated <<< "${qbt_modules_install_sorted[@]}"
+			unset 'qbt_modules[0]'
+			read -ra qbt_modules_skipped <<< "${qbt_modules[@]}"
 
 			for selected in "${@}"; do
-				for full_list in "${!qbt_modules_activated[@]}"; do
-					if [[ "${selected}" == "${qbt_modules_activated[full_list]}" ]]; then
-						qbt_modules_activated[full_list]="${color_magenta_light}${selected}${color_end}"
-					fi
+				for full_list in "${!qbt_modules_skipped[@]}"; do
+					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]="${color_magenta_light}${selected}${color_end}"
 				done
 			done
-			unset selected full_list
-			qbt_modules_install_sorted=("${@}")
+			unset selected
+			qbt_modules=("${@}")
 		fi
 
-		for modules_skip in "${qbt_modules_install_sorted[@]}"; do
+		for modules_skip in "${qbt_modules[@]}"; do
 			skip_modules["${modules_skip}"]="no"
 		done
 		unset modules_skip
@@ -1251,10 +1029,6 @@ _installation_modules() {
 		# Some basic help
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Script help${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-h${color_end}"
 	fi
-
-	if [[ "${modules_sorted}" != "yes" ]]; then
-		_sort_modules
-	fi
 }
 #######################################################################################################################################################
 # This function will test to see if a Jamfile patch file exists via the variable patches_github_url for the tag used.
@@ -1272,15 +1046,13 @@ _apply_patches() {
 	fi
 
 	if [[ "${app_name}" == "bootstrap" ]]; then
-		_sort_modules
-
-		for module_patch in "${qbt_modules_install_sorted[@]}"; do
+		for module_patch in "${qbt_modules[@]}"; do
 			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
 		done && unset module_patch
 
 		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
 
-		for patch_info in "${qbt_modules_install_sorted[@]}"; do
+		for patch_info in "${qbt_modules[@]}"; do
 			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${color_cyan_light} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${color_end}"
 		done && unset patch_info
 
@@ -2056,7 +1828,7 @@ while (("${#}")); do
 		-i | --icu)
 			qbt_skip_icu="no"
 			if [[ "${qbt_skip_icu}" == "no" ]]; then
-				qbt_modules_delete["icu"]="false"
+				delete=("${delete[@]/icu/}")
 			fi
 			shift
 			;;
@@ -2079,8 +1851,8 @@ while (("${#}")); do
 			qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
 			shift 2
 			;;
-		-o | --optimize)
-			if [[ "${qbt_cross_name}" == "default" ]]; then
+		-o | --optimise)
+			if [[ -z "${qbt_cross_name}" ]] || [[ "${qbt_cross_name}" == "default" ]]; then
 				if [[ -n "${2}" ]]; then
 					qbt_optimise="-march=native ${2}"
 					shift 2
@@ -2103,7 +1875,7 @@ while (("${#}")); do
 			exit
 			;;
 		-si | --static-ish)
-			if [[ "${qbt_cross_name}" == "default" ]]; then
+			if [[ -z "${qbt_cross_name}" ]] || [[ "${qbt_cross_name}" == "default" ]]; then
 				qbt_static_ish="yes"
 				shift
 			else
@@ -2134,8 +1906,8 @@ set -- "${params1[@]}"
 #######################################################################################################################################################
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
-_set_default_values "${@}"                                 # see functions
-_check_dependencies "${@}" && set -- "${reset_cd_args[@]}" # see functions
+_set_default_values "${@}" # see functions
+_check_dependencies        # see functions
 _test_url
 _set_build_directory    # see functions
 _set_module_urls "${@}" # see functions
@@ -2179,7 +1951,6 @@ while (("${#}")); do
 			fi
 			;;
 		-bs-a | --bootstrap-all)
-			_print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/\x1B\[93m//g' -e 's/\x1B\[92m//g' -e 's/\x1B\[0m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > .qbt_env
 			_apply_patches bootstrap
 			_release_info
 			_cmake
@@ -2324,7 +2095,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--cmake${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-c${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-cmake${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--cache-directory${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-cd${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-cache-directory${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--debug${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-d${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-debug${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-env${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-env${color_end}         ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-e${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-env${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-patches${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-p${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-patches${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-cmake${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-c${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-cmake${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--bootstrap-release${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-bs-r${color_end}  ${text_dim}or${color_end} ${color_blue_light}--help-bootstrap-release${color_end}"
@@ -2336,7 +2107,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--master${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-master${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--multi-arch${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-multi-arch${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--no-delete${color_end}             ${color_yellow}Help:${color_end} ${color_blue_light}-h-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-no-delete${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--optimize${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-optimize${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--optimise${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-optimise${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--proxy${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-proxy${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--patch-repo${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-patch-repo${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-master${color_end}    ${color_yellow}Help:${color_end} ${color_blue_light}-h-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-master${color_end}"
@@ -2395,10 +2166,10 @@ while (("${#}")); do
 			;;
 		-h-bs-e | --help-bootstrap-env)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
-			printf '\n%b\n' " Create then env file ${color_cyan}.qbt_env${color_end}"
+			printf '\n%b\n' " Create the template env file ${color_cyan}.qbt_env${color_end}"
 			printf '\n%b\n' " Notes:"
 			printf '\n%b\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-e${color_end} it will create a default env file with empty vars and exit"
-			printf '\n%b\n\n' " ${unicode_yellow_circle} If you use ${color_blue_light}-bs-a${color_end} it will create the env file with the vars set by the script"
+			printf '\n%b\n\n' " ${unicode_yellow_circle} Order of priotiry: script flags > env file > env vars"
 			exit
 			;;
 		-h-bs-p | --help-bootstrap-patches)
@@ -2533,7 +2304,7 @@ while (("${#}")); do
 			printf '\n'
 			exit
 			;;
-		-h-o | --help-optimize)
+		-h-o | --help-optimise)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Warning:${color_end} using this flag will mean your static build is limited a CPU that matches the host spec"
 			printf '\n%b\n' " ${unicode_blue_light_circle} Usage example: ${color_blue_light}-o \"-my -custom --flags\"${color_end}"
@@ -2663,7 +2434,7 @@ _installation_modules "${@}" # requires shifted params from options block 2
 if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end}${text_bold} One or more of the provided modules are not supported${color_end}"
 	printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Below is a list of supported modules${color_end}"
-	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules_install_sorted[*]}${color_end}"
+	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules[*]}${color_end}"
 	_print_env
 	exit
 fi
@@ -3031,7 +2802,7 @@ _qbittorrent() {
 #######################################################################################################################################################
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
-for app_name in "${qbt_modules_install_sorted[@]}"; do
+for app_name in "${qbt_modules[@]}"; do
 	if [[ "${qbt_cache_dir_options}" != "bs" ]] && [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${unicode_red_circle}${color_red_light} Warning${color_end} This module depends on the boost module. Use them together: ${color_magenta_light}boost ${app_name}${color_end}"
 	else
@@ -3051,7 +2822,7 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			############################################################
 			_download
 			############################################################
-			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules_install[@]}" ]] && printf '\n'
+			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
 			_apply_patches
@@ -3062,16 +2833,16 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			[[ "${app_name}" != "boost" ]] && _delete_function
 		fi
 
-		if [[ "${#qbt_modules_activated[@]}" -gt '0' ]]; then
+		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
 			printf '\n'
 			printf '%b' " ${unicode_magenta_light_circle} Activated:"
-			for skipped_true in "${qbt_modules_activated[@]}"; do
+			for skipped_true in "${qbt_modules_skipped[@]}"; do
 				printf '%b' " ${color_cyan_light}${skipped_true}${color_end}"
 			done
 			printf '\n'
 		fi
 
-		[[ "${skipped_false}" -eq "${#qbt_modules_install[@]}" ]] && printf '\n'
+		[[ "${skipped_false}" -eq "${#qbt_modules[@]}" ]] && printf '\n'
 	fi
 	_pushd "${qbt_working_dir}"
 done
