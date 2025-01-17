@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.15"
+script_version="2.1.0"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -418,23 +418,23 @@ _set_default_values() {
 # These functions set the cxx standard dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qt_std_cons() {
-	[[ "${qbt_qt_version}" == "6" ]] && printf "yes" || return
+	[[ "${qbt_qt_version}" == "6" ]] && printf "yes" || printf 'no'
 }
 
 _os_std_cons() {
-	[[ "${os_id}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || return
+	[[ "${os_id}" =~ ^(alpine|bookworm|noble)$ ]] && printf "yes" || printf 'no'
 }
 _libtorrent_std_cons() {
 	[[ "${github_tag[libtorrent]}" =~ ^(RC_1_2|RC_2_0)$ ]] \
 		|| [[ "${github_tag[libtorrent]}" =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]] \
 		|| [[ "${github_tag[libtorrent]}" =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]] \
-		&& printf "yes" || return
+		&& printf "yes" || printf 'no'
 }
 
 _qbittorrent_std_cons() {
 	[[ "${github_tag[qbittorrent]}" == "master" ]] \
 		|| [[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]] \
-		&& printf "yes" || return
+		&& printf "yes" || printf 'no'
 }
 
 _set_cxx_standard() {
@@ -448,17 +448,21 @@ _set_cxx_standard() {
 # These functions set some build conditions dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 _qbittorrent_build_cons() {
-	[[ "${github_tag[qbittorrent]}" == "master" ]] && disable_qt5="yes"
-	[[ "${github_tag[qbittorrent]}" == "v5_0_x" ]] && disable_qt5="yes"
-	[[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "5.0.0")" ]] && disable_qt5="yes"
-	printf '%s' "${disable_qt5:-no}"
+	[[ "${github_tag[qbittorrent]}" == "master" ]] \
+		|| [[ "${github_tag[qbittorrent]}" == "v5_0_x" ]] \
+		|| [[ "${github_tag[qbittorrent]}" =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "5.0.0")" ]] \
+		&& printf 'yes' || printf 'no'
 }
 
 _set_build_cons() {
 	if [[ $(_qbittorrent_build_cons) == "yes" && "${qbt_qt_version}" == "5" ]]; then
 		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support ${color_red}Qt5${color_yellow}. Please use ${color_green}Qt6${color_yellow} or a qBittorrent ${color_green}v4${color_yellow} tag.${color_end}"
 		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
-		exit                                                                                # non error exit to not upset github actions - just skip the step
+		exit
+	elif [[ "$(_qbittorrent_build_cons)" == "yes" && "$(_os_std_cons)" == "no" ]]; then
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++ std 20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
+		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
+		exit
 	fi
 }
 #######################################################################################################################################################
@@ -954,7 +958,7 @@ _custom_flags_set() {
 _custom_flags_reset() {
 	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
 	CXXFLAGS="-w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="-w  -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
+	CPPFLAGS="-w -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
 	LDFLAGS=""
 }
 #######################################################################################################################################################
@@ -973,7 +977,9 @@ _install_qbittorrent() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} qbittorrent-nox has been installed!${color_end}"
 		printf '\n%b\n' " Run it using this command:"
 		if [[ "${qbt_privileges_required[root]}" == 'true' ]] || [[ "${qbt_privileges_required[sudo]}" == 'true' ]]; then
-			printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}" || printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
+			printf '\n%b\n\n' " ${color_green}qbittorrent-nox${color_end}"
+		else
+			printf '\n%b\n\n' " ${color_green}~/bin/qbittorrent-nox${color_end}"
 		fi
 		exit
 	else
@@ -2079,7 +2085,7 @@ while (("${#}")); do
 			qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
 			shift 2
 			;;
-		-o | --)
+		-o | --optimise)
 			if [[ -z "${qbt_cross_name}" ]] || [[ "${qbt_cross_name}" == "default" ]]; then
 				if [[ -n "${2}" ]]; then
 					qbt_optimise="-march=native ${2}"
@@ -2335,7 +2341,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--master${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-master${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--multi-arch${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-multi-arch${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--no-delete${color_end}             ${color_yellow}Help:${color_end} ${color_blue_light}-h-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-no-delete${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--optimise${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-optimise${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--proxy${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-proxy${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--patch-repo${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-patch-repo${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-master${color_end}    ${color_yellow}Help:${color_end} ${color_blue_light}-h-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-master${color_end}"
