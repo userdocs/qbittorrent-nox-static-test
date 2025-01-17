@@ -39,7 +39,13 @@ jobs:
         qbt_libtorrent_version: ["1.2", "2.0"]
         exclude:
           - container_id: debian
+            container_codename: focal
+          - container_id: debian
+            container_codename: jammy
+          - container_id: debian
             container_codename: noble
+          - container_id: ubuntu
+            container_codename: bullseye
           - container_id: ubuntu
             container_codename: bookworm
         include:
