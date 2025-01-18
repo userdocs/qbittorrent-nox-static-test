@@ -988,16 +988,16 @@ qbt_build_common_flags="-O3 -pipe -fPIC -fstack-clash-protection -fstack-protect
 qbt_build_common_hardening="-fcf-protection=full -fdata-sections -ffunction-sections"
 
 _custom_flags_set() {
-	CFLAGS="${qbt_build_common_flags} ${qbt_build_common_hardening} ${CFLAGS}"
-	CXXFLAGS="-std=${qbt_build_common_flags} ${qbt_build_common_hardening} -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi ${qbt_ldflags_static} -I${include_dir} ${qbt_cxx_standard} ${CXXFLAGS}"
-	CPPFLAGS="-I${include_dir} ${qbt_ldflags_static} -Wno-psabi ${CPPFLAGS}"
-	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -Wl,-O1,--as-needed,--sort-common,--gc-sections -Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs -gz ${LDFLAGS}"
+	CFLAGS="${qbt_build_common_flags} ${qbt_build_common_hardening} ${CFLAGS:-}"
+	CXXFLAGS="-std=${qbt_build_common_flags} ${qbt_build_common_hardening} -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi ${qbt_ldflags_static} -I${include_dir} ${qbt_cxx_standard} ${CXXFLAGS:-}"
+	CPPFLAGS="-I${include_dir} ${qbt_ldflags_static} -Wno-psabi ${CPPFLAGS:-}"
+	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -Wl,-O1,--as-needed,--sort-common,--gc-sections -Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs -gz ${LDFLAGS:-}"
 }
 
 _custom_flags_reset() {
-	CFLAGS="${qbt_build_common_flags} ${CFLAGS}"
-	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_build_common_flags} -Wno-psabi ${CXXFLAGS}"
-	CPPFLAGS="-pthread ${CPPFLAGS}"
+	CFLAGS="${qbt_build_common_flags} ${CFLAGS:-}"
+	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_build_common_flags} -Wno-psabi ${CXXFLAGS:-}"
+	CPPFLAGS="-pthread ${CPPFLAGS:-}"
 	LDFLAGS="${LDFLAGS:-}"
 }
 #######################################################################################################################################################
