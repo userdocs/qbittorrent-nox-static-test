@@ -998,7 +998,7 @@ _custom_flags_reset() {
 	CFLAGS="${qbt_build_common_flags} ${CFLAGS}"
 	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_build_common_flags} -Wno-psabi ${CXXFLAGS}"
 	CPPFLAGS="-pthread ${CPPFLAGS}"
-	LDFLAGS="${LDFLAGS}"
+	LDFLAGS="${LDFLAGS:-}"
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
