@@ -983,18 +983,22 @@ _debug() {
 #######################################################################################################################################################
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
+# Common compiler flags
+qbt_build_common_flags="-O3 -pipe -fPIC -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise}"
+qbt_build_common_hardening="-fcf-protection=full -fdata-sections -ffunction-sections"
+
 _custom_flags_set() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_ldflags_static} -O3 -w -Wno-psabi -I${include_dir} -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} -O3 ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -O3 -pthread -z max-page-size=65536 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
+	CFLAGS="${qbt_build_common_flags} ${qbt_build_common_hardening} ${CFLAGS}"
+	CXXFLAGS="-std=${qbt_build_common_flags} ${qbt_build_common_hardening} -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi ${qbt_ldflags_static} -I${include_dir} ${qbt_cxx_standard} ${CXXFLAGS}"
+	CPPFLAGS="-I${include_dir} ${qbt_ldflags_static} -Wno-psabi ${CPPFLAGS}"
+	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -Wl,-O1,--as-needed,--sort-common,--gc-sections -Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs -gz ${LDFLAGS}"
 }
 
 _custom_flags_reset() {
-	CFLAGS="-O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CXXFLAGS="-w -std=${qbt_cxx_standard} -O3 -pipe -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="-w -pthread -z max-page-size=65536 -O3 -gz -Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS=""
+	CFLAGS="${qbt_build_common_flags} ${CFLAGS}"
+	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_build_common_flags} -Wno-psabi ${CXXFLAGS}"
+	CPPFLAGS="-pthread ${CPPFLAGS}"
+	LDFLAGS="${LDFLAGS}"
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
@@ -2749,7 +2753,7 @@ _zlib() {
 		# force set some ARCH when using zlib-ng, configure and musl-cross since it does not detect the arch correctly on Alpine.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-$(apk --print-arch)}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
 		./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-		make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
@@ -2844,6 +2848,7 @@ _libtorrent() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
@@ -2899,6 +2904,7 @@ _double_conversion() {
 			"${multi_double_conversion[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D CMAKE_INSTALL_LIBDIR=lib \
 			-D BUILD_SHARED_LIBS=OFF \
@@ -2963,6 +2969,7 @@ _qtbase() {
 			-D QT_BUILD_EXAMPLES_BY_DEFAULT=OFF -D QT_BUILD_TESTS_BY_DEFAULT=OFF \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -3006,6 +3013,7 @@ _qttools() {
 			-D CMAKE_BUILD_TYPE="release" \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -3042,6 +3050,7 @@ _qbittorrent() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D GUI=OFF \
@@ -3059,7 +3068,7 @@ _qbittorrent() {
 			"${multi_qbittorrent[@]}" \
 			"${qbt_qbittorrent_debug}" \
 			--disable-gui \
-			CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
+			CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
 			--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
