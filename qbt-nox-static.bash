@@ -983,20 +983,26 @@ _debug() {
 #######################################################################################################################################################
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
-# Common compiler flags
-qbt_build_common_flags="-O3 -pipe -fPIC -fstack-clash-protection -fstack-protector-strong -fno-plt -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS ${qbt_optimise}"
-qbt_build_common_hardening="-fcf-protection=full -fdata-sections -ffunction-sections"
+# Security and optimization flags
+qbt_build_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+qbt_build_security_flags="-fstack-clash-protection -fstack-protector-strong -fcf-protection=full -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+qbt_build_visibility_flags="-fvisibility=hidden -fvisibility-inlines-hidden"
+# Linker security flags
+qbt_build_linker_optimization="-Wl,-O1,--as-needed,--sort-common,--gc-sections"
+qbt_build_linker_security="-Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs"
+
+qbt_build_flags_common="${qbt_build_optimization_flags} ${qbt_build_security_flags} -fPIC"
 
 _custom_flags_set() {
-	CFLAGS="${qbt_build_common_flags} ${qbt_build_common_hardening} ${CFLAGS:-}"
-	CXXFLAGS="-std=${qbt_build_common_flags} ${qbt_build_common_hardening} -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi ${qbt_ldflags_static} -I${include_dir} ${qbt_cxx_standard} ${CXXFLAGS:-}"
+	CFLAGS="${qbt_build_flags_common} ${CFLAGS:-}"
+	CXXFLAGS="-I${include_dir} ${qbt_build_flags_common} ${qbt_build_visibility_flags} -Wno-psabi ${qbt_ldflags_static} -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
 	CPPFLAGS="-I${include_dir} ${qbt_ldflags_static} -Wno-psabi ${CPPFLAGS:-}"
-	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -Wl,-O1,--as-needed,--sort-common,--gc-sections -Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs -gz ${LDFLAGS:-}"
+	LDFLAGS="-L${lib_dir} -pthread ${qbt_build_linker_optimization} ${qbt_build_linker_security} -gz ${qbt_ldflags_static} ${qbt_strip_flags} ${LDFLAGS:-}"
 }
 
 _custom_flags_reset() {
-	CFLAGS="${qbt_build_common_flags} ${CFLAGS:-}"
-	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_build_common_flags} -Wno-psabi ${CXXFLAGS:-}"
+	CFLAGS="${qbt_build_optimization_flags} ${CFLAGS:-}"
+	CXXFLAGS="${qbt_build_optimization_flags} -Wno-psabi -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
 	CPPFLAGS="-pthread ${CPPFLAGS:-}"
 	LDFLAGS="${LDFLAGS:-}"
 }
