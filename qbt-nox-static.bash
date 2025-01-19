@@ -1006,7 +1006,7 @@ _custom_flags() {
 	fi
 
 	# Static linking specific
-	if [[ "${qbt_modules_install_sorted[*]}" =~ ^([[:space:]]|^)(glibc)([[:space:]]|$)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|iconv|icu)$ ]]; then
 		qbt_static_flags=""
 	else
 		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
@@ -1026,7 +1026,7 @@ _custom_flags() {
 		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
 	}
 
-	if [[ "${qbt_modules_install_sorted[*]}" =~ ^([[:space:]]|^)(glibc|iconv|icu)([[:space:]]|$)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|iconv|icu)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
