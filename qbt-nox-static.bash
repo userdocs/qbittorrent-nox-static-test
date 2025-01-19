@@ -1001,8 +1001,10 @@ _custom_flags() {
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
-		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
+			qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
+			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+		fi
 	fi
 
 	# Static linking specific

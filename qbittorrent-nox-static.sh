@@ -787,12 +787,14 @@ _custom_flags() {
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
-		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
+			qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
+			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+		fi
 	fi
 
 	# Static linking specific
-	if [[ "${app_name}" =~ ^(glibc|iconv|icu)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc)$ ]]; then
 		qbt_static_flags=""
 	else
 		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
@@ -812,7 +814,7 @@ _custom_flags() {
 		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
 	}
 
-	if [[ "${app_name}" =~ ^(glibc|iconv|icu)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
@@ -2600,7 +2602,7 @@ _icu() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _openssl() {
-	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp no-docs CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp zlib no-docs CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
