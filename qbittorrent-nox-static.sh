@@ -789,7 +789,7 @@ _custom_flags() {
 	fi
 
 	# Static linking specific
-	if [[ "${qbt_static_ish}" == "yes" || "${os_id}" =~ ^(debian|Ubuntu)$ && "${app_name}" =~ ^(glibc|icu)$ ]]; then
+	if [[ "${qbt_static_ish}" == "yes" || "${os_id}" =~ ^(debian|ubuntu)$ && "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		qbt_static_flags=""
 	else
 		qbt_static_flags="-static-libstdc++ -static-libgcc -static"
@@ -809,7 +809,7 @@ _custom_flags() {
 		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
 	}
 
-	if [[ "${os_id}" =~ ^(debian|Ubuntu)$ && "${app_name}" =~ ^(glibc|icu)$ ]]; then
+	if [[ "${os_id}" =~ ^(debian|ubuntu)$ && "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
