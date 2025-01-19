@@ -57,8 +57,10 @@ on:
         options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 concurrency:
-  group: ci-main-reusable-caller
+  group: ${{ github.workflow }}
   cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   ci-debian-build:
@@ -66,6 +68,8 @@ jobs:
     concurrency:
       group: ci-debian-build
       cancel-in-progress: true
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-debian-build.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}

@@ -37,7 +37,7 @@ declare -gA qbt_modules_delete skip_modules qbt_modules_install
 declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url
 declare -gA qbt_workflow_override source_default qbt_activated_modules
 # Indexed arrays
-declare -ga qbt_modules_order qbt_modules_install_sorted qbt_modules_selected_check
+declare -ga qbt_modules_order qbt_modules_install_processed qbt_modules_selected_compare
 #################################################################################################################################################
 # Color me up Scotty - define some color values to use as variables in the scripts.
 #################################################################################################################################################
@@ -248,17 +248,12 @@ _set_default_values() {
 	fi
 
 	# staticish builds
-	if [[ ${qbt_static_ish:=no} == "yes" ]]; then
-		qbt_ldflags_static=""
-
+	if [[ "${qbt_static_ish:=no}" == "yes" ]]; then
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
-
 		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
 			exit 1
 		fi
-	else
-		qbt_ldflags_static="-static"
 	fi
 
 	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
@@ -687,11 +682,11 @@ _check_dependencies() {
 			fi
 
 			if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} ------ install test deps"
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} ------ install test_tools"
 			fi
 
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ install core build deps"
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install (test + core)"
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ install ${color_magenta}core_dependencies${color_end}"
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install ${color_magenta}test_tools${color_end} + ${color_magenta}install_core${color_end}"
 		fi
 
 	else
@@ -700,11 +695,11 @@ _check_dependencies() {
 	fi
 
 	if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}test_tools${color_end} requirements${color_end}"
+		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing required ${color_magenta}test_tools${color_end}"
 	fi
 
 	if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
-		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing critical ${color_magenta}build_tools${color_end} requirements${color_end}"
+		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing required ${color_magenta}core_dependencies${color_end}"
 	fi
 
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
@@ -783,10 +778,10 @@ _check_dependencies() {
 		printf '\n%b\n' " ${unicode_green_circle}${text_bold} Dependencies: All checks passed, continuing to build${color_end}"
 	fi
 
-	declare -a excluded_args=("debug" "update" "install_test" "install_core" "bootstrap" "bootstrap_deps")
+	declare -a qbt_modules_excluded=("debug" "update" "install_test" "install_core" "bootstrap" "bootstrap_deps")
 	for arg in "${@}"; do
-		if [[ ! "${excluded_args[*]}" =~ ([[:space:]]|^)(${arg})([[:space:]]|$) ]]; then
-			declare -g reset_cd_args+=("$arg")
+		if [[ ! "${qbt_modules_excluded[*]}" =~ ([[:space:]]|^)(${arg})([[:space:]]|$) ]]; then
+			declare -ga filtered_check_dependency_args+=("$arg")
 		fi
 	done
 }
@@ -1008,10 +1003,10 @@ _custom_flags() {
 	fi
 
 	# Static linking specific
-	if [[ "${app_name}" =~ ^(glibc)$ ]]; then
+	if [[ "${qbt_static_ish}" == "yes" || "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		qbt_static_flags=""
 	else
-		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
+		qbt_static_flags="-static-libstdc++ -static-libgcc -static"
 	fi
 
 	_custom_flags_set() {
@@ -1028,7 +1023,7 @@ _custom_flags() {
 		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
 	}
 
-	if [[ "${app_name}" =~ ^(glibc)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
@@ -1256,11 +1251,10 @@ _set_module_urls() {
 # A function to take the associative array qbt_modules_install and sort it, after being processed, into  a sorted indexed array
 #######################################################################################################################################################
 _sort_modules() {
-	if [[ ${#qbt_modules_install_sorted[@]} -eq 0 ]]; then
+	if [[ ${#qbt_modules_install_processed[@]} -eq 0 ]]; then
 		for qbt_mo in "${qbt_modules_order[@]}"; do
 			if [[ -v qbt_modules_install["$qbt_mo"] ]]; then
-				qbt_modules_install_sorted+=("$qbt_mo")
-				modules_sorted="yes"
+				qbt_modules_install_processed+=("$qbt_mo")
 			fi
 		done && unset qbt_mo
 	fi
@@ -1278,7 +1272,6 @@ _installation_modules() {
 
 	# For any modules params passed, test that they exist in the qbt_modules_install array or set qbt_modules_test to fail
 	for passed_params in "${@}"; do
-		# if [[ ! "${!qbt_modules_install[*]}" =~ (^|[^[:alpha:]])${passed_params}([^[:alpha:]]|$) ]]; then
 		if [[ ! "${!qbt_modules_install[*]}" =~ ([[:space:]]|^)(${passed_params})([[:space:]]|$) ]]; then
 			qbt_modules_test="fail"
 		fi
@@ -1286,30 +1279,19 @@ _installation_modules() {
 	unset passed_params
 
 	if [[ "${qbt_modules_test}" != 'fail' && "${#}" -ne '0' ]]; then
-		if [[ "${1}" == "all" ]]; then
-			# If all is passed as a module and once the params check = pass has triggered this condition, remove to from the qbt_modules_install array to leave only the modules to be activated
-			unset "qbt_modules_install[all]"
-			_sort_modules
-		else # Only activate the module passed as a param and leave the rest defaulted to skip
-			unset "qbt_modules_install[all]"
-			_sort_modules # Call the sort function to sort the modules in an indexed array so the order is correct
-
-			read -ra qbt_modules_selected_check <<< "${qbt_modules_install_sorted[@]}"
+		unset "qbt_modules_install[all]" # Remove all the modules from the qbt_modules_install array before we process it
+		_sort_modules                    # Call the sort function to sort the associative array qbt_modules_install into an sorted indexed array so the installation order is correct
+		if [[ "${1}" != "all" ]]; then
+			read -ra qbt_modules_selected_compare <<< "${qbt_modules_install_processed[@]}"
 			for selected in "${@}"; do
-				for full_list in "${!qbt_modules_selected_check[@]}"; do
-					if [[ "${selected}" == "${qbt_modules_selected_check["${full_list}"]}" ]]; then
-						qbt_activated_modules["${selected}"]="yes"
-					fi
-				done
-			done
-			unset selected full_list
-			qbt_modules_install_sorted=("${@}")
+				qbt_activated_modules["${selected}"]="yes"
+			done && unset selected
+			qbt_modules_install_processed=("${@}")
 		fi
 
-		for modules_skip in "${qbt_modules_install_sorted[@]}"; do
+		for modules_skip in "${qbt_modules_install_processed[@]}"; do
 			skip_modules["${modules_skip}"]="no"
-		done
-		unset modules_skip
+		done && unset modules_skip
 
 		# Create the directories we need.
 		mkdir -p "${qbt_install_dir}/logs"
@@ -1329,9 +1311,7 @@ _installation_modules() {
 
 		# Some basic help
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Script help${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-h${color_end}"
-	fi
-
-	if [[ "${modules_sorted}" != "yes" ]]; then
+	else
 		_sort_modules
 	fi
 }
@@ -1352,14 +1332,13 @@ _apply_patches() {
 
 	if [[ "${app_name}" == "bootstrap" ]]; then
 		_sort_modules
-
-		for module_patch in "${qbt_modules_install_sorted[@]}"; do
+		for module_patch in "${qbt_modules_install_processed[@]}"; do
 			[[ -n "${app_version["${module_patch}"]}" ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
 		done && unset module_patch
 
 		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
 
-		for patch_info in "${qbt_modules_install_sorted[@]}"; do
+		for patch_info in "${qbt_modules_install_processed[@]}"; do
 			[[ -n "${app_version["${patch_info}"]}" ]] && printf '%b\n' " ${color_cyan_light} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${color_end}"
 		done && unset patch_info
 
@@ -1960,11 +1939,23 @@ _multi_arch() {
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz${color_end}"
 					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
-				else
-					printf '\n%b\n' " ${unicode_blue_light_circle} Extracting ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${color_end}"
 				fi
 
-				tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+				if [[ -f "${qbt_install_dir}/.toolchain-info" ]]; then
+					if [[ $(cat "${qbt_install_dir}/.toolchain-info") == "${qbt_cross_host}.tar.gz" ]]; then
+						if "${qbt_install_dir}/bin/${qbt_cross_host}-gcc" -v &> /dev/null; then
+							skip_toolchain_extract="yes"
+						fi
+					fi
+				fi
+
+				if [[ "${skip_toolchain_extract}" == "yes" ]]; then
+					printf '\n%b\n' " ${unicode_blue_light_circle} Extracted ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${color_end}"
+				else
+					printf '\n%b\n' " ${unicode_blue_light_circle} Extracting ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.xz${color_end}"
+					tar xf "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" --strip-components=1 -C "${qbt_install_dir}"
+					printf '%s\n' "${qbt_cross_host}.tar.gz" > "${qbt_install_dir}/.toolchain-info"
+				fi
 
 				_fix_multiarch_static_links "${qbt_cross_host}"
 			fi
@@ -2213,8 +2204,8 @@ set -- "${params1[@]}"
 #######################################################################################################################################################
 # Functions part 1: Use some of our functions
 #######################################################################################################################################################
-_set_default_values "${@}"                                 # see functions
-_check_dependencies "${@}" && set -- "${reset_cd_args[@]}" # see functions
+_set_default_values "${@}"                                                  # see functions
+_check_dependencies "${@}" && set -- "${filtered_check_dependency_args[@]}" # see functions
 _test_url
 _set_build_directory    # see functions
 _set_module_urls "${@}" # see functions
@@ -2741,7 +2732,7 @@ _installation_modules "${@}" # requires shifted params from options block 2
 if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
 	printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end}${text_bold} One or more of the provided modules are not supported${color_end}"
 	printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Below is a list of supported modules${color_end}"
-	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules_install_sorted[*]}${color_end}"
+	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules_install_processed[*]}${color_end}"
 	_print_env
 	exit
 fi
@@ -3114,7 +3105,7 @@ _qbittorrent() {
 #######################################################################################################################################################
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
-for app_name in "${qbt_modules_install_sorted[@]}"; do
+for app_name in "${qbt_modules_install_processed[@]}"; do
 	if [[ "${qbt_cache_dir_options}" != "bs" ]] && [[ ! -d "${qbt_install_dir}/boost" && "${app_name}" =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${unicode_red_circle}${color_red_light} Warning${color_end} This module depends on the boost module. Use them together: ${color_magenta_light}boost ${app_name}${color_end}"
 	else
@@ -3130,7 +3121,7 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			############################################################
 			_download
 			############################################################
-			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules_install_sorted[@]}" ]] && printf '\n'
+			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules_install_processed[@]}" ]] && printf '\n'
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
 			_apply_patches
@@ -3141,20 +3132,20 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			[[ "${app_name}" != "boost" ]] && _delete_function
 		fi
 
-		if [[ "${#qbt_modules_selected_check[@]}" -gt '0' ]]; then
+		if [[ "${#qbt_modules_selected_compare[@]}" -gt '0' ]]; then
 			printf '\n'
-			printf '%b' " ${unicode_magenta_light_circle} Activated:"
-			for activated_modules in "${!qbt_modules_selected_check[@]}"; do
-				if [[ "${qbt_activated_modules[${qbt_modules_selected_check[$activated_modules]}]}" == "yes" ]]; then
-					printf '%b' " ${color_magenta_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+			printf '%b' " ${unicode_magenta_light_circle} ${color_cyan_light}Activated modules:${color_end}"
+			for activated_modules in "${!qbt_modules_selected_compare[@]}"; do
+				if [[ "${qbt_activated_modules[${qbt_modules_selected_compare[$activated_modules]}]}" == "yes" ]]; then
+					printf '%b' " ${color_magenta_light}${qbt_modules_selected_compare[$activated_modules]}${color_end}"
 				else
-					printf '%b' " ${color_cyan_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+					printf '%b' " ${text_dim}${qbt_modules_selected_compare[$activated_modules]}${color_end}"
 				fi
 			done
 			printf '\n'
 		fi
 
-		[[ "${skipped_false}" -eq "${#qbt_modules_install_sorted[@]}" ]] && printf '\n'
+		[[ "${skipped_false}" -eq "${#qbt_modules_install_processed[@]}" ]] && printf '\n'
 	fi
 	_pushd "${qbt_working_dir}"
 done

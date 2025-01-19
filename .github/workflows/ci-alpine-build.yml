@@ -116,10 +116,6 @@ jobs:
               printf '%s\n' "Found file: \`disable-qt5\`: settings \`disable_qt5=yes\` to yes" >> $GITHUB_STEP_SUMMARY
           fi
 
-      # - name: Docker - Copy repo patches to build folder ${{ inputs.distinct_id }}
-      #   if: env.disable_qt5 != 'yes'
-      #   run: if [[ -d patches ]]; then docker exec -w /root multiarch cp -r patches/* /root/${{ env.qbt_build_dir }}/patches; fi
-
       - name: Docker - zlib-ng ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
         run: docker exec -w /root multiarch bash ${script_name} zlib
@@ -175,7 +171,7 @@ jobs:
         run: docker exec -w /root/${{ env.qbt_build_dir }}/release_info multiarch bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
 
       - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
+        if: success() && env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
@@ -184,8 +180,15 @@ jobs:
             !${{ env.qbt_build_dir }}/completed/*.png
 
       - name: Host - Upload cmake graphs artifact ${{ inputs.distinct_id }}
-        if: matrix.qbt_build_tool == '' && env.disable_qt5 != 'yes'
+        if: success() && matrix.qbt_build_tool == '' && env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
           path: "${{ env.qbt_build_dir }}/completed/*.png"
+
+      - name: Host - Upload logs on error
+        if: failure() && env.disable_qt5 != 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
+          path: "${{ env.qbt_build_dir }}/logs/*"
