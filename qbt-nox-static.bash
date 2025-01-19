@@ -1006,7 +1006,7 @@ _custom_flags() {
 	fi
 
 	# Static linking specific
-	if [[ "${qbt_modules_install_sorted}" =~ ^([[:space:]]|^)(glibc)([[:space:]]|$)$ ]]; then
+	if [[ "${qbt_modules_install_sorted[@]}" =~ ^([[:space:]]|^)(glibc)([[:space:]]|$)$ ]]; then
 		qbt_static_flags=""
 	else
 		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
