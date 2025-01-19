@@ -1295,7 +1295,7 @@ _installation_modules() {
 			read -ra qbt_modules_selected_check <<< "${qbt_modules_install_sorted[@]}"
 			for selected in "${@}"; do
 				for full_list in "${!qbt_modules_selected_check[@]}"; do
-					if [[ "${selected}" == "${qbt_modules_selected_check[full_list]}" ]]; then
+					if [[ "${selected}" == "${qbt_modules_selected_check["${full_list}"]}" ]]; then
 						qbt_activated_modules["${selected}"]="yes"
 					fi
 				done
@@ -3128,7 +3128,7 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			############################################################
 			_download
 			############################################################
-			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules_install[@]}" ]] && printf '\n'
+			[[ "${qbt_cache_dir_options}" == "bs" && "${skipped_false}" -eq "${#qbt_modules_install_sorted[@]}" ]] && printf '\n'
 			[[ "${qbt_cache_dir_options}" == "bs" ]] && continue
 			############################################################
 			_apply_patches
@@ -3152,7 +3152,7 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			printf '\n'
 		fi
 
-		[[ "${skipped_false}" -eq "${#qbt_modules_install[@]}" ]] && printf '\n'
+		[[ "${skipped_false}" -eq "${#qbt_modules_install_sorted[@]}" ]] && printf '\n'
 	fi
 	_pushd "${qbt_working_dir}"
 done
