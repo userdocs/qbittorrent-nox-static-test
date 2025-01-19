@@ -61,8 +61,8 @@ jobs:
       - name: Host - update ${{ inputs.distinct_id }}
         run: sudo apt-get update
 
-      - name: Host - upgrade ${{ inputs.distinct_id }}
-        run: sudo apt-get -y upgrade
+      # - name: Host - upgrade ${{ inputs.distinct_id }}
+      #   run: sudo apt-get -y upgrade
 
       - name: Host - set up qemu-user-static binfmt-support ${{ inputs.distinct_id }}
         run: sudo apt install libpipeline1 qemu-user-static binfmt-support
