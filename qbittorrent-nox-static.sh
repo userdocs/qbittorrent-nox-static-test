@@ -32,7 +32,8 @@ unset qbt_skip_delete qbt_git_proxy qbt_curl_proxy qbt_install_dir qbt_working_d
 # Declare our associative arrays
 #################################################################################################################################################
 declare -gA multi_arch_options skip_modules
-declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url qbt_workflow_override source_default
+declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url
+declare -gA qbt_workflow_override source_default qbt_activated_modules
 #################################################################################################################################################
 # Color me up Scotty - define some color values to use as variables in the scripts.
 #################################################################################################################################################
@@ -772,18 +773,50 @@ _debug() {
 #######################################################################################################################################################
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
-_custom_flags_set() {
-	CFLAGS="${qbt_optimise/*/${qbt_optimise} }"
-	CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="${qbt_ldflags_static} -w -Wno-psabi -I${include_dir} ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS="${qbt_ldflags_static} ${qbt_strip_flags} -L${lib_dir} -pthread -z max-page-size=65536 ${qbt_optimise/*/${qbt_optimise} }"
-}
+# Define common flag sets
+_custom_flags() {
+	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
+	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+	# Preprocessor only flags
+	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	# Security flags for compiler
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
+	# Warning control
+	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi"
+	# Linker specific flags
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
-_custom_flags_reset() {
-	CFLAGS="-O2 -U_FORTIFY_SOURCE"
-	CXXFLAGS="-O2 -U_FORTIFY_SOURCE -w -std=${qbt_cxx_standard} ${qbt_optimise/*/${qbt_optimise} }"
-	CPPFLAGS="-O2 -U_FORTIFY_SOURCE -w ${qbt_optimise/*/${qbt_optimise} }"
-	LDFLAGS="${qbt_optimise/*/${qbt_optimise} }"
+	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
+		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
+		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+	fi
+
+	# Static linking specific
+	if [[ "${qbt_modules[*]}" =~ ^([[:space:]]|^)(glibc)([[:space:]]|$)$ ]]; then
+		qbt_static_flags=""
+	else
+		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
+	fi
+
+	_custom_flags_set() {
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise} ${CFLAGS:-}"
+		CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_warning_flags} ${qbt_static_flags} ${qbt_optimise} ${CXXFLAGS:-}"
+		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${CPPFLAGS:-}"
+		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} -pthread ${qbt_optimise} ${LDFLAGS:-}"
+	}
+
+	_custom_flags_reset() {
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${CFLAGS:-}"
+		CXXFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
+		CPPFLAGS="${qbt_preprocessor_flags} ${qbt_warning_flags} ${CPPFLAGS:-}"
+		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
+	}
+
+	if [[ "${qbt_modules[*]}" =~ ^([[:space:]]|^)(glibc|iconv|icu)([[:space:]]|$)$ ]]; then
+		_custom_flags_reset
+	else
+		_custom_flags_set
+	fi
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
@@ -1033,11 +1066,12 @@ _installation_modules() {
 			qbt_modules=("${qbt_modules[@]}")
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
 			unset 'qbt_modules[0]'
-			read -ra qbt_modules_skipped <<< "${qbt_modules[@]}"
-
+			read -ra qbt_modules_selected_check <<< "${qbt_modules[@]}"
 			for selected in "${@}"; do
-				for full_list in "${!qbt_modules_skipped[@]}"; do
-					[[ "${selected}" == "${qbt_modules_skipped[full_list]}" ]] && qbt_modules_skipped[full_list]="${color_magenta_light}${selected}${color_end}"
+				for full_list in "${!qbt_modules_selected_check[@]}"; do
+					if [[ "${selected}" == "${qbt_modules_selected_check["${full_list}"]}" ]]; then
+						qbt_activated_modules["${selected}"]="yes"
+					fi
 				done
 			done
 			unset selected
@@ -1060,7 +1094,7 @@ _installation_modules() {
 
 		python_short_version="${python_major}.${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimise} -std=${qbt_cxx_standard} <cxxflags>${qbt_optimise} -std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
@@ -1712,7 +1746,7 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimise} -std=${qbt_cxx_standard} <cxxflags>${qbt_optimise} -std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
@@ -2519,7 +2553,7 @@ _zlib() {
 		# force set some ARCH when using zlib-ng, configure and musl-cross since it does not detect the arch correctly on Alpine.
 		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && sed "s|  CFLAGS=\"-O2 \${CFLAGS}\"|  ARCH=${qbt_zlib_arch:-$(apk --print-arch)}\n  CFLAGS=\"-O2 \${CFLAGS}\"|g" -i "${qbt_dl_folder_path}/configure"
 		./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-		make -j"$(nproc)" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
@@ -2614,6 +2648,7 @@ _libtorrent() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
@@ -2669,6 +2704,7 @@ _double_conversion() {
 			"${multi_double_conversion[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D CMAKE_INSTALL_LIBDIR=lib \
 			-D BUILD_SHARED_LIBS=OFF \
@@ -2733,6 +2769,7 @@ _qtbase() {
 			-D QT_BUILD_EXAMPLES_BY_DEFAULT=OFF -D QT_BUILD_TESTS_BY_DEFAULT=OFF \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -2776,6 +2813,7 @@ _qttools() {
 			-D CMAKE_BUILD_TYPE="release" \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -2812,6 +2850,7 @@ _qbittorrent() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
+			-D CMAKE_C_FLAGS="${CFLAGS}" \
 			-D CMAKE_CXX_FLAGS="${CXXFLAGS}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D GUI=OFF \
@@ -2829,7 +2868,7 @@ _qbittorrent() {
 			"${multi_qbittorrent[@]}" \
 			"${qbt_qbittorrent_debug}" \
 			--disable-gui \
-			CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
+			CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" CPPFLAGS="${CPPFLAGS}" LDFLAGS="${LDFLAGS}" \
 			--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
@@ -2853,11 +2892,7 @@ for app_name in "${qbt_modules[@]}"; do
 				"_${app_name}_bootstrap"
 			fi
 			########################################################
-			if [[ "${app_name}" =~ (glibc|iconv|icu) ]]; then
-				_custom_flags_reset
-			else
-				_custom_flags_set
-			fi
+			_custom_flags
 			############################################################
 			_download
 			############################################################
@@ -2872,11 +2907,15 @@ for app_name in "${qbt_modules[@]}"; do
 			[[ "${app_name}" != "boost" ]] && _delete_function
 		fi
 
-		if [[ "${#qbt_modules_skipped[@]}" -gt '0' ]]; then
+		if [[ "${#qbt_modules_selected_check[@]}" -gt '0' ]]; then
 			printf '\n'
 			printf '%b' " ${unicode_magenta_light_circle} Activated:"
-			for skipped_true in "${qbt_modules_skipped[@]}"; do
-				printf '%b' " ${color_cyan_light}${skipped_true}${color_end}"
+			for activated_modules in "${!qbt_modules_selected_check[@]}"; do
+				if [[ "${qbt_activated_modules[${qbt_modules_selected_check[$activated_modules]}]}" == "yes" ]]; then
+					printf '%b' " ${color_magenta_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+				else
+					printf '%b' " ${color_cyan_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+				fi
 			done
 			printf '\n'
 		fi
