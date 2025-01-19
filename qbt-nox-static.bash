@@ -31,9 +31,13 @@ unset qbt_skip_delete qbt_git_proxy qbt_curl_proxy qbt_install_dir qbt_working_d
 #################################################################################################################################################
 # Declare our associative arrays
 #################################################################################################################################################
-declare -gA multi_arch_options qbt_test_tools qbt_core_deps qbt_deps_delete qbt_modules_delete skip_modules qbt_modules_install
-declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url qbt_workflow_override source_default
-declare -ga qbt_modules_order qbt_modules_install_sorted
+# Associative arrays
+declare -gA multi_arch_options qbt_test_tools qbt_core_deps qbt_deps_delete
+declare -gA qbt_modules_delete skip_modules qbt_modules_install
+declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url
+declare -gA qbt_workflow_override source_default qbt_activated_modules
+# Indexed arrays
+declare -ga qbt_modules_order qbt_modules_install_sorted qbt_modules_selected_check
 #################################################################################################################################################
 # Color me up Scotty - define some color values to use as variables in the scripts.
 #################################################################################################################################################
@@ -983,28 +987,50 @@ _debug() {
 #######################################################################################################################################################
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
-# Security and optimization flags
-qbt_build_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
-qbt_build_security_flags="-fstack-clash-protection -fstack-protector-strong -fcf-protection=full -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-qbt_build_visibility_flags="-fvisibility=hidden -fvisibility-inlines-hidden"
-# Linker security flags
-qbt_build_linker_optimization="-Wl,-O1,--as-needed,--sort-common,--gc-sections"
-qbt_build_linker_security="-Wl,-z,now,-z,relro,-z,max-page-size=65536,-z,pack-relative-relocs"
+# Define common flag sets
+_custom_flags() {
+	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
+	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+	# Preprocessor only flags
+	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	# Security flags for compiler
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
+	# Warning control
+	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi"
+	# Linker specific flags
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
-qbt_build_flags_common="${qbt_build_optimization_flags} ${qbt_build_security_flags} -fPIC"
+	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
+		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
+		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+	fi
 
-_custom_flags_set() {
-	CFLAGS="${qbt_build_flags_common} ${CFLAGS:-}"
-	CXXFLAGS="-I${include_dir} ${qbt_build_flags_common} ${qbt_build_visibility_flags} -Wno-psabi ${qbt_ldflags_static} -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
-	CPPFLAGS="-I${include_dir} ${qbt_ldflags_static} -Wno-psabi ${CPPFLAGS:-}"
-	LDFLAGS="-L${lib_dir} -pthread ${qbt_build_linker_optimization} ${qbt_build_linker_security} -gz ${qbt_ldflags_static} ${qbt_strip_flags} ${LDFLAGS:-}"
-}
+	# Static linking specific
+	if [[ "${qbt_modules_install_sorted}" =~ ^([[:space:]]|^)(glibc)([[:space:]]|$)$ ]]; then
+		qbt_static_flags=""
+	else
+		qbt_static_flags="-static-libstdc++ -static-libgcc ${qbt_ldflags_static}"
+	fi
 
-_custom_flags_reset() {
-	CFLAGS="${qbt_build_optimization_flags} ${CFLAGS:-}"
-	CXXFLAGS="${qbt_build_optimization_flags} -Wno-psabi -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
-	CPPFLAGS="-pthread ${CPPFLAGS:-}"
-	LDFLAGS="${LDFLAGS:-}"
+	_custom_flags_set() {
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise} ${CFLAGS:-}"
+		CXXFLAGS="-std=${qbt_cxx_standard} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_warning_flags} ${qbt_static_flags} ${qbt_optimise} ${CXXFLAGS:-}"
+		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${CPPFLAGS:-}"
+		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} -pthread ${qbt_optimise} ${LDFLAGS:-}"
+	}
+
+	_custom_flags_reset() {
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${CFLAGS:-}"
+		CXXFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${CXXFLAGS:-}"
+		CPPFLAGS="${qbt_preprocessor_flags} ${qbt_warning_flags} ${CPPFLAGS:-}"
+		LDFLAGS="${qbt_static_flags} ${LDFLAGS:-}"
+	}
+
+	if [[ "${qbt_modules_install_sorted}" =~ ^([[:space:]]|^)(glibc|iconv|icu)([[:space:]]|$)$ ]]; then
+		_custom_flags_reset
+	else
+		_custom_flags_set
+	fi
 }
 #######################################################################################################################################################
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
@@ -1265,12 +1291,12 @@ _installation_modules() {
 		else # Only activate the module passed as a param and leave the rest defaulted to skip
 			unset "qbt_modules_install[all]"
 			_sort_modules # Call the sort function to sort the modules in an indexed array so the order is correct
-			read -ra qbt_modules_activated <<< "${qbt_modules_install_sorted[@]}"
 
+			read -ra qbt_modules_selected_check <<< "${qbt_modules_install_sorted[@]}"
 			for selected in "${@}"; do
-				for full_list in "${!qbt_modules_activated[@]}"; do
-					if [[ "${selected}" == "${qbt_modules_activated[full_list]}" ]]; then
-						qbt_modules_activated[full_list]="${color_magenta_light}${selected}${color_end}"
+				for full_list in "${!qbt_modules_selected_check[@]}"; do
+					if [[ "${selected}" == "${qbt_modules_selected_check[full_list]}" ]]; then
+						qbt_activated_modules["${selected}"]="yes"
 					fi
 				done
 			done
@@ -1294,7 +1320,7 @@ _installation_modules() {
 
 		python_short_version="${python_major}.${python_minor}"
 
-		printf '%b\n' "using gcc : : : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+		printf '%b\n' "using gcc : : : <cflags>${qbt_optimise} -std=${qbt_cxx_standard} <cxxflags>${qbt_optimise} -std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 
 		# printf the build directory.
 		printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Install Prefix${color_end} : ${color_cyan_light}${qbt_install_dir_short}${color_end}"
@@ -1952,7 +1978,7 @@ _multi_arch() {
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 			else
-				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} <cxxflags>${qbt_optimise/*/${qbt_optimise} }-std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
+				printf '%b\n' "using gcc : ${qbt_cross_boost#gcc-} : ${qbt_cross_host}-g++ : <cflags>${qbt_optimise} -std=${qbt_cxx_standard} <cxxflags>${qbt_optimise} -std=${qbt_cxx_standard} ;${text_newline}using python : ${python_short_version} : /usr/bin/python${python_short_version} : /usr/include/python${python_short_version} : /usr/lib/python${python_short_version} ;" > "${HOME}/user-config.jam"
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
 			fi
@@ -3098,11 +3124,7 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 				"_${app_name}_bootstrap"
 			fi
 			########################################################
-			if [[ "${app_name}" =~ (glibc|iconv|icu) ]]; then
-				_custom_flags_reset
-			else
-				_custom_flags_set
-			fi
+			_custom_flags
 			############################################################
 			_download
 			############################################################
@@ -3117,11 +3139,15 @@ for app_name in "${qbt_modules_install_sorted[@]}"; do
 			[[ "${app_name}" != "boost" ]] && _delete_function
 		fi
 
-		if [[ "${#qbt_modules_activated[@]}" -gt '0' ]]; then
+		if [[ "${#qbt_modules_selected_check[@]}" -gt '0' ]]; then
 			printf '\n'
 			printf '%b' " ${unicode_magenta_light_circle} Activated:"
-			for skipped_true in "${qbt_modules_activated[@]}"; do
-				printf '%b' " ${color_cyan_light}${skipped_true}${color_end}"
+			for activated_modules in "${!qbt_modules_selected_check[@]}"; do
+				if [[ "${qbt_activated_modules[${qbt_modules_selected_check[$activated_modules]}]}" == "yes" ]]; then
+					printf '%b' " ${color_magenta_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+				else
+					printf '%b' " ${color_cyan_light}${qbt_modules_selected_check[$activated_modules]}${color_end}"
+				fi
 			done
 			printf '\n'
 		fi
