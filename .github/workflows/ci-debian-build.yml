@@ -37,6 +37,7 @@ jobs:
         container_codename: [bullseye, bookworm, focal, jammy, noble]
         qbt_build_tool: ["cmake", "qmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
+        qbt_qbittorrent_tag: ["release-4.6.7"]
         exclude:
           - container_id: debian
             container_codename: focal
@@ -79,7 +80,7 @@ jobs:
         qbt_boost_tag: ""
         qbt_libtorrent_tag: ""
         qbt_qt_tag: ""
-        qbt_qbittorrent_tag: ""
+        qbt_qbittorrent_tag: ${{ matrix.qbt_qbittorrent_tag }}
         qbt_libtorrent_master_jamfile: ""
         qbt_workflow_files: ${{ inputs.workflow-files }}
         qbt_workflow_artifacts: ""
