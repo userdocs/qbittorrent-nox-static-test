@@ -2397,8 +2397,7 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Warning:${color_end} using this flag will mean your static build is limited a CPU that matches the host spec"
 			printf '\n%b\n' " ${unicode_blue_light_circle} Usage example: ${color_blue_light}-o \"-my -custom --flags\"${color_end}"
 			printf '\n%b\n' " Notes:"
-			printf '\n%b\n' "    ${color_cyan_light}-o${color_end} accepts a quoted string of flags to pass to the compiler"
-			printf '%b\n\n' "    ${color_cyan_light}-march=native${color_end} is always passed if this flag is used unless crosscompiling"
+			printf '\n%b\n\n' "    ${color_cyan_light}-march=native${color_end} is always passed if this flag is used unless crosscompiling"
 			exit
 			;;
 		-h-p | --help-proxy)
