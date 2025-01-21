@@ -1928,7 +1928,7 @@ _multi_arch() {
 							qbt_zlib_arch="riscv64"
 							;;&
 						debian)
-							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine or Ubuntu OS Host"
+							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on an Alpine or Ubuntu OS Host"
 							exit 1
 							;;
 						ubuntu)
