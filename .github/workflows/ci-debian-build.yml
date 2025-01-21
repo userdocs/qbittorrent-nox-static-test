@@ -34,19 +34,13 @@ jobs:
       fail-fast: false
       matrix:
         container_id: [debian, ubuntu]
-        container_codename: [bullseye, bookworm, focal, jammy, noble]
+        container_codename: [bookworm, noble]
         qbt_build_tool: ["cmake", "qmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_qbittorrent_tag: ["release-4.6.7"]
         exclude:
           - container_id: debian
-            container_codename: focal
-          - container_id: debian
-            container_codename: jammy
-          - container_id: debian
             container_codename: noble
-          - container_id: ubuntu
-            container_codename: bullseye
           - container_id: ubuntu
             container_codename: bookworm
         include:
