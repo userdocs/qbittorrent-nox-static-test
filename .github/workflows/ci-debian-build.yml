@@ -35,10 +35,8 @@ jobs:
       matrix:
         container_id: [debian, ubuntu]
         container_codename: [bookworm, noble]
-        qbt_cross_name: ["loongarch64"]
         qbt_build_tool: ["cmake", "qmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
-        qbt_qbittorrent_tag: ["release-4.6.7"]
         exclude:
           - container_id: debian
             container_codename: noble
