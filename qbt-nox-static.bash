@@ -1946,17 +1946,18 @@ _multi_arch() {
 				loongarch64)
 					case "${qbt_cross_target}" in
 						alpine)
-							cross_arch="loongarch64"
-							qbt_cross_host="loongarch64-linux-musl"
-							qbt_zlib_arch="loongarch64"
+							if [[ "${qbt_qt_version}" == '6' ]]; then
+								cross_arch="loongarch64"
+								qbt_cross_host="loongarch64-linux-musl"
+								qbt_zlib_arch="loongarch64"
+							else
+								printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine Host with qt6"
+								exit 1
+							fi
 							;;&
-						debian)
-							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine or Ubuntu Host"
+						debian | ubuntu)
+							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine Host with qt6"
 							exit 1
-							;;&
-						ubuntu)
-							cross_arch="loongarch64"
-							qbt_cross_host="loongarch64-linux-gnu"
 							;;&
 						*)
 							bitness="64"
