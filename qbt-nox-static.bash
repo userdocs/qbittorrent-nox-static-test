@@ -979,11 +979,7 @@ _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
 	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
-	if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
-		qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_GLIBCXX_ASSERTIONS"
-	else
-		qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	fi
+	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
 	# Security flags for compiler
 	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
 	# Warning control
@@ -1149,9 +1145,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
-			github_tag[glibc]="glibc-2.31"
-		elif [[ "${os_version_codename}" =~ ^(bookworm|jammy)$ ]]; then
+		if [[ "${os_version_codename}" =~ ^(bookworm)$ ]]; then
 			github_tag[glibc]="glibc-2.38"
 		else # "$(_git_git ls-remote -q -t --refs https://sourceware.org/git/glibc.git | awk '/\/tags\/glibc-[0-9]\.[0-9]{2}$/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 			github_tag[glibc]="glibc-2.40"
