@@ -765,7 +765,11 @@ _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
 	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
 	# Preprocessor only flags
-	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	if [[ "${os_version_codename}" =~ ^(bullseye|focal)$ ]]; then
+		qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_GLIBCXX_ASSERTIONS"
+	else
+		qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	fi
 	# Security flags for compiler
 	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
 	# Warning control
