@@ -35,6 +35,7 @@ jobs:
         qbt_cross_name: ["loongarch64"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "qmake"]
+        qbt_qbittorrent_tag: ["release-4.6.7"]
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version_name: "qt5-"
