@@ -209,7 +209,7 @@ _set_default_values() {
 	qbt_python_version="3"
 
 	# provide gcc flags for the build - this is not used by default but can be set to provide custom flags for the build.
-	qbt_optimise="${qbt_optimise:-}"
+	qbt_optimise="${qbt_optimise:-no}"
 
 	# The default is 17 but can be manually defined via the env qbt_standard - this will be overridden by the _set_cxx_standard function in specific cases
 	qbt_standard="${qbt_standard:-20}" qbt_cxx_standard="c++${qbt_standard}"
@@ -1957,6 +1957,10 @@ while (("${#}")); do
 				exit 1
 			fi
 			;;
+		-q | --qmake)
+			qbt_build_tool="--qmake"
+			shift
+			;;
 		-s | --strip)
 			qbt_optimise_strip="yes"
 			shift
@@ -2202,6 +2206,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--optimise${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-optimise${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--proxy${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-proxy${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--patch-repo${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-patch-repo${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-q${color_end}     ${text_dim}or${color_end} ${color_blue_light}--qmake${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-q${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-qmkae${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-master${color_end}    ${color_yellow}Help:${color_end} ${color_blue_light}-h-qm${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-master${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-tag${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--qt-tag${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--help-qtt-tag${color_end}"
@@ -2323,7 +2328,7 @@ while (("${#}")); do
 			printf '\n%b\n' " This flag can change the build process in a few ways."
 			printf '\n%b\n' " ${unicode_yellow_circle} Use cmake to build libtorrent."
 			printf '%b\n' " ${unicode_yellow_circle} Use cmake to build qbittorrent."
-			printf '\n%b\n\n' " ${unicode_yellow_circle} You can use this flag with ICU and qtbase will use ICU instead of iconv."
+			printf '\n%b\n\n' " ${unicode_yellow_circle} This is the default setting for the script."
 			exit
 			;;
 		-h-cd | --help-cache-directory)
@@ -2426,6 +2431,14 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_yellow_circle} ${color_yellow_light}If an installation tag matches a hosted tag patch file, it will be automatically used.${color_end}"
 			printf '\n%b\n' " The tag name will alway be an abbreviated version of the default or specificed tag.${color_end}"
 			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Usage example:${color_end} ${color_blue_light}-pr usnerame/repo${color_end}"
+			exit
+			;;
+		-h-q | --help-qmake)
+			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
+			printf '\n%b\n' " This flag can change the build process in a few ways."
+			printf '\n%b\n' " ${unicode_yellow_circle} Use configure scripts to build apps"
+			printf '%b\n' " ${unicode_yellow_circle} Use qmake to build qtbase, qttools and qbittorrent."
+			printf '\n%b\n\n' " ${unicode_yellow_circle} You can use this flag to build older build combinations that don't use cmake"
 			exit
 			;;
 		-h-qm | --help-qbittorrent-master)
