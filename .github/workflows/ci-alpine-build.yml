@@ -194,7 +194,7 @@ jobs:
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
-        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/release_info ${container_name} bash -c 'mv *.md *.json '/root/${{ env.qbt_build_dir }}/completed''
+        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${{ env.qbt_build_dir }}/completed''
 
       - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
         if: success() && env.disable_qt5 != 'yes'
