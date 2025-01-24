@@ -984,15 +984,15 @@ _debug() {
 # Define common flag sets
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
-	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+	qbt_optimization_flags=""
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
-	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	qbt_preprocessor_flags=""
 	# Security flags for compiler
-	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
+	qbt_security_flags=""
 	# Warning control
-	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi"
+	qbt_warning_flags=""
 	# Linker specific flags
-	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
+	qbt_linker_flags=""
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
 		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
@@ -1982,7 +1982,14 @@ _multi_arch() {
 				rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 			fi
 
-			qbt_mcm_toolchain_prefix="aarch64"
+			if [[ $qbt_cross_name == "aarch64" ]]; then
+				qbt_mcm_toolchain_prefix="aarch64"
+			elif [[ $qbt_cross_name == "x86_64" ]]; then
+				qbt_mcm_toolchain_prefix="x86_64"
+			else
+				printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
+				exit 1
+			fi
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
