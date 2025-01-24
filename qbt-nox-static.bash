@@ -1661,7 +1661,7 @@ _cmake() {
 
 		if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]}" ]]; then
-				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-$(apk info --print-arch)" -o "${qbt_install_dir}/bin/ninja"
+				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-${os_arch}" -o "${qbt_install_dir}/bin/ninja"
 				_post_command ninja
 				chmod 700 "${qbt_install_dir}/bin/ninja"
 
@@ -1982,9 +1982,9 @@ _multi_arch() {
 				rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 			fi
 
-			if [[ $qbt_cross_name == "aarch64" ]]; then
+			if [[ $os_arch == "aarch64" ]]; then
 				qbt_mcm_toolchain_prefix="aarch64"
-			elif [[ $qbt_cross_name == "x86_64" ]]; then
+			elif [[ $os_arch == "x86_64" ]]; then
 				qbt_mcm_toolchain_prefix="x86_64"
 			else
 				printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
