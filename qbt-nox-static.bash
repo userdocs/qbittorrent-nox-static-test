@@ -762,19 +762,19 @@ _check_dependencies() {
 		elif [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_core_deps_sorted[*]}"
 		fi
-		exit 1
+		exit
 	fi
 
 	if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
 		printf '\n'
-		exit 1
+		exit
 	fi
 
 	for qbt_mi in "${!qbt_modules_install[@]}"; do
 		if [[ "${filerterd_params[*]}" =~ ([[:space:]]|^)${qbt_mi}([[:space:]]|$) ]]; then
 			if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
 				printf '\n'
-				exit 1
+				exit
 			fi
 		fi
 	done && unset qbt_mi
