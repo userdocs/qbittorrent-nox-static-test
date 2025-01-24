@@ -48,7 +48,7 @@ jobs:
     env:
       qbt_build_dir: "qbt-build"
       script_name: ${{ inputs.script_name }}
-      container_name: multiarch
+      container_name: "multiarch"
 
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
@@ -95,24 +95,8 @@ jobs:
           printf '%s\n' "qbt_standard=" >> env.custom
           printf '%s\n' "qbt_static_ish=" >> env.custom
 
-      - name: Host - Create docker ${{ env.multiarch }} container ${{ inputs.distinct_id }}
-        run: |
-          # We create an Alpine edge container for cross-compilation with a user named gh which has same id as runner 1001 and provide sudo access
-          # This way we can run commands as a non-root user, avoiding permission issues on host runner. Switching between user and root as needed.
-          docker run --name ${container_name} -it -d --env-file env.custom -w /home/gh  -v ${{ github.workspace }}:/home/gh  ${{ matrix.os_id }}:${{ matrix.os_version_id }}
-          # Create the user gh with the id 1001:1001 which is the same as the runner user id and group id.
-          docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
-          # Allow the user gh to run sudo without password prompt: docker exec -u gh:gh ${container_name} sudo ls
-          docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
-
-      - name: Docker - apk update ${{ inputs.distinct_id }}
-        run: docker exec ${container_name} apk update
-
-      - name: Docker - apk install bash ${{ inputs.distinct_id }}
-        run: docker exec ${container_name} apk add bash
-
-      - name: Docker - Bootstrap test tools ${{ inputs.distinct_id }}
-        run: docker exec ${container_name} bash ${script_name} update install_test
+      - name: Host - check stuff ${{ inputs.distinct_id }}
+        run: bash ${script_name}
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -120,6 +104,29 @@ jobs:
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
               printf '%s\n' "Found file: \`disable-qt5\`: settings \`disable_qt5=yes\` to yes" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Host - Create docker ${{ env.multiarch }} container ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: |
+          # We create an Alpine edge container for cross-compilation with a user named gh which has same id as runner 1001 and provide sudo access
+          # This way we can run commands as a non-root user, avoiding permission issues on host runner. Switching between user and root as needed.
+          docker run --name ${container_name} -it -d --env-file env.custom -w /home/gh -v ${{ github.workspace }}:/home/gh ${{ matrix.os_id }}:${{ matrix.os_version_id }}
+          # Create the user gh with the id 1001:1001 which is the same as the runner user id and group id.
+          docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
+          # Allow the user gh to run sudo without password prompt: docker exec -u gh:gh ${container_name} sudo ls
+          docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
+
+      - name: Docker - apk update ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: docker exec ${container_name} apk update
+
+      - name: Docker - apk install bash ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: docker exec ${container_name} apk add bash
+
+      - name: Docker - Bootstrap test tools ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: docker exec ${container_name} bash ${script_name} update install_test
 
       - name: Docker - Bootstrap core deps ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
