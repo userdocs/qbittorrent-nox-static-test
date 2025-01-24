@@ -57,7 +57,7 @@ jobs:
       script_name: ${{ inputs.script_name }}
 
     container:
-      image: ${{ matrix.container_id }}:${{ matrix.container_codename }}
+      image: arm64v8/${{ matrix.container_id }}:${{ matrix.container_codename }}
       env: # container
         LANG: C.UTF-8
         LC_ALL: C.UTF-8
