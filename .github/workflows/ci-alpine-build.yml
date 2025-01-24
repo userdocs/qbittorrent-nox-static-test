@@ -96,7 +96,12 @@ jobs:
           printf '%s\n' "qbt_static_ish=" >> env.custom
 
       - name: Host - check stuff ${{ inputs.distinct_id }}
-        run: bash ${script_name}
+        run: |
+          source env.custom && bash ${script_name}
+          env
+
+      - name: Host - check env ${{ inputs.distinct_id }}
+        run: env
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
