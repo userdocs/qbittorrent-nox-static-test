@@ -90,6 +90,9 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap test tools ${{ inputs.distinct_id }}
+        run: bash ${script_name} update
+
+      - name: Bootstrap test tools ${{ inputs.distinct_id }}
         run: bash ${script_name} install_test
 
       - name: qBittorrent v5 transition ${{ inputs.distinct_id }}
