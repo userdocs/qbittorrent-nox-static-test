@@ -97,7 +97,7 @@ jobs:
 
       - name: Host - check stuff ${{ inputs.distinct_id }}
         run: |
-          source env.custom && ./${script_name}
+          export $(cat env.custom) && bash ${script_name}
           env
 
       - name: Host - check env ${{ inputs.distinct_id }}
