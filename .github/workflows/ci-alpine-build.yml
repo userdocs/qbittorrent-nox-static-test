@@ -56,18 +56,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Host - phased updates ${{ inputs.distinct_id }}
-        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
-
-      - name: Host - update ${{ inputs.distinct_id }}
-        run: sudo apt-get update
-
-      # - name: Host - upgrade ${{ inputs.distinct_id }}
-      #   run: sudo apt-get -y upgrade
-
-      - name: Host - set up qemu-user-static binfmt-support ${{ inputs.distinct_id }}
-        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
-
       - name: Host - Create Docker template env file ${{ inputs.distinct_id }}
         env:
           set_skip_icu: ${{ inputs.icu }}
@@ -95,13 +83,11 @@ jobs:
           printf '%s\n' "qbt_standard=" >> env.custom
           printf '%s\n' "qbt_static_ish=" >> env.custom
 
-      - name: Host - check stuff ${{ inputs.distinct_id }}
-        run: |
-          export $(cat env.custom) && bash ${script_name}
-          env
+      # - name: Host - Github env to container ${{ inputs.distinct_id }}
+      #   run: env >> env.custom
 
-      - name: Host - check env ${{ inputs.distinct_id }}
-        run: env
+      - name: Host - check stuff ${{ inputs.distinct_id }}
+        run: export $(cat env.custom) && bash ${script_name}
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -109,6 +95,21 @@ jobs:
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
               printf '%s\n' "Found file: \`disable-qt5\`: settings \`disable_qt5=yes\` to yes" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Host - phased updates ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: printf '%s\n' 'APT::Get::Always-Include-Phased-Updates "false";' | sudo tee /etc/apt/apt.conf.d/99-phased-updates
+
+      - name: Host - update ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: sudo apt-get update
+
+      # - name: Host - upgrade ${{ inputs.distinct_id }}
+      #   run: sudo apt-get -y upgrade
+
+      - name: Host - set up qemu-user-static binfmt-support ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
 
       - name: Host - Create docker ${{ env.multiarch }} container ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
