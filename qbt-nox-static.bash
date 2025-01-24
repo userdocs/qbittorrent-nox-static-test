@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.1.0"
+script_version="2.1.1"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -77,7 +77,7 @@ _color_test() {
 		exit
 	else
 		echo "The terminal does not support color output."
-		exit 1
+		exit
 	fi
 }
 [[ "${1}" == "ctest" ]] && _color_test # ./scriptname.sh ctest
@@ -260,7 +260,7 @@ _set_default_values() {
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
 		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
-			exit 1
+			exit
 		fi
 	fi
 
@@ -2155,7 +2155,7 @@ while (("${#}")); do
 				shift 2
 			else
 				printf '\n%b\n\n' " ${unicode_red_circle} You must provide a directory path when using ${color_blue_light}-b${color_end}"
-				exit 1
+				exit
 			fi
 			;;
 		-bs-c | --bootstrap-cmake)
@@ -2443,7 +2443,7 @@ while (("${#}")); do
 					printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
 					printf '\n%b\n' " ${unicode_green_circle} qt5 + qmake ${unicode_green_circle} qt6 + cmake ${unicode_red_circle} qt5 + cmake ${unicode_red_circle} qt6 + qmake"
 					_print_env
-					exit 1
+					exit
 				fi
 				shift 2
 			else
@@ -2775,7 +2775,7 @@ while (("${#}")); do
 			;;
 		-*) # unsupported flags
 			printf '\n%b\n\n' " ${unicode_red_circle} Error: Unsupported flag ${color_red_light}${1}${color_end} - use ${color_green_light}-h${color_end} or ${color_green_light}--help${color_end} to see the valid options${color_end}" >&2
-			exit 1
+			exit
 			;;
 		*) # preserve positional arguments
 			params2+=("${1}")
@@ -3091,7 +3091,7 @@ _qtbase() {
 	else
 		printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
 		printf '\n%b\n\n' " ${unicode_green_circle} qt5 + qmake ${unicode_green_circle} qt6 + cmake ${unicode_red_circle} qt5 + cmake ${unicode_red_circle} qt6 + qmake"
-		exit 1
+		exit
 	fi
 }
 #######################################################################################################################################################
@@ -3121,7 +3121,7 @@ _qttools() {
 	else
 		printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
 		printf '\n%b\n\n' " ${unicode_green_circle} qt5 + qmake ${unicode_green_circle} qt6 + cmake ${unicode_red_circle} qt5 + cmake ${unicode_red_circle} qt6 + qmake"
-		exit 1
+		exit
 	fi
 }
 #######################################################################################################################################################
