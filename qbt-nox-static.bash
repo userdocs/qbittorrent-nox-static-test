@@ -984,15 +984,15 @@ _debug() {
 # Define common flag sets
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
-	qbt_optimization_flags=""
+	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
-	qbt_preprocessor_flags=""
+	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
 	# Security flags for compiler
-	qbt_security_flags=""
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
 	# Warning control
-	qbt_warning_flags=""
+	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi"
 	# Linker specific flags
-	qbt_linker_flags=""
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
 		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
