@@ -138,6 +138,7 @@ jobs:
         run: docker exec ${container_name} bash ${script_name} install_core
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
         run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
 
       - name: Docker - zlib-ng ${{ inputs.distinct_id }}
