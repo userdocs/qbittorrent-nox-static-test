@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #
+set -x
 # cSpell:includeRegExp #.*
 #
 # Copyright 2020 by userdocs and contributors
