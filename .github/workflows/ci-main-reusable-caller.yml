@@ -60,7 +60,7 @@ permissions: {}
 
 jobs:
   ci-debian-build:
-    if: always() && github.event.inputs.debian-build == 'true'
+    if: github.event.inputs.debian-build == 'true'
     concurrency:
       group: ci-debian-build
       cancel-in-progress: true
@@ -75,7 +75,7 @@ jobs:
       script_name: ${{ github.event.inputs.script_name }}
 
   ci-alpine-build:
-    if: always() && github.event.inputs.alpine-build == 'true'
+    if: github.event.inputs.alpine-build == 'true'
     concurrency:
       group: ci-alpine-build
       cancel-in-progress: true
@@ -93,7 +93,7 @@ jobs:
 
   ci-alpine-release:
     needs: [ci-alpine-build]
-    if: always() && github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     concurrency:
       group: ci-alpine-release
       cancel-in-progress: true
