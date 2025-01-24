@@ -260,7 +260,7 @@ _set_default_values() {
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
 		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
-			exit
+			exit 1
 		fi
 	fi
 
@@ -742,11 +742,17 @@ _check_dependencies() {
 
 		if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
 			_update_os
-		elif [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
+		fi
+
+		if [[ $* =~ ([[:space:]]|^)(install_test)([[:space:]]|$) ]]; then
 			_install_tools test
-		elif [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
+		fi
+
+		if [[ $* =~ ([[:space:]]|^)(install_core)([[:space:]]|$) ]]; then
 			_install_tools core
-		elif [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
+		fi
+
+		if [[ $* =~ ([[:space:]]|^)(bootstrap_deps)([[:space:]]|$) ]]; then
 			_update_os
 			_install_tools core
 		fi
