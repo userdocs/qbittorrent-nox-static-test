@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #
-set -x
 # cSpell:includeRegExp #.*
 #
 # Copyright 2020 by userdocs and contributors
@@ -502,7 +501,6 @@ _set_build_cons() {
 		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
 		exit
 	fi
-
 }
 #######################################################################################################################################################
 # _print_env
