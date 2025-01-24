@@ -103,11 +103,8 @@ jobs:
       - name: Docker - apk install bash ${{ inputs.distinct_id }}
         run: docker exec -w /root multiarch apk add bash
 
-      - name: Docker - Bootstrap deps ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash ${script_name} bootstrap_deps
-
-      - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
-        run: docker exec -w /root multiarch bash ${script_name} -bs-a
+      - name: Docker - Bootstrap test tools ${{ inputs.distinct_id }}
+        run: docker exec -w /root multiarch bash ${script_name} update install_test
 
       - name: Host - qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -115,6 +112,12 @@ jobs:
               printf '%s\n' "disable_qt5=yes" >> $GITHUB_ENV
               printf '%s\n' "Found file: \`disable-qt5\`: settings \`disable_qt5=yes\` to yes" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Docker - Bootstrap core deps ${{ inputs.distinct_id }}
+        run: docker exec -w /root multiarch bash ${script_name} install_core
+
+      - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
+        run: docker exec -w /root multiarch bash ${script_name} -bs-a
 
       - name: Docker - zlib-ng ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
