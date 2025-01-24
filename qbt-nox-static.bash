@@ -261,7 +261,7 @@ _set_default_values() {
 		if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then qbt_modules_delete["glibc"]="true"; fi
 		if [[ "${qbt_cross_name}" != "default" ]]; then
 			printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
-			exit 1
+			exit
 		fi
 	fi
 
@@ -500,7 +500,7 @@ _set_build_cons() {
 	if [[ "${exit_script}" == "yes" ]]; then
 		if [[ -n "${GITHUB_REPOSITORY}" ]]; then touch disable-qt5; fi
 		if [[ -d "${release_info_dir}" ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
-		exit 1
+		exit
 	fi
 
 }
@@ -1935,7 +1935,7 @@ _multi_arch() {
 							;;&
 						debian)
 							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on an Alpine or Ubuntu OS Host"
-							exit 1
+							exit
 							;;
 						ubuntu)
 							qbt_cross_host="riscv64-linux-gnu"
@@ -1958,12 +1958,12 @@ _multi_arch() {
 								qbt_zlib_arch="loongarch64"
 							else
 								printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine Host with qt6"
-								exit 1
+								exit
 							fi
 							;;&
 						debian | ubuntu)
 							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine Host with qt6"
-							exit 1
+							exit
 							;;&
 						*)
 							bitness="64"
@@ -1994,7 +1994,7 @@ _multi_arch() {
 				qbt_mcm_toolchain_prefix="x86_64"
 			else
 				printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
-				exit 1
+				exit
 			fi
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
@@ -2039,7 +2039,7 @@ _multi_arch() {
 			return
 		else
 			printf '\n%b\n\n' " ${unicode_red_circle} Multiarch only works with Alpine Linux (native or docker)${color_end}"
-			exit 1
+			exit
 		fi
 	else
 		multi_openssl=("./config") # ${multi_openssl[@]}
@@ -2203,7 +2203,7 @@ while (("${#}")); do
 					printf '%b\n' " ${unicode_blue_light_circle} ${arches}${color_end}"
 				done
 				printf '\n%b\n\n' " ${unicode_green_circle} Example usage:${color_blue_light} -ma aarch64${color_end}"
-				exit 1
+				exit
 			fi
 			;;
 		-p | --proxy)
@@ -2217,7 +2217,7 @@ while (("${#}")); do
 				shift 1
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-o${color_end} flag with cross compilation"
-				exit 1
+				exit
 			fi
 			;;
 		-q | --qmake)
@@ -2239,7 +2239,7 @@ while (("${#}")); do
 				shift
 			else
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
-				exit 1
+				exit
 			fi
 			;;
 		-sdu | --script-debug-urls)
@@ -2306,7 +2306,7 @@ while (("${#}")); do
 					printf '%b\n' " ${unicode_blue_light_circle} ${arches}${color_end}"
 				done
 				printf '\n%b\n\n' " ${unicode_green_circle} Example usage:${color_blue_light} -ma aarch64${color_end}"
-				exit 1
+				exit
 			fi
 			;;
 		-bs-a | --bootstrap-all)
