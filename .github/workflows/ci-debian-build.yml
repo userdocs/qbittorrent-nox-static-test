@@ -90,10 +90,7 @@ jobs:
           persist-credentials: false
 
       - name: Bootstrap test tools ${{ inputs.distinct_id }}
-        run: bash ${script_name} update
-
-      - name: Bootstrap test tools ${{ inputs.distinct_id }}
-        run: bash ${script_name} install_test
+        run: bash ${script_name} update install_test
 
       - name: qBittorrent v5 transition ${{ inputs.distinct_id }}
         run: |
@@ -103,9 +100,11 @@ jobs:
           fi
 
       - name: Bootstrap core deps ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} install_core
 
       - name: Bootstrap build ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} -bs-a
 
       - name: glibc ${{ inputs.distinct_id }}
