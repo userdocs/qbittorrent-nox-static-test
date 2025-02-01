@@ -538,7 +538,7 @@ _check_dependencies() {
 			printf '\n%b\n\n' " ${unicode_blue_light_circle}${color_green} Installing required dependencies${color_end}"
 
 			if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-				if ! apk add "${qbt_checked_required_pkgs[@]}" --repository="${CDN_URL}"; then
+				if ! apk add -u --no-cache --repository="${CDN_URL}" "${qbt_checked_required_pkgs[@]}"; then
 					printf '\n'
 					exit 1
 				fi

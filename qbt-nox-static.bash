@@ -562,7 +562,7 @@ _check_dependencies() {
 		local install_simulation=("apt" "install" "--simulate")
 	elif [[ "$os_id" = "alpine" ]]; then
 		local command_test_tool=("apk" "info" "-e")
-		local command_install_deps=("apk" "add" "--no-cache" "--repository=${CDN_URL}")
+		local command_install_deps=("apk" "add" "-u" "--no-cache" "--repository=${CDN_URL}")
 		local command_update_upgrade_os=("bash" "-c" "apk update --no-cache && apk upgrade --no-cache --repository=${CDN_URL} && apk fix")
 		local install_simulation=("apk" "add" "--simulate")
 	fi
