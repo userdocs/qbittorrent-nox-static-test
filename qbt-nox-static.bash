@@ -1004,12 +1004,8 @@ _custom_flags() {
 	# Linker specific flags
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
-	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
-			qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
-			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
-		fi
-	fi
+	qbt_optimization_flags+=" -flto=auto"
+	qbt_linker_flags+=" -Wl,-flto"
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
 	if [[ $qbt_optimise == "yes" ]]; then
@@ -2834,7 +2830,7 @@ _zlib() {
 	if [[ "${qbt_build_tool}" == "cmake" ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 		# force set some ARCH when using zlib-ng, cmake and musl-cross since it does not detect the arch correctly on Alpine.
-		[[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-$(apk --print-arch)}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
+		# [[ "${qbt_cross_target}" =~ ^(alpine)$ ]] && printf '%b\n' "\narchfound ${qbt_zlib_arch:-$(apk --print-arch)}" >> "${qbt_dl_folder_path}/cmake/detect-arch.c"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
