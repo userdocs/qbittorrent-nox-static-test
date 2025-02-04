@@ -784,8 +784,12 @@ _custom_flags() {
 	# Linker specific flags
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
+	# In the Alpine block, only add linker flags when not doing static linking to avoid the ld error.
 	if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
+		if [[ "${qbt_static_ish}" != "yes" ]]; then
+			qbt_linker_flags+=",-flto,-ffat-lto-objects"
+		fi
 	fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
