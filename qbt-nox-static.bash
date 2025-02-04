@@ -1005,8 +1005,8 @@ _custom_flags() {
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]]; then
-		qbt_optimization_flags+=" -flto=auto"
-		qbt_linker_flags+=" -Wl,-flto=auto"
+		qbt_optimization_flags+=" -flto=auto -ffat-lto-files"
+		qbt_linker_flags+=" -Wl,-flto=auto,-ffat-lto-files"
 	fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
