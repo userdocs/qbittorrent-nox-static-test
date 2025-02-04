@@ -786,7 +786,6 @@ _custom_flags() {
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]]; then
 		qbt_optimization_flags+=" -flto=auto -ffat-lto-objects"
-		qbt_linker_flags+=" -Wl,-flto=auto,-ffat-lto-objects"
 	fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
