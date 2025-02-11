@@ -35,6 +35,8 @@ jobs:
         qbt_cross_name: ["armhf", "armv7", "aarch64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "qmake"]
+        qbt_qbittorrent_tag: "release-5.1.0rc1"
+        qbt_qt_tag: "v6.9.0-beta2"
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version_name: "qt5-"
