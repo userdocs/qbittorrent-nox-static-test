@@ -1006,11 +1006,11 @@ _custom_flags() {
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
 	if [[ "${os_arch}" =~ ^(amd64|x86_64)$ || "${qbt_cross_name}" == "x86_64" ]]; then
-		qbt_security_flags+="-fcf-protection=full"
+		qbt_security_flags+=" -fcf-protection=full"
 	fi
 
 	if [[ "${os_arch}" =~ ^(arm64|aarch64)$ || "${qbt_cross_name}" == "aarch64" ]]; then
-		qbt_security_flags+="-mbranch-protection=standard"
+		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
