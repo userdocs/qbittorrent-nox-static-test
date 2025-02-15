@@ -999,11 +999,19 @@ _custom_flags() {
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
 	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
 	# Security flags for compiler
-	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fPIE -pie -fstrict-flex-arrays=3 -fcf-protection=full -mbranch-protection=standard -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fPIE -pie -fstrict-flex-arrays=3 -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
 	# Warning control
 	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough -Werror=format-security -Wtrampolines"
 	# Linker specific flags
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
+
+	if [[ "${os_arch}" =~ ^(amd64|x86_64)$ || "${qbt_cross_name}" == "x86_64" ]]; then
+		qbt_security_flags+="-fcf-protection=full"
+	fi
+
+	if [[ "${os_arch}" =~ ^(arm64|aarch64)$ || "${qbt_cross_name}" == "aarch64" ]]; then
+		qbt_security_flags+="-mbranch-protection=standard"
+	fi
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
 		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
