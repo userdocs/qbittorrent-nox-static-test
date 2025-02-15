@@ -1005,11 +1005,11 @@ _custom_flags() {
 	# Linker specific flags
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
-	if [[ "${os_arch}" =~ ^(amd64|x86_64)$ || "${qbt_cross_name}" == "x86_64" ]]; then
+	if [[ "${qbt_cross_name}" == "x86_64" || "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
 		qbt_security_flags+=" -fcf-protection=full"
 	fi
 
-	if [[ "${os_arch}" =~ ^(arm64|aarch64)$ || "${qbt_cross_name}" == "aarch64" ]]; then
+	if [[ "${qbt_cross_name}" == "aarch64" || "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
 		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
