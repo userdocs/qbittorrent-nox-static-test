@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.1.0"
+script_version="2.1.1"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -992,17 +992,18 @@ _debug() {
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
 # Define common flag sets
+# https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html#tldr-what-compiler-options-should-i-use
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
 	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
 	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
 	# Security flags for compiler
-	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt"
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fPIE -pie -fstrict-flex-arrays=3 -fcf-protection=full -mbranch-protection=standard -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
 	# Warning control
-	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi"
+	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough -Werror=format-security -Wtrampolines"
 	# Linker specific flags
-	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536"
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
 		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
@@ -2788,8 +2789,12 @@ _installation_modules "${@}" # requires shifted params from options block 2
 # If any modules fail the qbt_modules_test then exit now.
 #######################################################################################################################################################
 if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
-	printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end}${text_bold} One or more of the provided modules are not supported${color_end}"
-	printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Below is a list of supported modules${color_end}"
+
+	if [[ "${qbt_modules_test}" == 'fail' ]]; then
+		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end}${text_bold} One or more of the provided modules are not supported${color_end}"
+	fi
+
+	printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Below is a list of supported modules:${color_end}"
 	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules_install_processed[*]}${color_end}"
 	_print_env
 	exit
