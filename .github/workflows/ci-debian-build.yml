@@ -29,10 +29,11 @@ jobs:
     defaults:
       run:
         shell: bash
-    runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
+        runs_on: [ubuntu-24.04, ubuntu-24.04-arm]
         container_id: [debian, ubuntu]
         container_codename: [bookworm, noble]
         qbt_build_tool: ["cmake", "qmake"]
