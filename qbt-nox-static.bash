@@ -1001,7 +1001,7 @@ _custom_flags() {
 	# Security flags for compiler
 	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
 	# Warning control
-	qbt_warning_flags="-w -Wno-error -Wno-error=attributes -Wno-attributes -Wno-psabi -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough -Werror=format-security -Wtrampolines"
+	qbt_warning_flags="-Wno-error -Wno-attributes -Wno-psabi -Wall -Wformat -Wformat=2 -Wconversion -Wimplicit-fallthrough -Wtrampolines"
 	# Linker specific flags
 	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
