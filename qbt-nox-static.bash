@@ -1015,8 +1015,10 @@ _custom_flags() {
 		qbt_security_flags+=" -fcf-protection=full"
 	fi
 
-	if [[ "${qbt_cross_name}" == "aarch64" || "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
-		qbt_security_flags+=" -mbranch-protection=standard"
+	if [[ ! "${os_id}" =~ ^(debian)$ ]]; then
+		if [[ "${qbt_cross_name}" == "aarch64" || "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
+			qbt_security_flags+=" -mbranch-protection=standard"
+		fi
 	fi
 
 	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
