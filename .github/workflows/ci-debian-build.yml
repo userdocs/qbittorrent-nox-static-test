@@ -58,7 +58,7 @@ jobs:
     env: # host
       qbt_build_dir: "qbt-build"
       disable_qt5: ""
-      artifact_name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
+      artifact_name: "${{ matrix.docker_arch }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
       script_name: ${{ inputs.script_name }}
 
     container:
