@@ -48,8 +48,12 @@ jobs:
             qbt_qt_version: "5"
           - qbt_build_tool: "cmake"
             qbt_qt_version: "6"
+          - runs_on: ubuntu-24.04
+            host_arch: "amd64"
+          - runs_on: ubuntu-24.04-arm
+            host_arch: "arm64"
 
-    name: "${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
+    name: "${{ matrix.host_arch }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
 
     env: # host
       qbt_build_dir: "qbt-build"
