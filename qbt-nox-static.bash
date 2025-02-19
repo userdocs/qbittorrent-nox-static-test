@@ -991,7 +991,7 @@ _debug() {
 #######################################################################################################################################################
 # This function sets some compiler flags globally - b2 settings are set in the ~/user-config.jam  set in the _installation_modules function
 #######################################################################################################################################################
-# Define common flag sets
+# Define common flag sets - hardening is prioritized over performance.
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html#tldr-what-compiler-options-should-i-use
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
@@ -1015,7 +1015,7 @@ _custom_flags() {
 		qbt_security_flags+=" -fcf-protection=full"
 	fi
 
-	if [[ ! "${os_id}" =~ ^(debian)$ ]]; then
+	if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
 		if [[ "${qbt_cross_name}" == "aarch64" || "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
 			qbt_security_flags+=" -mbranch-protection=standard"
 		fi
@@ -2805,7 +2805,6 @@ _installation_modules "${@}" # requires shifted params from options block 2
 # If any modules fail the qbt_modules_test then exit now.
 #######################################################################################################################################################
 if [[ "${qbt_modules_test}" == 'fail' || "${#}" -eq '0' ]]; then
-
 	if [[ "${qbt_modules_test}" == 'fail' ]]; then
 		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end}${text_bold} One or more of the provided modules are not supported${color_end}"
 	fi
