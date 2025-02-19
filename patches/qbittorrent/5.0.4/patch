@@ -1,0 +1,42 @@
+--- qBittorrent/src/webui/webui.cpp	2024-12-31 13:47:25.776737171 +0000
++++ webui.cpp	2024-12-31 13:53:12.716219464 +0000
+@@ -40,6 +40,39 @@
+ #include "base/utils/password.h"
+ #include "webapplication.h"
+ 
++/*
++ * fix for broken synology-kernel NAS devices that stole a bunch of syscall
++ * numbers for their own MSDOS emulation purposes. link into application
++ * to block SYS_statx and all newer/later syscalls with seccomp. */
++
++#include <stddef.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <sys/syscall.h>
++#include <errno.h>
++
++#include <sys/prctl.h>
++#include <linux/seccomp.h>
++#include <linux/filter.h>
++
++__attribute__((__constructor__))
++static void fix_synology(void)
++{
++	struct sock_filter filter[4];
++	struct sock_fprog prog = {
++		.len = sizeof filter / sizeof *filter,
++		.filter = filter,
++	};
++
++	filter[0] = (struct sock_filter)BPF_STMT(BPF_LD|BPF_W|BPF_ABS, offsetof(struct seccomp_data, nr));
++	filter[1] = (struct sock_filter)BPF_JUMP(BPF_JMP|BPF_JGE|BPF_K, SYS_statx, 0, 1);
++	filter[2] = (struct sock_filter)BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_ERRNO|ENOSYS);
++	filter[3] = (struct sock_filter)BPF_STMT(BPF_RET|BPF_K, SECCOMP_RET_ALLOW);
++
++	prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
++	if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &prog)) abort();
++}
++
+ WebUI::WebUI(IApplication *app, const QByteArray &tempPasswordHash)
+     : ApplicationComponent(app)
+     , m_passwordHash {tempPasswordHash}
