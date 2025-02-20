@@ -2005,8 +2005,8 @@ _multi_arch() {
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz${color_end}"
-					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/userdocs/qbt-musl-cross-make-test/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz${color_end}"
+					_curl --create-dirs "https://github.com/userdocs/qbt-musl-cross-make-test/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 				fi
 
 				if [[ -f "${qbt_install_dir}/.active-toolchain-info" ]]; then
@@ -2109,7 +2109,7 @@ _release_info() {
 		> [!NOTE]
 		> ${source_text}
 		>
-		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make-test/releases/latest) for:
 	RELEASE_INFO
 
 	{
