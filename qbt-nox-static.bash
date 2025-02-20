@@ -998,12 +998,12 @@ _custom_flags() {
 	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
 	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
-	# Security flags for compiler, added -fPIC for position independent code
-	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions -fPIE -fpie -fPIC"
+	# Security flags for compiler
+	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
 	# Warning control
 	qbt_warning_flags="-w"
-	# Linker specific flags, added -Wl,-pie for proper PIE linkage
-	qbt_linker_flags="-static-pie -Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries -Wl,-pie"
+	# Linker specific flags
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
