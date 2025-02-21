@@ -1046,7 +1046,7 @@ _custom_flags() {
 	if [[ "${qbt_static_ish}" == "yes" || "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		qbt_static_flags=""
 	else
-		qbt_static_flags="-static-pie"
+		qbt_static_flags="-static-pie -static -pie"
 	fi
 
 	# If you set and export your own flags in the env that the script is run, they will be appended to the defaults
