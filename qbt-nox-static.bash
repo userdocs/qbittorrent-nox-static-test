@@ -995,7 +995,7 @@ _debug() {
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html#tldr-what-compiler-options-should-i-use
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
-	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections -fpie -fPIE"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
 	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
 	# Security flags for compiler
@@ -1003,7 +1003,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries,-z,notext"
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries,-z,notext -static-pie"
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
