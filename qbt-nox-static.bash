@@ -995,25 +995,25 @@ _debug() {
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html#tldr-what-compiler-options-should-i-use
 _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
-	qbt_optimization_flags="-O3 -pipe -fdata-sections -ffunction-sections"
+	qbt_optimization_flags=""
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
-	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	qbt_preprocessor_flags=""
 	# Security flags for compiler
-	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
+	qbt_security_flags=""
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
+	qbt_linker_flags=""
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
-	if [[ "${gcc_version}" -ge 13 ]]; then
-		qbt_security_flags+=" -fstrict-flex-arrays=3"
-	fi
+	# if [[ "${gcc_version}" -ge 13 ]]; then
+	# 	qbt_security_flags+=" -fstrict-flex-arrays=3"
+	# fi
 
-	if [[ "${qbt_cross_name}" == "x86_64" || "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
-		qbt_security_flags+=" -fcf-protection=full"
-	fi
+	# if [[ "${qbt_cross_name}" == "x86_64" || "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
+	# 	qbt_security_flags+=" -fcf-protection=full"
+	# fi
 
 	# if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
 	# 	if [[ "${qbt_cross_name}" == "aarch64" || "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
@@ -1021,12 +1021,12 @@ _custom_flags() {
 	# 	fi
 	# fi
 
-	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
-			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
-		fi
-	fi
+	# if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
+	# 	if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
+	# 		qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
+	# 		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+	# 	fi
+	# fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
 	if [[ $qbt_optimise == "yes" ]]; then
@@ -2899,7 +2899,7 @@ _icu() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _openssl() {
-	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp no-docs pic |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp no-docs |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
