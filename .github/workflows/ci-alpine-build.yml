@@ -125,9 +125,8 @@ jobs:
           docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
 
       - name: Host - patches ${{ inputs.distinct_id }}
-        run: |
-          mkdir -p qbt-build/patches
-          cp -r patches/* qbt-build/patches/
+        if: env.disable_qt5 != 'yes'
+        run: mkdir -p ${qbt_build_dir}/patches && cp -r patches/* ${qbt_build_dir}/patches/
 
       - name: Docker - apk update ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
