@@ -33,6 +33,7 @@
 #include <QString>
 #include <QVector>
 #include <QMap>
+#include <QHash>
 
 #include "base/global.h"
 
