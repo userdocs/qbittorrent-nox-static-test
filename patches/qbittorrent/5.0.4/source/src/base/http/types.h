@@ -29,106 +29,108 @@
 
 #pragma once
 
-#include <QHostAddress>
-#include <QString>
-#include <QVector>
-#include <QMap>
+#include <QByteArray>
 #include <QHash>
+#include <QHostAddress>
+#include <QList>
+#include <QMap>
+#include <QString>
 
 #include "base/global.h"
 
 namespace Http
 {
-	inline const QString METHOD_GET = u"GET"_s;
-	inline const QString METHOD_POST = u"POST"_s;
+    inline const QString METHOD_GET = u"GET"_s;
+    inline const QString METHOD_POST = u"POST"_s;
 
-	inline const QString HEADER_CACHE_CONTROL = u"cache-control"_s;
-	inline const QString HEADER_CONNECTION = u"connection"_s;
-	inline const QString HEADER_CONTENT_DISPOSITION = u"content-disposition"_s;
-	inline const QString HEADER_CONTENT_ENCODING = u"content-encoding"_s;
-	inline const QString HEADER_CONTENT_LENGTH = u"content-length"_s;
-	inline const QString HEADER_CONTENT_SECURITY_POLICY = u"content-security-policy"_s;
-	inline const QString HEADER_CONTENT_TYPE = u"content-type"_s;
-	inline const QString HEADER_CROSS_ORIGIN_OPENER_POLICY = u"cross-origin-opener-policy"_s;
-	inline const QString HEADER_DATE = u"date"_s;
-	inline const QString HEADER_HOST = u"host"_s;
-	inline const QString HEADER_ORIGIN = u"origin"_s;
-	inline const QString HEADER_REFERER = u"referer"_s;
-	inline const QString HEADER_REFERRER_POLICY = u"referrer-policy"_s;
-	inline const QString HEADER_SET_COOKIE = u"set-cookie"_s;
-	inline const QString HEADER_X_CONTENT_TYPE_OPTIONS = u"x-content-type-options"_s;
-	inline const QString HEADER_X_FORWARDED_FOR = u"x-forwarded-for"_s;
-	inline const QString HEADER_X_FORWARDED_HOST = u"x-forwarded-host"_s;
-	inline const QString HEADER_X_FRAME_OPTIONS = u"x-frame-options"_s;
-	inline const QString HEADER_X_XSS_PROTECTION = u"x-xss-protection"_s;
+    inline const QString HEADER_CACHE_CONTROL = u"cache-control"_s;
+    inline const QString HEADER_CONNECTION = u"connection"_s;
+    inline const QString HEADER_CONTENT_DISPOSITION = u"content-disposition"_s;
+    inline const QString HEADER_CONTENT_ENCODING = u"content-encoding"_s;
+    inline const QString HEADER_CONTENT_LENGTH = u"content-length"_s;
+    inline const QString HEADER_CONTENT_SECURITY_POLICY = u"content-security-policy"_s;
+    inline const QString HEADER_CONTENT_TYPE = u"content-type"_s;
+    inline const QString HEADER_CROSS_ORIGIN_OPENER_POLICY  = u"cross-origin-opener-policy"_s;
+    inline const QString HEADER_DATE = u"date"_s;
+    inline const QString HEADER_HOST = u"host"_s;
+    inline const QString HEADER_ORIGIN = u"origin"_s;
+    inline const QString HEADER_REFERER = u"referer"_s;
+    inline const QString HEADER_REFERRER_POLICY = u"referrer-policy"_s;
+    inline const QString HEADER_SET_COOKIE = u"set-cookie"_s;
+    inline const QString HEADER_X_CONTENT_TYPE_OPTIONS = u"x-content-type-options"_s;
+    inline const QString HEADER_X_FORWARDED_FOR = u"x-forwarded-for"_s;
+    inline const QString HEADER_X_FORWARDED_HOST = u"x-forwarded-host"_s;
+    inline const QString HEADER_X_FORWARDED_PROTO = u"X-forwarded-proto"_s;
+    inline const QString HEADER_X_FRAME_OPTIONS = u"x-frame-options"_s;
+    inline const QString HEADER_X_XSS_PROTECTION = u"x-xss-protection"_s;
 
-	inline const QString HEADER_REQUEST_METHOD_GET = u"GET"_s;
-	inline const QString HEADER_REQUEST_METHOD_HEAD = u"HEAD"_s;
-	inline const QString HEADER_REQUEST_METHOD_POST = u"POST"_s;
+    inline const QString HEADER_REQUEST_METHOD_GET = u"GET"_s;
+    inline const QString HEADER_REQUEST_METHOD_HEAD = u"HEAD"_s;
+    inline const QString HEADER_REQUEST_METHOD_POST = u"POST"_s;
 
-	inline const QString CONTENT_TYPE_HTML = u"text/html"_s;
-	inline const QString CONTENT_TYPE_CSS = u"text/css"_s;
-	inline const QString CONTENT_TYPE_TXT = u"text/plain; charset=UTF-8"_s;
-	inline const QString CONTENT_TYPE_JS = u"application/javascript"_s;
-	inline const QString CONTENT_TYPE_JSON = u"application/json"_s;
-	inline const QString CONTENT_TYPE_GIF = u"image/gif"_s;
-	inline const QString CONTENT_TYPE_PNG = u"image/png"_s;
-	inline const QString CONTENT_TYPE_FORM_ENCODED = u"application/x-www-form-urlencoded"_s;
-	inline const QString CONTENT_TYPE_FORM_DATA = u"multipart/form-data"_s;
+    inline const QString CONTENT_TYPE_HTML = u"text/html"_s;
+    inline const QString CONTENT_TYPE_CSS = u"text/css"_s;
+    inline const QString CONTENT_TYPE_TXT = u"text/plain; charset=UTF-8"_s;
+    inline const QString CONTENT_TYPE_JS = u"application/javascript"_s;
+    inline const QString CONTENT_TYPE_JSON = u"application/json"_s;
+    inline const QString CONTENT_TYPE_GIF = u"image/gif"_s;
+    inline const QString CONTENT_TYPE_PNG = u"image/png"_s;
+    inline const QString CONTENT_TYPE_FORM_ENCODED = u"application/x-www-form-urlencoded"_s;
+    inline const QString CONTENT_TYPE_FORM_DATA = u"multipart/form-data"_s;
 
-	// portability: "\r\n" doesn't guarantee mapping to the correct symbol
-	inline const char CRLF[] = {0x0D, 0x0A, '\0'};
+    // portability: "\r\n" doesn't guarantee mapping to the correct symbol
+    inline const QByteArray CRLF = QByteArrayLiteral("\x0D\x0A");
 
-	struct Environment
-	{
-		QHostAddress localAddress;
-		quint16 localPort = 0;
+    struct Environment
+    {
+        QHostAddress localAddress;
+        quint16 localPort = 0;
 
-		QHostAddress clientAddress;
-		quint16 clientPort = 0;
-	};
+        QHostAddress clientAddress;
+        quint16 clientPort = 0;
+    };
 
-	struct UploadedFile
-	{
-		QString filename;
-		QString type; // MIME type
-		QByteArray data;
-	};
+    struct UploadedFile
+    {
+        QString filename;
+        QString type;  // MIME type
+        QByteArray data;
+    };
 
-	struct Header
-	{
-		QString name;
-		QString value;
-	};
+    struct Header
+    {
+        QString name;
+        QString value;
+    };
 
-	using HeaderMap = QMap<QString, QString>; // <Header name, Header value>
+    using HeaderMap = QMap<QString, QString>;  // <Header name, Header value>
 
-	struct Request
-	{
-		QString version;
-		QString method;
-		QString path;
-		HeaderMap headers;
-		QHash<QString, QByteArray> query;
-		QHash<QString, QString> posts;
-		QVector<UploadedFile> files;
-	};
+    struct Request
+    {
+        QString version;
+        QString method;
+        QString path;
+        HeaderMap headers;
+        QHash<QString, QByteArray> query;
+        QHash<QString, QString> posts;
+        QList<UploadedFile> files;
+    };
 
-	struct ResponseStatus
-	{
-		uint code;
-		QString text;
-	};
+    struct ResponseStatus
+    {
+        uint code;
+        QString text;
+    };
 
-	struct Response
-	{
-		ResponseStatus status;
-		HeaderMap headers;
-		QByteArray content;
+    struct Response
+    {
+        ResponseStatus status;
+        HeaderMap headers;
+        QByteArray content;
 
-		Response(uint code = 200, const QString &text = u"OK"_s)
-			: status{code, text}
-		{
-		}
-	};
+        Response(uint code = 200, const QString &text = u"OK"_s)
+            : status {code, text}
+        {
+        }
+    };
 }
