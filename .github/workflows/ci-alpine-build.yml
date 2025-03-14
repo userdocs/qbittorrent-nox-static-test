@@ -30,8 +30,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # qbt_qbittorrent_tag: [release-5.1.0rc1]
-        qbt_qt_tag: [v6.9.0-beta3]
+        qbt_qbittorrent_tag: [v5_0_x]
+        qbt_qt_tag: [v6.9.0-rc1]
         os_id: [alpine]
         os_version_id: [edge]
         qbt_cross_name: ["armhf", "armv7", "aarch64", "x86_64", "x86"]
