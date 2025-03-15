@@ -31,6 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         qbt_qbittorrent_tag: [v5_0_x]
+        qbt_boost_tag: [boost-1.88.0.beta1]
         qbt_qt_tag: [v6.9.0-rc1]
         os_id: [alpine]
         os_version_id: [edge]
