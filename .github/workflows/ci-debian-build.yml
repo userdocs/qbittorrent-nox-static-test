@@ -94,6 +94,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: bootstrap patches ${{ inputs.distinct_id }}
+        if: env.disable_qt5 != 'yes'
+        run: mkdir -p ${qbt_build_dir}/patches && cp -r patches/* ${qbt_build_dir}/patches/
+
       - name: Bootstrap test tools ${{ inputs.distinct_id }}
         run: bash ${script_name} update install_test
 
