@@ -26,7 +26,7 @@ on:
         type: string
 jobs:
   build-alpine:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -222,3 +222,7 @@ jobs:
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
           path: "${{ env.qbt_build_dir }}/logs/*"
+
+      - name: Host - icu ${{ inputs.distinct_id }}
+        if: failure() && env.disable_qt5 != 'yes'
+        run: docker exec -u gh:gh ${container_name} cat ${{ env.qbt_build_dir }}/icu/cross/config.log
