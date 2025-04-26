@@ -223,6 +223,10 @@ jobs:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
           path: "${{ env.qbt_build_dir }}/logs/*"
 
-      - name: Host - icu ${{ inputs.distinct_id }}
+      - name: Host - icu cross/config.log ${{ inputs.distinct_id }}
         if: failure() && env.disable_qt5 != 'yes'
         run: docker exec -u gh:gh ${container_name} cat ${{ env.qbt_build_dir }}/icu/cross/config.log
+
+      - name: Host - icu source/config.log${{ inputs.distinct_id }}
+        if: failure() && env.disable_qt5 != 'yes'
+        run: docker exec -u gh:gh ${container_name} cat ${{ env.qbt_build_dir }}/icu/source/config.log
