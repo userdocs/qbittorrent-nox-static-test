@@ -42,7 +42,7 @@ jobs:
         run: |
           pip install zizmor
 
-          zizmor="$(zizmor --config zizmor.yml . --gh-token "${{ github.token }}")"
+          zizmor="$(zizmor . --gh-token "${{ github.token }}")"
           exit_code="$?"
 
           printf '%s\n' "$zizmor"
