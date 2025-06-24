@@ -35,7 +35,7 @@ jobs:
         qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "qmake"]
-        qbt_qbittorrent_tag: ["master"]
+        # qbt_qbittorrent_tag: ["master"]
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version_name: "qt5-"
@@ -43,7 +43,7 @@ jobs:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
             qbt_qt_version: "6"
-            qbt_qt_tag: "v6.10.0-beta1"
+            # qbt_qt_tag: "v6.10.0-beta1"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
