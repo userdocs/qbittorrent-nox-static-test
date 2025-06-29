@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.1.2"
+script_version="2.1.3"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -1061,8 +1061,8 @@ _custom_flags() {
 	[[ -z "${qbt_ldflags_consumed}" ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-} -fPIC"
-		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-} -fPIC"
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
 	}
@@ -2382,6 +2382,13 @@ while (("${#}")); do
 				[[ "${github_tag[libtorrent]}" =~ ^RC_ ]] && app_version[libtorrent]="RC_${app_version[libtorrent]//\./_}" # set back to RC_... so that release info has proper version context
 
 				_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "$2"
+
+				# If libtorrent v1.2 is used then set default boost tag to boost-1.86.0
+				if [[ "${qbt_libtorrent_version}" == "1.2" || "${github_tag[libtorrent]}" =~ ^(v1\.2\.|RC_1_2) ]]; then
+					github_tag[boost]="boost-1.86.0"
+					app_version[boost]="${github_tag[boost]#boost-}"
+					_boost_url
+				fi
 				shift 2
 			else
 				printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow_light}You must provide a tag for this switch:${color_end} ${color_blue_light}${1} TAG ${color_end}"
@@ -2903,7 +2910,7 @@ _icu() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317
 _openssl() {
-	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp no-docs -fPIC |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" threads no-shared no-dso no-comp no-docs |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
