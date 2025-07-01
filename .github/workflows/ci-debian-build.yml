@@ -168,7 +168,7 @@ jobs:
           path: ${{ env.qbt_build_dir }}/completed/qbittorrent-nox
 
       - name: Host - Upload logs on error
-        if: failure() && env.disable_qt5 != 'yes'
+        if: ( cancelled() || failure() ) && env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: "${{ env.artifact_name }}-logs"

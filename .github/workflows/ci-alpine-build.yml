@@ -225,4 +225,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
-          path: "${{ env.qbt_build_dir }}/*"
+          path: "${{ env.qbt_build_dir }}"
