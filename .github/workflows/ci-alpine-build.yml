@@ -219,17 +219,9 @@ jobs:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
           path: "${{ env.qbt_build_dir }}/completed/*.png"
 
-      - name: Host - Upload logs on error
-        if: failure() && env.disable_qt5 != 'yes'
+      - name: Host - Upload build dir on error or cancel
+        if: ( cancel() || failure() ) && env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
-          path: "${{ env.qbt_build_dir }}/logs/*"
-
-      - name: Host - icu cross/config.log ${{ inputs.distinct_id }}
-        if: failure() && env.disable_qt5 != 'yes'
-        run: docker exec -u gh:gh ${container_name} cat ${{ env.qbt_build_dir }}/icu/cross/config.log
-
-      - name: Host - icu source/config.log${{ inputs.distinct_id }}
-        if: failure() && env.disable_qt5 != 'yes'
-        run: docker exec -u gh:gh ${container_name} cat ${{ env.qbt_build_dir }}/icu/source/config.log
+          path: "${{ env.qbt_build_dir }}/*"
