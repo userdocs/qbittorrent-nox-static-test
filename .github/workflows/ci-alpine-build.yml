@@ -32,7 +32,8 @@ jobs:
       matrix:
         os_id: [alpine]
         os_version_id: [edge]
-        qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
+        qbt_cross_name:
+          ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: ["", "qmake"]
         # qbt_qbittorrent_tag: ["master"]
@@ -220,7 +221,7 @@ jobs:
           path: "${{ env.qbt_build_dir }}/completed/*.png"
 
       - name: Host - Upload build dir on error or cancel
-        if: ( cancel() || failure() ) && env.disable_qt5 != 'yes'
+        if: ( cancelled() || failure() ) && env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
