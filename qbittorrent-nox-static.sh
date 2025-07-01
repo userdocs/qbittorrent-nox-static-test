@@ -105,7 +105,7 @@ os_version_id="$(get_os_info VERSION_ID)"                                       
 if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
 	os_arch="$(dpkg --print-architecture)"
 elif [[ "${os_id}" =~ ^(alpine)$ ]]; then
-	os_arch="$(apk info --print-arch)"
+	os_arch="$(apk --print-arch)"
 fi
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.10
@@ -1003,7 +1003,7 @@ _set_module_urls() {
 	# Configure the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
 	##########################################################################################################################################################
 	if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
-		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${os_id}-${os_version_codename}-cmake-$(dpkg --print-architecture).tar.xz"
+		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${os_id}-${os_version_codename}-cmake-${os_arch}.tar.xz"
 		source_archive_url[glibc]="https://ftpmirror.gnu.org/gnu/libc/${github_tag[glibc]}.tar.xz"
 	fi
 	source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
