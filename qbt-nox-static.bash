@@ -1082,7 +1082,7 @@ _custom_flags() {
 		fi
 	fi
 
-	if [[ "${app_name}" =~ ^(glibc|icu)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|icu|iconv)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
@@ -2107,6 +2107,7 @@ _release_info() {
 		|             Boost              |    ${app_version[boost]}    |
 		|            OpenSSL             |   ${app_version[openssl]}   |
 		|            zlib-ng             |    ${app_version[zlib]}     |
+		|            revision            |   ${qbt_revision_version}   |
 
 		## Architecture and build info
 
@@ -2136,18 +2137,6 @@ _release_info() {
 		[[ "${multi_arch_options[${qbt_cross_name}]}" == loongarch64 ]] && printf '%s\n' "|   loongarch64   |    loongarch64-linux-musl    |   la64v1.0    |                                --with-arch=la64v1.0 --with-abi=lp64d                                 |"
 		printf '\n'
 	} >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md"
-
-	cat >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md" <<- RELEASE_INFO
-		## General Info
-
-		> [!WARNING]
-		> With Qbittorrent 4.4.0 onwards all cmake builds use Qt6 and all qmake builds use Qt5, as long as Qt5 is supported or qBitorrent V5 is released.
-		>
-		> Qbittorrent v5 won't support qmake (Qt5) builds so Qt6 (cmake) will become default and Qt5 builds will no longer be released.
-		>
-		> Binary builds are stripped - See https://userdocs.github.io/qbittorrent-nox-static/debugging/
-	RELEASE_INFO
-
 	return
 }
 #######################################################################################################################################################
