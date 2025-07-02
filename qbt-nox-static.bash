@@ -1015,22 +1015,22 @@ _custom_flags() {
 		qbt_security_flags+=" -fstrict-flex-arrays=3"
 	fi
 
-	if [[ "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
-		qbt_security_flags+=" -fcf-protection=full"
-	fi
+	# if [[ "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
+	# 	qbt_security_flags+=" -fcf-protection=full"
+	# fi
 
-	if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
-		if [[ "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
-			qbt_security_flags+=" -mbranch-protection=standard"
-		fi
-	fi
+	# if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
+	# 	if [[ "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
+	# 		qbt_security_flags+=" -mbranch-protection=standard"
+	# 	fi
+	# fi
 
-	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
-			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
-		fi
-	fi
+	# if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
+	# 	if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
+	# 		qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
+	# 		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+	# 	fi
+	# fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
 	if [[ $qbt_optimise == "yes" ]]; then
