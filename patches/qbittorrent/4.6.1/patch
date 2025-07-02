@@ -15,11 +15,11 @@ index 2af5cd2764d..66ec9a56622 100644
 +++ b/src/base/torrentfileswatcher.cpp
 @@ -92,7 +92,7 @@ class TorrentFilesWatcher::Worker final : public QObject
      Q_DISABLE_COPY_MOVE(Worker)
- 
+
  public:
 -    Worker();
 +    Worker(QFileSystemWatcher *watcher);
- 
+
  public slots:
      void setWatchedFolder(const Path &path, const TorrentFilesWatcher::WatchedFolderOptions &options);
 @@ -143,36 +143,16 @@ TorrentFilesWatcher *TorrentFilesWatcher::instance()
@@ -45,12 +45,12 @@ index 2af5cd2764d..66ec9a56622 100644
 -
      connect(m_asyncWorker, &TorrentFilesWatcher::Worker::magnetFound, this, &TorrentFilesWatcher::onMagnetFound);
      connect(m_asyncWorker, &TorrentFilesWatcher::Worker::torrentFound, this, &TorrentFilesWatcher::onTorrentFound);
- 
+
      m_asyncWorker->moveToThread(m_ioThread.get());
 -    connect(m_ioThread.get(), &QObject::destroyed, this, [this] { delete m_asyncWorker; });
 +    connect(m_ioThread.get(), &QThread::finished, m_asyncWorker, &QObject::deleteLater);
      m_ioThread->start();
- 
+
 -    for (auto it = m_watchedFolders.cbegin(); it != m_watchedFolders.cend(); ++it)
 -    {
 -        QMetaObject::invokeMethod(m_asyncWorker, [this, path = it.key(), options = it.value()]()
@@ -60,12 +60,12 @@ index 2af5cd2764d..66ec9a56622 100644
 -    }
 +    load();
  }
- 
+
  void TorrentFilesWatcher::load()
 @@ -303,13 +283,10 @@ void TorrentFilesWatcher::doSetWatchedFolder(const Path &path, const WatchedFold
- 
+
      m_watchedFolders[path] = options;
- 
+
 -    if (m_asyncWorker)
 +    QMetaObject::invokeMethod(m_asyncWorker, [this, path, options]
      {
@@ -76,13 +76,13 @@ index 2af5cd2764d..66ec9a56622 100644
 -    }
 +        m_asyncWorker->setWatchedFolder(path, options);
 +    });
- 
+
      emit watchedFolderSet(path, options);
  }
 @@ -344,8 +321,8 @@ void TorrentFilesWatcher::onTorrentFound(const BitTorrent::TorrentInfo &torrentI
      BitTorrent::Session::instance()->addTorrent(torrentInfo, addTorrentParams);
  }
- 
+
 -TorrentFilesWatcher::Worker::Worker()
 -    : m_watcher {new QFileSystemWatcher(this)}
 +TorrentFilesWatcher::Worker::Worker(QFileSystemWatcher *watcher)
@@ -97,7 +97,7 @@ index be7f42ce955..9142679f351 100644
 @@ -78,7 +78,6 @@ private slots:
  private:
      explicit TorrentFilesWatcher(QObject *parent = nullptr);
- 
+
 -    void initWorker();
      void load();
      void loadLegacy();
@@ -137,7 +137,7 @@ index 51a607625f3..3edf3f74f8c 100644
 @@ -174,7 +174,7 @@ MainWindow::MainWindow(IGUIApplication *app, WindowState initialState)
      m_ui->menuLog->setIcon(UIThemeManager::instance()->getIcon(u"help-contents"_s));
      m_ui->actionCheckForUpdates->setIcon(UIThemeManager::instance()->getIcon(u"view-refresh"_s));
- 
+
 -    auto *lockMenu = new QMenu(this);
 +    auto *lockMenu = new QMenu(m_ui->menuView);
      lockMenu->addAction(tr("&Set Password"), this, &MainWindow::defineUILockPassword);
@@ -226,7 +226,7 @@ index c46d5e2ddc0..4473df4d94b 100644
 +LangString inst_requires_win10 ${LANG_AFRIKAANS}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_AFRIKAANS} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/albanian.nsi b/dist/windows/installer-translations/albanian.nsi
 index 649734e657d..535e48be3cc 100644
 --- a/dist/windows/installer-translations/albanian.nsi
@@ -241,7 +241,7 @@ index 649734e657d..535e48be3cc 100644
 +LangString inst_requires_win10 ${LANG_ALBANIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ALBANIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/arabic.nsi b/dist/windows/installer-translations/arabic.nsi
 index ce6bb15f3a6..272c836f6ea 100644
 --- a/dist/windows/installer-translations/arabic.nsi
@@ -256,7 +256,7 @@ index ce6bb15f3a6..272c836f6ea 100644
 +LangString inst_requires_win10 ${LANG_ARABIC}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ARABIC} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/basque.nsi b/dist/windows/installer-translations/basque.nsi
 index fd41ecc9a23..697e70e7c0c 100644
 --- a/dist/windows/installer-translations/basque.nsi
@@ -271,7 +271,7 @@ index fd41ecc9a23..697e70e7c0c 100644
 +LangString inst_requires_win10 ${LANG_BASQUE}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_BASQUE} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/belarusian.nsi b/dist/windows/installer-translations/belarusian.nsi
 index 09c075040c7..60b47ba66f3 100644
 --- a/dist/windows/installer-translations/belarusian.nsi
@@ -286,7 +286,7 @@ index 09c075040c7..60b47ba66f3 100644
 +LangString inst_requires_win10 ${LANG_BELARUSIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_BELARUSIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/bosnian.nsi b/dist/windows/installer-translations/bosnian.nsi
 index c32eeccd0ac..4abff45fb09 100644
 --- a/dist/windows/installer-translations/bosnian.nsi
@@ -301,7 +301,7 @@ index c32eeccd0ac..4abff45fb09 100644
 +LangString inst_requires_win10 ${LANG_BOSNIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_BOSNIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/breton.nsi b/dist/windows/installer-translations/breton.nsi
 index dbfaac2bc95..31755264a4e 100644
 --- a/dist/windows/installer-translations/breton.nsi
@@ -316,7 +316,7 @@ index dbfaac2bc95..31755264a4e 100644
 +LangString inst_requires_win10 ${LANG_BRETON}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_BRETON} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/bulgarian.nsi b/dist/windows/installer-translations/bulgarian.nsi
 index 4ab6e9e2157..a1a955b1463 100644
 --- a/dist/windows/installer-translations/bulgarian.nsi
@@ -331,7 +331,7 @@ index 4ab6e9e2157..a1a955b1463 100644
 +LangString inst_requires_win10 ${LANG_BULGARIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_BULGARIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/catalan.nsi b/dist/windows/installer-translations/catalan.nsi
 index ff0ea3406c9..4ab34c3b16e 100644
 --- a/dist/windows/installer-translations/catalan.nsi
@@ -346,7 +346,7 @@ index ff0ea3406c9..4ab34c3b16e 100644
 +LangString inst_requires_win10 ${LANG_CATALAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_CATALAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/croatian.nsi b/dist/windows/installer-translations/croatian.nsi
 index 3b4eb873803..481bf373f6a 100644
 --- a/dist/windows/installer-translations/croatian.nsi
@@ -361,7 +361,7 @@ index 3b4eb873803..481bf373f6a 100644
 +LangString inst_requires_win10 ${LANG_CROATIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_CROATIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/czech.nsi b/dist/windows/installer-translations/czech.nsi
 index ed7cb8e41a7..8fc42480ffd 100644
 --- a/dist/windows/installer-translations/czech.nsi
@@ -376,7 +376,7 @@ index ed7cb8e41a7..8fc42480ffd 100644
 +LangString inst_requires_win10 ${LANG_CZECH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_CZECH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/danish.nsi b/dist/windows/installer-translations/danish.nsi
 index 8b5f11d5378..aad04f0edc4 100644
 --- a/dist/windows/installer-translations/danish.nsi
@@ -391,7 +391,7 @@ index 8b5f11d5378..aad04f0edc4 100644
 +LangString inst_requires_win10 ${LANG_DANISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_DANISH} "Afinstaller qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/dutch.nsi b/dist/windows/installer-translations/dutch.nsi
 index 6a73ec17f1b..507f219e050 100644
 --- a/dist/windows/installer-translations/dutch.nsi
@@ -406,7 +406,7 @@ index 6a73ec17f1b..507f219e050 100644
 +LangString inst_requires_win10 ${LANG_DUTCH}  "Dit installatieprogramma vereist ten minste Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_DUTCH} "qBittorrent verwijderen"
- 
+
 diff --git a/dist/windows/installer-translations/english.nsi b/dist/windows/installer-translations/english.nsi
 index fecf97c8feb..3450d9f9d8d 100644
 --- a/dist/windows/installer-translations/english.nsi
@@ -421,7 +421,7 @@ index fecf97c8feb..3450d9f9d8d 100644
 +LangString inst_requires_win10 ${LANG_ENGLISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/esperanto.nsi b/dist/windows/installer-translations/esperanto.nsi
 index a9db7986740..cbc02f3345b 100644
 --- a/dist/windows/installer-translations/esperanto.nsi
@@ -436,7 +436,7 @@ index a9db7986740..cbc02f3345b 100644
 +LangString inst_requires_win10 ${LANG_ESPERANTO}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ESPERANTO} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/estonian.nsi b/dist/windows/installer-translations/estonian.nsi
 index 42ab103a48d..2d8250730c9 100644
 --- a/dist/windows/installer-translations/estonian.nsi
@@ -451,7 +451,7 @@ index 42ab103a48d..2d8250730c9 100644
 +LangString inst_requires_win10 ${LANG_ESTONIAN}  "Selle installeri jaoks on vajalik vähemalt Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ESTONIAN} "Desinstalli qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/farsi.nsi b/dist/windows/installer-translations/farsi.nsi
 index 7ebc11e9bbf..819ccc1fd72 100644
 --- a/dist/windows/installer-translations/farsi.nsi
@@ -466,7 +466,7 @@ index 7ebc11e9bbf..819ccc1fd72 100644
 +LangString inst_requires_win10 ${LANG_FARSI}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_FARSI} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/finnish.nsi b/dist/windows/installer-translations/finnish.nsi
 index 8cb9f80c19d..cf8815275f6 100644
 --- a/dist/windows/installer-translations/finnish.nsi
@@ -481,7 +481,7 @@ index 8cb9f80c19d..cf8815275f6 100644
 +LangString inst_requires_win10 ${LANG_FINNISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_FINNISH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/french.nsi b/dist/windows/installer-translations/french.nsi
 index 2a38eef1716..3685f8d7a40 100644
 --- a/dist/windows/installer-translations/french.nsi
@@ -496,7 +496,7 @@ index 2a38eef1716..3685f8d7a40 100644
 +LangString inst_requires_win10 ${LANG_FRENCH}  "Cet installateur nécessite au moins Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_FRENCH} "Désinstaller qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/galician.nsi b/dist/windows/installer-translations/galician.nsi
 index 402084f3480..35abdf15cd2 100644
 --- a/dist/windows/installer-translations/galician.nsi
@@ -511,7 +511,7 @@ index 402084f3480..35abdf15cd2 100644
 +LangString inst_requires_win10 ${LANG_GALICIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_GALICIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/german.nsi b/dist/windows/installer-translations/german.nsi
 index fd7fbe9465d..957d76d05af 100644
 --- a/dist/windows/installer-translations/german.nsi
@@ -526,7 +526,7 @@ index fd7fbe9465d..957d76d05af 100644
 +LangString inst_requires_win10 ${LANG_GERMAN}  "Diese Installation erfordert mindestens Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_GERMAN} "qBittorrent deinstallieren"
- 
+
 diff --git a/dist/windows/installer-translations/greek.nsi b/dist/windows/installer-translations/greek.nsi
 index b79b62e8221..798ea87deb3 100644
 --- a/dist/windows/installer-translations/greek.nsi
@@ -541,7 +541,7 @@ index b79b62e8221..798ea87deb3 100644
 +LangString inst_requires_win10 ${LANG_GREEK}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_GREEK} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/hebrew.nsi b/dist/windows/installer-translations/hebrew.nsi
 index b50b44dde67..2402c3b5154 100644
 --- a/dist/windows/installer-translations/hebrew.nsi
@@ -556,7 +556,7 @@ index b50b44dde67..2402c3b5154 100644
 +LangString inst_requires_win10 ${LANG_HEBREW}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_HEBREW} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/hungarian.nsi b/dist/windows/installer-translations/hungarian.nsi
 index 1dc7b76cb7a..6536c3a859b 100644
 --- a/dist/windows/installer-translations/hungarian.nsi
@@ -571,7 +571,7 @@ index 1dc7b76cb7a..6536c3a859b 100644
 +LangString inst_requires_win10 ${LANG_HUNGARIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_HUNGARIAN} "qBittorrent eltávolítása"
- 
+
 diff --git a/dist/windows/installer-translations/icelandic.nsi b/dist/windows/installer-translations/icelandic.nsi
 index 50457fd0af3..b4d93fcdf0c 100644
 --- a/dist/windows/installer-translations/icelandic.nsi
@@ -586,7 +586,7 @@ index 50457fd0af3..b4d93fcdf0c 100644
 +LangString inst_requires_win10 ${LANG_ICELANDIC}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ICELANDIC} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/indonesian.nsi b/dist/windows/installer-translations/indonesian.nsi
 index 6b31ee33065..cf83431193c 100644
 --- a/dist/windows/installer-translations/indonesian.nsi
@@ -601,7 +601,7 @@ index 6b31ee33065..cf83431193c 100644
 +LangString inst_requires_win10 ${LANG_INDONESIAN}  "Penginstal ini membutuhkan setidaknya Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_INDONESIAN} "Hapus qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/irish.nsi b/dist/windows/installer-translations/irish.nsi
 index f4fd14c7937..1468f896cd6 100644
 --- a/dist/windows/installer-translations/irish.nsi
@@ -616,7 +616,7 @@ index f4fd14c7937..1468f896cd6 100644
 +LangString inst_requires_win10 ${LANG_IRISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_IRISH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/italian.nsi b/dist/windows/installer-translations/italian.nsi
 index 0361259f6b7..78c143c5985 100644
 --- a/dist/windows/installer-translations/italian.nsi
@@ -631,7 +631,7 @@ index 0361259f6b7..78c143c5985 100644
 +LangString inst_requires_win10 ${LANG_ITALIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ITALIAN} "Disinstalla qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/japanese.nsi b/dist/windows/installer-translations/japanese.nsi
 index 37f27347923..7f7eeacff5c 100644
 --- a/dist/windows/installer-translations/japanese.nsi
@@ -646,7 +646,7 @@ index 37f27347923..7f7eeacff5c 100644
 +LangString inst_requires_win10 ${LANG_JAPANESE}  "このインストーラの実行には Windows 10 (1809) / Windows Server 2019 以降が必要です。"
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_JAPANESE} "qBittorrent をアンインストール"
- 
+
 diff --git a/dist/windows/installer-translations/korean.nsi b/dist/windows/installer-translations/korean.nsi
 index d3f5cd46908..36f605cff58 100644
 --- a/dist/windows/installer-translations/korean.nsi
@@ -661,7 +661,7 @@ index d3f5cd46908..36f605cff58 100644
 +LangString inst_requires_win10 ${LANG_KOREAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_KOREAN} "qBittorrent 제거"
- 
+
 diff --git a/dist/windows/installer-translations/kurdish.nsi b/dist/windows/installer-translations/kurdish.nsi
 index 36fb8b4d088..d876f838943 100644
 --- a/dist/windows/installer-translations/kurdish.nsi
@@ -676,7 +676,7 @@ index 36fb8b4d088..d876f838943 100644
 +LangString inst_requires_win10 ${LANG_KURDISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_KURDISH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/latvian.nsi b/dist/windows/installer-translations/latvian.nsi
 index 622779db6e9..e4ef707c6d4 100644
 --- a/dist/windows/installer-translations/latvian.nsi
@@ -691,7 +691,7 @@ index 622779db6e9..e4ef707c6d4 100644
 +LangString inst_requires_win10 ${LANG_LATVIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_LATVIAN} "Atinstalēt qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/lithuanian.nsi b/dist/windows/installer-translations/lithuanian.nsi
 index 7fdcdbe5032..c4ed2bea0d5 100644
 --- a/dist/windows/installer-translations/lithuanian.nsi
@@ -706,7 +706,7 @@ index 7fdcdbe5032..c4ed2bea0d5 100644
 +LangString inst_requires_win10 ${LANG_LITHUANIAN}  "Šis įdiegėjas reikalauja bent Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_LITHUANIAN} "Pašalinti qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/luxembourgish.nsi b/dist/windows/installer-translations/luxembourgish.nsi
 index 9b5a24509bd..766d6853372 100644
 --- a/dist/windows/installer-translations/luxembourgish.nsi
@@ -721,7 +721,7 @@ index 9b5a24509bd..766d6853372 100644
 +LangString inst_requires_win10 ${LANG_LUXEMBOURGISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_LUXEMBOURGISH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/macedonian.nsi b/dist/windows/installer-translations/macedonian.nsi
 index 7a635d612f6..424c86b2fca 100644
 --- a/dist/windows/installer-translations/macedonian.nsi
@@ -736,7 +736,7 @@ index 7a635d612f6..424c86b2fca 100644
 +LangString inst_requires_win10 ${LANG_MACEDONIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_MACEDONIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/malay.nsi b/dist/windows/installer-translations/malay.nsi
 index 10cbca02017..e3cd5ebee1f 100644
 --- a/dist/windows/installer-translations/malay.nsi
@@ -751,7 +751,7 @@ index 10cbca02017..e3cd5ebee1f 100644
 +LangString inst_requires_win10 ${LANG_MALAY}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_MALAY} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/mongolian.nsi b/dist/windows/installer-translations/mongolian.nsi
 index ba0a0e179a7..794d027d14f 100644
 --- a/dist/windows/installer-translations/mongolian.nsi
@@ -766,7 +766,7 @@ index ba0a0e179a7..794d027d14f 100644
 +LangString inst_requires_win10 ${LANG_MONGOLIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_MONGOLIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/norwegian.nsi b/dist/windows/installer-translations/norwegian.nsi
 index d8a3e17c1ed..b65e110c111 100644
 --- a/dist/windows/installer-translations/norwegian.nsi
@@ -781,7 +781,7 @@ index d8a3e17c1ed..b65e110c111 100644
 +LangString inst_requires_win10 ${LANG_NORWEGIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_NORWEGIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/norwegiannynorsk.nsi b/dist/windows/installer-translations/norwegiannynorsk.nsi
 index 008ea3c0143..daf0475d6a1 100644
 --- a/dist/windows/installer-translations/norwegiannynorsk.nsi
@@ -796,7 +796,7 @@ index 008ea3c0143..daf0475d6a1 100644
 +LangString inst_requires_win10 ${LANG_NORWEGIANNYNORSK}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_NORWEGIANNYNORSK} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/polish.nsi b/dist/windows/installer-translations/polish.nsi
 index 6c09dcc63cf..a1731137e4c 100644
 --- a/dist/windows/installer-translations/polish.nsi
@@ -811,7 +811,7 @@ index 6c09dcc63cf..a1731137e4c 100644
 +LangString inst_requires_win10 ${LANG_POLISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_POLISH} "Odinstaluj qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/portuguese.nsi b/dist/windows/installer-translations/portuguese.nsi
 index 0148d7ba9e2..ea9d45f03f0 100644
 --- a/dist/windows/installer-translations/portuguese.nsi
@@ -826,7 +826,7 @@ index 0148d7ba9e2..ea9d45f03f0 100644
 +LangString inst_requires_win10 ${LANG_PORTUGUESE}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_PORTUGUESE} "Desinstalar qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/portugueseBR.nsi b/dist/windows/installer-translations/portugueseBR.nsi
 index 83eb2a7bd17..ba1438fa43a 100644
 --- a/dist/windows/installer-translations/portugueseBR.nsi
@@ -841,7 +841,7 @@ index 83eb2a7bd17..ba1438fa43a 100644
 +LangString inst_requires_win10 ${LANG_PORTUGUESEBR}  "Este instalador requer no mínimo o Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_PORTUGUESEBR} "Desinstalar o qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/romanian.nsi b/dist/windows/installer-translations/romanian.nsi
 index bf912b96fd5..ac6d9d21ebe 100644
 --- a/dist/windows/installer-translations/romanian.nsi
@@ -856,7 +856,7 @@ index bf912b96fd5..ac6d9d21ebe 100644
 +LangString inst_requires_win10 ${LANG_ROMANIAN}  "Acest program de instalare necesită cel puțin Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_ROMANIAN} "Dezinstalați qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/russian.nsi b/dist/windows/installer-translations/russian.nsi
 index 15308035318..f231eb69aa4 100644
 --- a/dist/windows/installer-translations/russian.nsi
@@ -871,7 +871,7 @@ index 15308035318..f231eb69aa4 100644
 +LangString inst_requires_win10 ${LANG_RUSSIAN}  "Для работы этого установщика требуется Windows 10 (1809) / Windows Server 2019 или выше."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_RUSSIAN} "Удалить qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/serbian.nsi b/dist/windows/installer-translations/serbian.nsi
 index 406aa63bf09..72774d355ea 100644
 --- a/dist/windows/installer-translations/serbian.nsi
@@ -886,7 +886,7 @@ index 406aa63bf09..72774d355ea 100644
 +LangString inst_requires_win10 ${LANG_SERBIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SERBIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/serbianlatin.nsi b/dist/windows/installer-translations/serbianlatin.nsi
 index f31b2c190b2..282fbc6b19e 100644
 --- a/dist/windows/installer-translations/serbianlatin.nsi
@@ -901,7 +901,7 @@ index f31b2c190b2..282fbc6b19e 100644
 +LangString inst_requires_win10 ${LANG_SERBIANLATIN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SERBIANLATIN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/simpchinese.nsi b/dist/windows/installer-translations/simpchinese.nsi
 index da9e803d875..9459dab3b63 100644
 --- a/dist/windows/installer-translations/simpchinese.nsi
@@ -916,7 +916,7 @@ index da9e803d875..9459dab3b63 100644
 +LangString inst_requires_win10 ${LANG_SIMPCHINESE}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SIMPCHINESE} "卸载 qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/slovak.nsi b/dist/windows/installer-translations/slovak.nsi
 index 66876ba14b6..b3a97a739a7 100644
 --- a/dist/windows/installer-translations/slovak.nsi
@@ -931,7 +931,7 @@ index 66876ba14b6..b3a97a739a7 100644
 +LangString inst_requires_win10 ${LANG_SLOVAK}  "Tento inštalátor vyžaduje aspoň Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SLOVAK} "Odinštalovať qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/slovenian.nsi b/dist/windows/installer-translations/slovenian.nsi
 index 2dcd9ccacc6..af319a4872d 100644
 --- a/dist/windows/installer-translations/slovenian.nsi
@@ -946,7 +946,7 @@ index 2dcd9ccacc6..af319a4872d 100644
 +LangString inst_requires_win10 ${LANG_SLOVENIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SLOVENIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/spanish.nsi b/dist/windows/installer-translations/spanish.nsi
 index 7efe0844de0..b0c842617bc 100644
 --- a/dist/windows/installer-translations/spanish.nsi
@@ -961,7 +961,7 @@ index 7efe0844de0..b0c842617bc 100644
 +LangString inst_requires_win10 ${LANG_SPANISH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SPANISH} "Desinstalar qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/spanishinternational.nsi b/dist/windows/installer-translations/spanishinternational.nsi
 index 7cdd146fa38..7927c00b972 100644
 --- a/dist/windows/installer-translations/spanishinternational.nsi
@@ -976,7 +976,7 @@ index 7cdd146fa38..7927c00b972 100644
 +LangString inst_requires_win10 ${LANG_SPANISHINTERNATIONAL}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SPANISHINTERNATIONAL} "Desinstalar qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/swedish.nsi b/dist/windows/installer-translations/swedish.nsi
 index f471141bfef..3b8032c238f 100644
 --- a/dist/windows/installer-translations/swedish.nsi
@@ -991,7 +991,7 @@ index f471141bfef..3b8032c238f 100644
 +LangString inst_requires_win10 ${LANG_SWEDISH}  "Det här installationsprogrammet kräver minst Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_SWEDISH} "Avinstallera qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/thai.nsi b/dist/windows/installer-translations/thai.nsi
 index c48bef13ef0..4eac8fc9c03 100644
 --- a/dist/windows/installer-translations/thai.nsi
@@ -1006,7 +1006,7 @@ index c48bef13ef0..4eac8fc9c03 100644
 +LangString inst_requires_win10 ${LANG_THAI}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_THAI} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/tradchinese.nsi b/dist/windows/installer-translations/tradchinese.nsi
 index 500d61917c8..d66abb38809 100644
 --- a/dist/windows/installer-translations/tradchinese.nsi
@@ -1021,7 +1021,7 @@ index 500d61917c8..d66abb38809 100644
 +LangString inst_requires_win10 ${LANG_TRADCHINESE}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_TRADCHINESE} "移除 qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/turkish.nsi b/dist/windows/installer-translations/turkish.nsi
 index 63dc0b3060b..e7733a25ff9 100644
 --- a/dist/windows/installer-translations/turkish.nsi
@@ -1036,7 +1036,7 @@ index 63dc0b3060b..e7733a25ff9 100644
 +LangString inst_requires_win10 ${LANG_TURKISH}  "Bu yükleyici en az Windows 10 (1809) / Windows Server 2019 gerektirir."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_TURKISH} "qBittorrent'i kaldır"
- 
+
 diff --git a/dist/windows/installer-translations/ukrainian.nsi b/dist/windows/installer-translations/ukrainian.nsi
 index 6d5377fd4dc..533e24dec96 100644
 --- a/dist/windows/installer-translations/ukrainian.nsi
@@ -1051,7 +1051,7 @@ index 6d5377fd4dc..533e24dec96 100644
 +LangString inst_requires_win10 ${LANG_UKRAINIAN}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_UKRAINIAN} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer-translations/uzbek.nsi b/dist/windows/installer-translations/uzbek.nsi
 index 3b9fc1e08e0..67140207572 100644
 --- a/dist/windows/installer-translations/uzbek.nsi
@@ -1066,7 +1066,7 @@ index 3b9fc1e08e0..67140207572 100644
 +LangString inst_requires_win10 ${LANG_UZBEK}  "Bu oʻrnatuvchi  kamida Windows 10 (1809) / Windows Server 2019 talab qiladi."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_UZBEK} "qBittorrent oʻchirilsin"
- 
+
 diff --git a/dist/windows/installer-translations/welsh.nsi b/dist/windows/installer-translations/welsh.nsi
 index ede9f37f3f7..efb37c55449 100644
 --- a/dist/windows/installer-translations/welsh.nsi
@@ -1081,7 +1081,7 @@ index ede9f37f3f7..efb37c55449 100644
 +LangString inst_requires_win10 ${LANG_WELSH}  "This installer requires at least Windows 10 (1809) / Windows Server 2019."
  ;LangString inst_uninstall_link_description ${LANG_ENGLISH} "Uninstall qBittorrent"
  LangString inst_uninstall_link_description ${LANG_WELSH} "Uninstall qBittorrent"
- 
+
 diff --git a/dist/windows/installer.nsi b/dist/windows/installer.nsi
 index a76e926094b..8f9311c4d2d 100644
 --- a/dist/windows/installer.nsi
@@ -1131,27 +1131,27 @@ index afd2440cad4..d26cc7a9e0e 100644
              return;
 -        categoryList.empty();
 +        categoryList.getChildren().each(c => c.destroy());
- 
+
          const create_link = function(hash, text, count) {
              let display_name = text;
 @@ -540,8 +540,7 @@ window.addEvent('load', function() {
          if (tagFilterList === null)
              return;
- 
+
 -        while (tagFilterList.firstChild !== null)
 -            tagFilterList.removeChild(tagFilterList.firstChild);
 +        tagFilterList.getChildren().each(c => c.destroy());
- 
+
          const createLink = function(hash, text, count) {
              const html = '<a href="#" onclick="setTagFilter(' + hash + ');return false;">'
 @@ -594,8 +593,7 @@ window.addEvent('load', function() {
          if (trackerFilterList === null)
              return;
- 
+
 -        while (trackerFilterList.firstChild !== null)
 -            trackerFilterList.removeChild(trackerFilterList.firstChild);
 +        trackerFilterList.getChildren().each(c => c.destroy());
- 
+
          const createLink = function(hash, text, count) {
              const html = '<a href="#" onclick="setTrackerFilter(' + hash + ');return false;">'
 diff --git a/src/webui/www/private/scripts/contextmenu.js b/src/webui/www/private/scripts/contextmenu.js
@@ -1159,7 +1159,7 @@ index 167570bc379..b9487abb8be 100644
 --- a/src/webui/www/private/scripts/contextmenu.js
 +++ b/src/webui/www/private/scripts/contextmenu.js
 @@ -444,7 +444,7 @@ window.qBittorrent.ContextMenu = (function() {
- 
+
          updateCategoriesSubMenu: function(category_list) {
              const categoryList = $('contextCategoryList');
 -            categoryList.empty();
@@ -1173,14 +1173,14 @@ index c511b9ae3d7..b576d8a0603 100644
 +++ b/src/webui/www/private/scripts/dynamicTable.js
 @@ -817,8 +817,7 @@ window.qBittorrent.DynamicTable = (function() {
              let rowPos = rows.length;
- 
+
              while ((rowPos < trs.length) && (trs.length > 0)) {
 -                trs[trs.length - 1].dispose();
 -                trs.pop();
 +                trs.pop().destroy();
              }
          },
- 
+
 @@ -840,7 +839,7 @@ window.qBittorrent.DynamicTable = (function() {
              this.selectedRows.erase(rowId);
              const tr = this.getTrByRowId(rowId);
@@ -1199,22 +1199,22 @@ index c511b9ae3d7..b576d8a0603 100644
 +                trs.pop().destroy();
              }
          },
- 
+
 @@ -1550,7 +1548,7 @@ window.qBittorrent.DynamicTable = (function() {
- 
+
                  if (!country_code) {
                      if (td.getChildren('img').length > 0)
 -                        td.getChildren('img')[0].dispose();
 +                        td.getChildren('img')[0].destroy();
                      return;
                  }
- 
+
 diff --git a/src/webui/www/private/scripts/prop-webseeds.js b/src/webui/www/private/scripts/prop-webseeds.js
 index a5668593380..ce42d0343ac 100644
 --- a/src/webui/www/private/scripts/prop-webseeds.js
 +++ b/src/webui/www/private/scripts/prop-webseeds.js
 @@ -50,8 +50,7 @@ window.qBittorrent.PropWebseeds = (function() {
- 
+
          removeRow: function(url) {
              if (this.rows.has(url)) {
 -                const tr = this.rows.get(url);
@@ -1228,7 +1228,7 @@ index 46998723123..ff3a2531997 100644
 --- a/src/webui/www/private/views/log.html
 +++ b/src/webui/www/private/views/log.html
 @@ -424,4 +424,6 @@
- 
+
          return exports();
      })();
 +
@@ -1248,7 +1248,7 @@ index 86714995167..d96eb08b1d6 100644
                  url: url,
                  method: 'get',
 @@ -1881,7 +1881,7 @@
- 
+
          const updateInterfaceAddresses = function(iface, default_addr) {
              const url = 'api/v2/app/networkInterfaceAddressList';
 -            $('optionalIPAddressToBind').empty();
@@ -1263,12 +1263,12 @@ index 4599440b038..520ccf58212 100644
 @@ -402,13 +402,13 @@
                      });
                  });
- 
+
 -            $('rssDetailsView').empty();
 +            $('rssDetailsView').getChildren().each(c => c.destroy());
              rssArticleTable.updateTable(false);
          };
- 
+
          const showDetails = (feedUid, articleID) => {
              markArticleAsRead(pathByFeedId.get(feedUid), articleID);
 -            $('rssDetailsView').empty();
@@ -1301,7 +1301,7 @@ index 147b90f045f..e9331a65417 100644
  #include <QString>
  #include <QUrl>
 @@ -135,6 +136,36 @@ namespace
- 
+
          settings()->storeValue(settingsKey, QStringList(pathList.mid(0, maxLength)));
      }
 +
@@ -1335,11 +1335,11 @@ index 147b90f045f..e9331a65417 100644
 +        dialog->setGeometry(dialogGeometry);
 +    }
  }
- 
+
  class AddNewTorrentDialog::TorrentContentAdaptor final
 @@ -539,9 +570,14 @@ void AddNewTorrentDialog::show(const QString &source, const BitTorrent::AddTorre
          : dlg->loadTorrentFile(source);
- 
+
      if (isLoaded)
 +    {
 +        adjustDialogGeometry(dlg, parent);
@@ -1350,7 +1350,7 @@ index 147b90f045f..e9331a65417 100644
          delete dlg;
 +    }
  }
- 
+
  void AddNewTorrentDialog::show(const QString &source, QWidget *parent)
 
 From 3f6ca64d9e314393bf2fc0dd75eefb972a5a9afc Mon Sep 17 00:00:00 2001

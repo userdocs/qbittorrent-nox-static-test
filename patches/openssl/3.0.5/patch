@@ -89,7 +89,7 @@ index 9188edbc21..db1a1d7bc3 100644
 @@ -16,6 +16,71 @@
  #include "internal/numbers.h"   /* includes SIZE_MAX */
  #include "evp_local.h"
- 
+
 +typedef struct ossl_legacy_digest_signatures_st {
 +    int allowed;
 +} OSSL_LEGACY_DIGEST_SIGNATURES;
@@ -156,12 +156,12 @@ index 9188edbc21..db1a1d7bc3 100644
 +}
 +
  #ifndef FIPS_MODULE
- 
+
  static int update(EVP_MD_CTX *ctx, const void *data, size_t datalen)
 @@ -258,6 +323,18 @@ static int do_sigver_init(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
          }
      }
- 
+
 +    if (ctx->reqdigest != NULL
 +            && !EVP_PKEY_is_a(locpctx->pkey, SN_hmac)
 +            && !EVP_PKEY_is_a(locpctx->pkey, SN_tls1_prf)
@@ -187,12 +187,12 @@ index 2b9c6c2351..3c5a1e6f5d 100644
  #include "internal/provider.h"
 +#include "internal/sslconf.h"
  #include "evp_local.h"
- 
+
  #ifndef FIPS_MODULE
 @@ -946,6 +947,20 @@ static int evp_pkey_ctx_set_md(EVP_PKEY_CTX *ctx, const EVP_MD *md,
          return -2;
      }
- 
+
 +    if (EVP_PKEY_CTX_IS_SIGNATURE_OP(ctx)
 +            && md != NULL
 +            && ctx->pkey != NULL
@@ -209,7 +209,7 @@ index 2b9c6c2351..3c5a1e6f5d 100644
 +
      if (fallback)
          return EVP_PKEY_CTX_ctrl(ctx, -1, op, ctrl, 0, (void *)(md));
- 
+
 diff --git a/doc/man5/config.pod b/doc/man5/config.pod
 index 77a8055e81..aa1be5ca7f 100644
 --- a/doc/man5/config.pod
@@ -217,7 +217,7 @@ index 77a8055e81..aa1be5ca7f 100644
 @@ -304,6 +304,17 @@ Within the algorithm properties section, the following names have meaning:
  The value may be anything that is acceptable as a property query
  string for EVP_set_default_properties().
- 
+
 +=item B<rh-allow-sha1-signatures>
 +
 +The value is a boolean that can be B<yes> or B<no>.  If the value is not set,
@@ -230,7 +230,7 @@ index 77a8055e81..aa1be5ca7f 100644
 +B<no>.
 +
  =item B<fips_mode> (deprecated)
- 
+
  The value is a boolean that can be B<yes> or B<no>.  If the value is
 diff --git a/include/internal/cryptlib.h b/include/internal/cryptlib.h
 index 1291299b6e..e234341e6a 100644
@@ -243,7 +243,7 @@ index 1291299b6e..e234341e6a 100644
 -# define OSSL_LIB_CTX_MAX_INDEXES                   19
 +# define OSSL_LIB_CTX_LEGACY_DIGEST_SIGNATURES      19
 +# define OSSL_LIB_CTX_MAX_INDEXES                   20
- 
+
  # define OSSL_LIB_CTX_METHOD_LOW_PRIORITY          -1
  # define OSSL_LIB_CTX_METHOD_DEFAULT_PRIORITY       0
 diff --git a/include/internal/sslconf.h b/include/internal/sslconf.h
@@ -253,7 +253,7 @@ index fd7f7e3331..05464b0655 100644
 @@ -18,4 +18,8 @@ int conf_ssl_name_find(const char *name, size_t *idx);
  void conf_ssl_get_cmd(const SSL_CONF_CMD *cmd, size_t idx, char **cmdstr,
                        char **arg);
- 
+
 +/* Methods to support disabling all signatures with legacy digests */
 +int ossl_ctx_legacy_digest_signatures_allowed(OSSL_LIB_CTX *libctx, int loadconfig);
 +int ossl_ctx_legacy_digest_signatures_allowed_set(OSSL_LIB_CTX *libctx, int allow,
@@ -268,7 +268,7 @@ index 699ada7c52..e534ad0a5f 100644
  #include <openssl/obj_mac.h>
  #include "prov/securitycheck.h"
 +#include "internal/sslconf.h"
- 
+
  /*
   * FIPS requires a minimum security strength of 112 bits (for encryption or
 @@ -235,6 +236,15 @@ int ossl_digest_get_approved_nid_with_sha1(OSSL_LIB_CTX *ctx, const EVP_MD *md,
@@ -286,7 +286,7 @@ index 699ada7c52..e534ad0a5f 100644
 +
      return mdnid;
  }
- 
+
 @@ -244,5 +254,15 @@ int ossl_digest_is_allowed(OSSL_LIB_CTX *ctx, const EVP_MD *md)
      if (ossl_securitycheck_enabled(ctx))
          return ossl_digest_get_approved_nid(md) != NID_undef;
@@ -312,25 +312,25 @@ index de7f0d3a0a..ce54a94fbc 100644
  #include "prov/securitycheck.h"
  #include "internal/nelem.h"
 +#include "internal/sslconf.h"
- 
+
  /* Disable the security checks in the default provider */
  int ossl_securitycheck_enabled(OSSL_LIB_CTX *libctx)
 @@ -23,9 +24,10 @@ int ossl_securitycheck_enabled(OSSL_LIB_CTX *libctx)
  }
- 
+
  int ossl_digest_rsa_sign_get_md_nid(OSSL_LIB_CTX *ctx, const EVP_MD *md,
 -                                    ossl_unused int sha1_allowed)
 +                                    int sha1_allowed)
  {
      int mdnid;
 +    int ldsigs_allowed;
- 
+
      static const OSSL_ITEM name_to_nid[] = {
          { NID_md5,       OSSL_DIGEST_NAME_MD5       },
 @@ -36,8 +38,11 @@ int ossl_digest_rsa_sign_get_md_nid(OSSL_LIB_CTX *ctx, const EVP_MD *md,
          { NID_ripemd160, OSSL_DIGEST_NAME_RIPEMD160 },
      };
- 
+
 -    mdnid = ossl_digest_get_approved_nid_with_sha1(ctx, md, 1);
 +    ldsigs_allowed = ossl_ctx_legacy_digest_signatures_allowed(ctx, 0);
 +    mdnid = ossl_digest_get_approved_nid_with_sha1(ctx, md, sha1_allowed || ldsigs_allowed);
@@ -346,7 +346,7 @@ index 28fd7c498e..fa3822f39f 100644
 +++ b/providers/implementations/signature/dsa_sig.c
 @@ -124,12 +124,17 @@ static int dsa_setup_md(PROV_DSA_CTX *ctx,
          mdprops = ctx->propq;
- 
+
      if (mdname != NULL) {
 -        int sha1_allowed = (ctx->operation != EVP_PKEY_OP_SIGN);
          WPACKET pkt;
@@ -362,7 +362,7 @@ index 28fd7c498e..fa3822f39f 100644
 +#endif
 +        md_nid = ossl_digest_get_approved_nid_with_sha1(ctx->libctx, md,
 +                                                            sha1_allowed);
- 
+
          if (md == NULL || md_nid < 0) {
              if (md == NULL)
 diff --git a/providers/implementations/signature/ecdsa_sig.c b/providers/implementations/signature/ecdsa_sig.c
@@ -395,14 +395,14 @@ index 325e855333..bea397f0c1 100644
  #include "prov/implementations.h"
 @@ -34,6 +35,7 @@
  #include "prov/securitycheck.h"
- 
+
  #define RSA_DEFAULT_DIGEST_NAME OSSL_DIGEST_NAME_SHA1
 +#define RSA_DEFAULT_DIGEST_NAME_NONLEGACY OSSL_DIGEST_NAME_SHA2_256
- 
+
  static OSSL_FUNC_signature_newctx_fn rsa_newctx;
  static OSSL_FUNC_signature_sign_init_fn rsa_sign_init;
 @@ -289,10 +291,15 @@ static int rsa_setup_md(PROV_RSA_CTX *ctx, const char *mdname,
- 
+
      if (mdname != NULL) {
          EVP_MD *md = EVP_MD_fetch(ctx->libctx, mdname, mdprops);
 +        int md_nid;
@@ -416,12 +416,12 @@ index 325e855333..bea397f0c1 100644
 +        md_nid = ossl_digest_rsa_sign_get_md_nid(ctx->libctx, md,
                                                       sha1_allowed);
 -        size_t mdname_len = strlen(mdname);
- 
+
          if (md == NULL
              || md_nid <= 0
 @@ -1348,8 +1355,15 @@ static int rsa_set_ctx_params(void *vprsactx, const OSSL_PARAM params[])
      prsactx->pad_mode = pad_mode;
- 
+
      if (prsactx->md == NULL && pmdname == NULL
 -        && pad_mode == RSA_PKCS1_PSS_PADDING)
 +        && pad_mode == RSA_PKCS1_PSS_PADDING) {
@@ -433,7 +433,7 @@ index 325e855333..bea397f0c1 100644
 +#endif
 +    }
 +
- 
+
      if (pmgf1mdname != NULL
          && !rsa_setup_mgf1_md(prsactx, pmgf1mdname, pmgf1mdprops))
 diff --git a/ssl/t1_lib.c b/ssl/t1_lib.c
@@ -453,10 +453,10 @@ index fc32bb3556..4b74ee1a34 100644
      EVP_PKEY *tmpkey = EVP_PKEY_new();
      int ret = 0;
 +    int ldsigs_allowed;
- 
+
      if (cache == NULL || tmpkey == NULL)
          goto err;
- 
+
      ERR_set_mark();
 +    ldsigs_allowed = ossl_ctx_legacy_digest_signatures_allowed(ctx->libctx, 0);
      for (i = 0, lu = sigalg_lookup_tbl;
@@ -471,7 +471,7 @@ index fc32bb3556..4b74ee1a34 100644
 +            cache[i].enabled = 0;
 +            continue;
 +        }
- 
+
          if (!EVP_PKEY_set_type(tmpkey, lu->sig)) {
              cache[i].enabled = 0;
 diff --git a/util/libcrypto.num b/util/libcrypto.num
@@ -511,19 +511,19 @@ index ff3ca83de6..a549c1c111 100644
 +#include "internal/sslconf.h"
  #include "crypto/x509.h"
  #include "x509_local.h"
- 
+
 @@ -3440,14 +3441,30 @@ static int check_sig_level(X509_STORE_CTX *ctx, X509 *cert)
  {
      int secbits = -1;
      int level = ctx->param->auth_level;
 +    int nid;
 +    OSSL_LIB_CTX *libctx = NULL;
- 
+
      if (level <= 0)
          return 1;
      if (level > NUM_AUTH_LEVELS)
          level = NUM_AUTH_LEVELS;
- 
+
 -    if (!X509_get_signature_info(cert, NULL, NULL, &secbits, NULL))
 +    if (ctx->libctx)
 +        libctx = ctx->libctx;
@@ -534,7 +534,7 @@ index ff3ca83de6..a549c1c111 100644
 +
 +    if (!X509_get_signature_info(cert, &nid, NULL, &secbits, NULL))
          return 0;
- 
+
 +    if (nid == NID_sha1
 +            && ossl_ctx_legacy_digest_signatures_allowed(libctx, 0)
 +            && ctx->param->auth_level < 3)
@@ -559,9 +559,9 @@ index aa1be5ca7f..aa69e2b844 100644
 +TLS 1.1 or lower use MD5-SHA1 as pseudorandom function (PRF) to derive key
 +material, disabling B<rh-allow-sha1-signatures> requires the use of TLS 1.2 or
 +newer.
- 
+
  =item B<fips_mode> (deprecated)
- 
+
 diff --git a/ssl/t1_lib.c b/ssl/t1_lib.c
 index 4b74ee1a34..5f089de107 100644
 --- a/ssl/t1_lib.c
@@ -618,7 +618,7 @@ index 4b74ee1a34..5f089de107 100644
 @@ -2106,6 +2115,14 @@ static int tls12_sigalg_allowed(const SSL *s, int op, const SIGALG_LOOKUP *lu)
          }
      }
- 
+
 +    if (lu->hash == NID_sha1
 +            && ossl_ctx_legacy_digest_signatures_allowed(s->ctx->libctx, 0)
 +            && SSL_get_security_level(s) < 3) {
@@ -672,24 +672,23 @@ index 700bbd849c..2de1d76b5e 100644
 @@ -29,7 +29,7 @@ sub verify {
      run(app([@args]));
  }
- 
+
 -plan tests => 163;
 +plan tests => 162;
- 
+
  # Canonical success
  ok(verify("ee-cert", "sslserver", ["root-cert"], ["ca-cert"]),
 @@ -387,8 +387,9 @@ ok(verify("ee-pss-sha1-cert", "", ["root-cert"], ["ca-cert"], "-auth_level", "0"
  ok(verify("ee-pss-sha256-cert", "", ["root-cert"], ["ca-cert"], ),
      "CA with PSS signature using SHA256");
- 
+
 -ok(!verify("ee-pss-sha1-cert", "", ["root-cert"], ["ca-cert"], "-auth_level", "1"),
 -    "Reject PSS signature using SHA1 and auth level 1");
 +## rh-allow-sha1-signatures=yes allows this to pass despite -auth_level 1
 +#ok(!verify("ee-pss-sha1-cert", "", ["root-cert"], ["ca-cert"], "-auth_level", "1"),
 +#    "Reject PSS signature using SHA1 and auth level 1");
- 
+
  ok(verify("ee-pss-sha256-cert", "", ["root-cert"], ["ca-cert"], "-auth_level", "2"),
      "PSS signature using SHA256 and auth level 2");
--- 
+--
 2.35.1
-

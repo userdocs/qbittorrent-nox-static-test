@@ -25,5 +25,5 @@ index 726032e085c..560d738fa8b 100644
 -	constexpr std::size_t tick_handler_max_size = tracking + 128;
 +	constexpr std::size_t tick_handler_max_size = tracking + 136;
  #endif
- 
+
  	enum HandlerName
