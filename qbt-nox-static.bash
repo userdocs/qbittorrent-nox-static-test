@@ -1998,16 +1998,16 @@ _multi_arch() {
 				rm -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 			fi
 
-			if [[ $os_arch == "aarch64" ]]; then
-				qbt_mcm_toolchain_prefix="aarch64"
-			elif [[ $os_arch == "x86_64" ]]; then
-				qbt_mcm_toolchain_prefix="x86_64"
-			else
-				printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
-				exit
-			fi
-
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
+				if [[ $os_arch == "aarch64" ]]; then
+					qbt_mcm_toolchain_prefix="aarch64"
+				elif [[ $os_arch == "x86_64" ]]; then
+					qbt_mcm_toolchain_prefix="x86_64"
+				else
+					printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
+					exit
+				fi
+
 				if [[ "${1}" == 'bootstrap' || "${qbt_cache_dir_options}" == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 					printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/${qbt_mcm_url}/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz${color_end}"
 					_curl --create-dirs "https://github.com/${qbt_mcm_url}/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
