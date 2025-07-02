@@ -1083,7 +1083,7 @@ _custom_flags() {
 		fi
 	fi
 
-	if [[ "${app_name}" =~ ^(glibc|icu)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|icu|qttools)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
