@@ -1007,7 +1007,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags=""
+	#qbt_linker_flags=""
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
@@ -1048,9 +1048,9 @@ _custom_flags() {
 
 	# Static linking specific
 	if [[ "${qbt_static_ish}" == "yes" || "${app_name}" =~ ^(glibc|icu)$ ]]; then
-		qbt_static_flags=""
+		: # qbt_static_flags=""
 	else
-		qbt_static_flags="-static"
+		: #qbt_static_flags="-static"
 	fi
 
 	# If you set and export your own flags in the env that the script is run, they will be appended to the defaults
@@ -1061,10 +1061,10 @@ _custom_flags() {
 	[[ -z "${qbt_ldflags_consumed}" ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
-		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} ${qbt_optimise_march} ${qbt_ldflags:-}"
+		LDFLAGS="-L${lib_dir}  ${qbt_strip_flags} ${qbt_optimise_march} ${qbt_ldflags:-}"
 	}
 
 	_custom_flags_reset() {
