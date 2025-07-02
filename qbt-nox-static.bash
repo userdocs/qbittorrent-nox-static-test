@@ -1007,7 +1007,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	#qbt_linker_flags=""
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
@@ -1015,22 +1015,22 @@ _custom_flags() {
 		qbt_security_flags+=" -fstrict-flex-arrays=3"
 	fi
 
-	# if [[ "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
-	# 	qbt_security_flags+=" -fcf-protection=full"
-	# fi
+	if [[ "${os_arch}" =~ ^(amd64|x86_64)$ && "${qbt_cross_name}" = "default" ]]; then
+		qbt_security_flags+=" -fcf-protection=full"
+	fi
 
-	# if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
-	# 	if [[ "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
-	# 		qbt_security_flags+=" -mbranch-protection=standard"
-	# 	fi
-	# fi
+	if [[ ! "${os_version_codename}" =~ ^(bookworm)$ ]]; then
+		if [[ "${os_arch}" =~ ^(arm64|aarch64)$ && "${qbt_cross_name}" = "default" ]]; then
+			qbt_security_flags+=" -mbranch-protection=standard"
+		fi
+	fi
 
-	# if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
-	# 	if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
-	# 		qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-	# 		qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
-	# 	fi
-	# fi
+	if [[ "${os_id}" =~ ^(alpine)$ ]] && [[ -z "${qbt_cross_name}" || "${qbt_cross_name}" == "default" ]]; then
+		if [[ ! "${app_name}" =~ ^(openssl)$ ]]; then
+			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
+			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+		fi
+	fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
 	if [[ $qbt_optimise == "yes" ]]; then
@@ -1048,9 +1048,9 @@ _custom_flags() {
 
 	# Static linking specific
 	if [[ "${qbt_static_ish}" == "yes" || "${app_name}" =~ ^(glibc|icu)$ ]]; then
-		: # qbt_static_flags=""
+		qbt_static_flags=""
 	else
-		: #qbt_static_flags="-static"
+		qbt_static_flags="-static -static-libgcc -static-libstdc++"
 	fi
 
 	# If you set and export your own flags in the env that the script is run, they will be appended to the defaults
@@ -1061,10 +1061,10 @@ _custom_flags() {
 	[[ -z "${qbt_ldflags_consumed}" ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
-		LDFLAGS="-L${lib_dir}  ${qbt_strip_flags} ${qbt_optimise_march} ${qbt_ldflags:-}"
+		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
 	}
 
 	_custom_flags_reset() {
