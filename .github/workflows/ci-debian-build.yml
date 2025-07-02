@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs_on: [ubuntu-24.04, ubuntu-24.04-arm]
+        runs_on: [ubuntu-24.04-arm]
         container_id: [debian, ubuntu]
         container_codename: [bookworm, noble]
         qbt_build_tool: ["cmake", "qmake"]
@@ -48,8 +48,8 @@ jobs:
             qbt_qt_version: "5"
           - qbt_build_tool: "cmake"
             qbt_qt_version: "6"
-          - runs_on: ubuntu-24.04
-            docker_arch: "amd64"
+          # - runs_on: ubuntu-24.04
+          #   docker_arch: "amd64"
           - runs_on: ubuntu-24.04-arm
             docker_arch: "arm64v8"
 
