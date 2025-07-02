@@ -1050,7 +1050,7 @@ _custom_flags() {
 	if [[ "${qbt_static_ish}" == "yes" || "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		qbt_static_flags=""
 	else
-		qbt_static_flags="-static -static-libgcc -static-libstdc++"
+		qbt_static_flags="-static"
 	fi
 
 	# If you set and export your own flags in the env that the script is run, they will be appended to the defaults
@@ -1082,7 +1082,7 @@ _custom_flags() {
 		fi
 	fi
 
-	if [[ "${app_name}" =~ ^(glibc|icu|iconv)$ ]]; then
+	if [[ "${app_name}" =~ ^(glibc|icu)$ ]]; then
 		_custom_flags_reset
 	else
 		_custom_flags_set
