@@ -43,7 +43,7 @@ jobs:
             container_codename: noble
           - container_id: ubuntu
             container_codename: bookworm
-        cross_arch: ["x86_64", "aarch64"]
+        qbt_cross_name: ["x86_64", "aarch64"]
         include:
           - qbt_build_tool: "qmake"
             qbt_qt_version: "5"
