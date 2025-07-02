@@ -89,8 +89,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: qt6
+        run: |
+          curl -sLO https://github.com/userdocs/qt6-crossbuild/releases/latest/download/${{ matrix.container_id }}-${{ matrix.container_codename }}-qt6-amd64.deb
+          dpkg-deb -x ${{ matrix.container_id }}-${{ matrix.container_codename }}-qt6-amd64.deb tmpdir
+          cp -rf tmpdir/opt/local/* /usr/local/
+          ls /usr/local/bin
+          ldconfig
 
       - name: bootstrap patches ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
