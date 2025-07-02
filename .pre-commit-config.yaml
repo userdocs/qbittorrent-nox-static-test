@@ -19,7 +19,7 @@ repos:
         args: ["--severity=warning"] # Optionally only show errors and warnings
 
   - repo: https://github.com/pecigonzalo/pre-commit-shfmt
-    sha: master
+    rev: v2.2.0
     hooks:
       - id: shell-fmt
         args: ["-ci", "-sr", "-i", "0"]
