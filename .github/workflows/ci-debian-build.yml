@@ -89,6 +89,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: bootstrap patches ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
         run: mkdir -p ${qbt_build_dir}/patches && cp -r patches/* ${qbt_build_dir}/patches/

@@ -1999,9 +1999,9 @@ _multi_arch() {
 			fi
 
 			if [[ "${qbt_cross_target}" =~ ^(alpine)$ ]]; then
-				if [[ $os_arch == "aarch64" ]]; then
+				if [[ "${os_arch}" == "aarch64" ]]; then
 					qbt_mcm_toolchain_prefix="aarch64"
-				elif [[ $os_arch == "x86_64" ]]; then
+				elif [[ "${os_arch}" == "x86_64" ]]; then
 					qbt_mcm_toolchain_prefix="x86_64"
 				else
 					printf '\n%b\n' " ${unicode_red_circle} We can only crossbuild from a x86_64 or aarch64 host"
