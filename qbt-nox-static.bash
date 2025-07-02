@@ -1061,9 +1061,9 @@ _custom_flags() {
 	[[ -z "${qbt_ldflags_consumed}" ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="-I${include_dir} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
-		CPPFLAGS="-I${include_dir} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
+		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CPPFLAGS="${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 		LDFLAGS="-L${lib_dir} ${qbt_static_flags} ${qbt_strip_flags} ${qbt_linker_flags} -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
 	}
 
@@ -2115,6 +2115,17 @@ _release_info() {
 		> ${source_text}
 		>
 		> These builds were created on Alpine linux using [custom prebuilt musl toolchains](https://github.com/userdocs/qbt-musl-cross-make/releases/latest) for:
+
+		## Docker containers
+
+		This project does not provider containers for these binaries. It provides a binary that other projects use to do that.
+
+		An example project thats provides a complete solution: https://hotio.dev/containers/qbittorrent/
+
+		- [libtorrent versions](https://github.com/userdocs/qbittorrent-nox-static?tab=readme-ov-file#libtorrent-versions) \`v1.2\` and \`2.0\` builds in a single container
+		- Tracks [build revisions](https://github.com/userdocs/qbittorrent-nox-static?tab=readme-ov-file#revisions) for critical patches and dependency updates.
+		- wireguard vpn configuration - https://hotio.dev/containers/qbittorrent/#wireguard
+
 	RELEASE_INFO
 
 	{
