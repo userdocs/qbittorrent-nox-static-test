@@ -51,7 +51,7 @@ jobs:
           # - runs_on: ubuntu-24.04
           #   docker_arch: "amd64"
           - runs_on: ubuntu-24.04-arm
-            docker_arch: "arm64v8"
+            docker_arch: "arm64"
 
     name: "${{ matrix.docker_arch }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
 
@@ -62,7 +62,7 @@ jobs:
       script_name: ${{ inputs.script_name }}
 
     container:
-      image: ${{ matrix.docker_arch }}/${{ matrix.container_id }}:${{ matrix.container_codename }}
+      image: ${{ matrix.container_id }}:${{ matrix.container_codename }}
       env: # container
         LANG: C.UTF-8
         LC_ALL: C.UTF-8
