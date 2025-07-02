@@ -787,7 +787,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags=""
+	qbt_linker_flags="-Wl,-O1,--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,pack-relative-relocs,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries"
 
 	gcc_version="$(gcc -dumpversion | cut -d. -f1)"
 
