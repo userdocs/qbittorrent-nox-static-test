@@ -36,7 +36,7 @@ jobs:
         runs_on: [ubuntu-24.04]
         container_id: [debian, ubuntu]
         container_codename: [bookworm, noble]
-        qbt_build_tool: ["cmake", "qmake"]
+        qbt_build_tool: ["cmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         exclude:
           - container_id: debian
