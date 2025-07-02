@@ -5,6 +5,7 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: check-shebang-scripts-are-executable
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: v1.11.0
