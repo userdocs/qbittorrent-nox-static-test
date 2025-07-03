@@ -109,8 +109,9 @@ jobs:
 
       - name: qt6
         run: |
-          curl -sLO https://github.com/userdocs/qt6-crossbuild/releases/latest/download/${{ matrix.container_id }}-${{ matrix.container_codename }}-qt6-amd64.deb
-          dpkg-deb -x ${{ matrix.container_id }}-${{ matrix.container_codename }}-qt6-amd64.deb ${qbt_build_dir}/qt6-host
+          curl -sLO https://github.com/userdocs/qbt-qt6/releases/latest/download/x86_64-qt6-iconv.tar.xz
+          tar -xf x86_64-qt6-iconv.tar.xz --strip-components=1 -C /usr/local
+          ldconfig
 
       - name: Bootstrap build ${{ inputs.distinct_id }}
         if: env.disable_qt5 != 'yes'
