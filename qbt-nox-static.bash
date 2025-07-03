@@ -3076,7 +3076,7 @@ _qtbase() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
-			-D QT_HOST_PATH="/usr/local" \
+			-D QT_HOST_PATH="${qbt_install_dir}/qt6-host" \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -3120,6 +3120,7 @@ _qttools() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
+			-D QT_HOST_PATH="${qbt_install_dir}/qt6-host" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
@@ -3155,6 +3156,7 @@ _qbittorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D GUI=OFF \
+			-D QT_HOST_PATH="${qbt_install_dir}/qt6-host" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
