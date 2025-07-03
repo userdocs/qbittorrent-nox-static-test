@@ -83,6 +83,7 @@ jobs:
         qbt_revision_url: ${{ github.repository }}
         qbt_standard: ""
         qbt_static_ish: ""
+        qbt_with_qemu: "no"
     steps:
       - name: Checkout ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
