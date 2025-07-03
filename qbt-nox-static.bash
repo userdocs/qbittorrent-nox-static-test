@@ -203,6 +203,9 @@ _set_default_values() {
 	# Env setting for the icu tag
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
+	# Default to expecting qemu to be present for qt6 builds. No will pull in this prebuilt dependency package https://github.com/userdocs/qbt-qt6/releases/tag/v6.9.1
+	qbt_with_qemu="${qbt_with_qemu:-yes}"
+
 	# Env setting for the boost tag
 	if [[ "${qbt_libtorrent_version}" == "1.2" || "${qbt_libtorrent_tag}" =~ ^(v1\.2\.|RC_1_2) ]]; then
 		qbt_boost_tag="${qbt_boost_tag:-boost-1.86.0}"
@@ -2041,7 +2044,15 @@ _multi_arch() {
 			if [[ "${qbt_build_tool}" == 'cmake' ]]; then
 				multi_libtorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")        # ${multi_libtorrent[@]}
 				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
+				multi_qtbase=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")            # ${multi_qtbase[@]}
+				multi_qttools=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")           # ${multi_qttools[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
+
+				if [[ "${qbt_with_qemu}" == "no" ]]; then
+					multi_qtbase+=("-D QT_HOST_PATH=/usr/local") # ${multi_qtbase[@]}
+					# multi_qttools+=("-D QT_HOST_PATH=/usr/local") # ${multi_qttools[@]}
+					# multi_qbittorrent+=("-D QT_HOST_PATH=/usr/local") # ${multi_qbittorrent[@]}
+				fi
 			else
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
 				multi_qbittorrent=("--host=${qbt_cross_host}")       # ${multi_qbittorrent[@]}
@@ -3064,7 +3075,7 @@ _qtbase() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
-			"${multi_libtorrent[@]}" \
+			"${multi_qtbase[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
 			-D QT_FEATURE_optimize_full=on -D QT_FEATURE_static=on -D QT_FEATURE_shared=off \
@@ -3076,7 +3087,6 @@ _qtbase() {
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
-			-D QT_HOST_PATH="/usr/local" \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -3113,14 +3123,13 @@ _qttools() {
 	if [[ "${qbt_build_tool}" == 'cmake' && "${qbt_qt_version}" =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
-			"${multi_libtorrent[@]}" \
+			"${multi_qttools[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="release" \
 			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
-			-D QT_HOST_PATH="/usr/local" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build
@@ -3156,7 +3165,6 @@ _qbittorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D GUI=OFF \
-			-D QT_HOST_PATH="/usr/local" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
