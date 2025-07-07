@@ -52,6 +52,7 @@ index ab2169dec5..20ec247337 100644
 +    AND QT_FEATURE_png AND QT_FEATURE_printsupport AND TARGET Qt::Widgets)
      add_subdirectory(linguist)
  endif()
-
---
+ 
+-- 
 2.16.3
+
