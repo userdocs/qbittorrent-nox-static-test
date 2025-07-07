@@ -85,7 +85,7 @@ jobs:
           printf '%s\n' "qbt_revision_url=${{ github.repository }}" >> env.custom
           printf '%s\n' "qbt_standard=" >> env.custom
           printf '%s\n' "qbt_static_ish=" >> env.custom
-          # printf '%s\n' "qbt_mcm_url=userdocs/qbt-musl-cross-make" >> env.custom
+          # printf '%s\n' "qbt_mcm_url=userdocs/qbt-musl-cross-make-test" >> env.custom
 
       # - name: Host - Github env to container ${{ inputs.distinct_id }}
       #   run: env >> env.custom

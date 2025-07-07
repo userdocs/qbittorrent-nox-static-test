@@ -107,8 +107,10 @@ os_version_id="$(get_os_info VERSION_ID)"                                       
 [[ "${os_id}" =~ ^(alpine)$ ]] && os_version_codename="alpine"                    # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
 if [[ "${os_id}" =~ ^(debian|ubuntu)$ ]]; then
+	# dpkg --print-architecture give amd64/arm64 and arch gives x86_64/aarch64
 	os_arch="$(dpkg --print-architecture)"
 elif [[ "${os_id}" =~ ^(alpine)$ ]]; then
+	# apk --print-arch gives x86_64/aarch64
 	os_arch="$(apk --print-arch)"
 fi
 
@@ -203,8 +205,11 @@ _set_default_values() {
 	# Env setting for the icu tag
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
-	# Default to expecting qemu to be present for qt6 builds. No will pull in this prebuilt dependency package https://github.com/userdocs/qbt-qt6
-	qbt_qt6_qemu="${qbt_qt6_qemu:-yes}"
+	# Default to expecting qemu to be present for qt6 builds.
+	# No will use the _qbt_host_deps function to pull in this prebuilt dependency package https://github.com/userdocs/qbt-host-deps
+	qbt_host_deps_qt6="${qbt_host_deps_qt6:-no}"
+	qbt_host_deps_full="${qbt_host_deps_full:-no}"
+	qbt_host_deps_repo="${qbt_host_deps_repo:-userdocs/qbt-host-deps}"
 
 	# Env setting for the boost tag
 	if [[ "${qbt_libtorrent_version}" == "1.2" || "${qbt_libtorrent_tag}" =~ ^(v1\.2\.|RC_1_2) ]]; then
@@ -534,7 +539,10 @@ _print_env() {
 	printf '%b\n' " ${color_yellow_light}  qbt_standard=\"${color_green_light}${qbt_standard}${color_yellow_light}\"${color_end}"
 	printf '%b\n' " ${color_yellow_light}  qbt_static_ish=\"${color_green_light}${qbt_static_ish}${color_yellow_light}\"${color_end}"
 	printf '%b\n' " ${color_yellow_light}  qbt_optimise=\"${color_green_light}${qbt_optimise}${color_yellow_light}\"${color_end}"
-	printf '%b\n\n' " ${color_yellow_light}  qbt_qt6_qemu=\"${color_green_light}${qbt_qt6_qemu}${color_yellow_light}\"${color_end}"
+	printf '%b\n' " ${color_yellow_light}  qbt_host_deps_qt6=\"${color_green_light}${qbt_host_deps_qt6}${color_yellow_light}\"${color_end}"
+	printf '%b\n' " ${color_yellow_light}  qbt_host_deps_full=\"${color_green_light}${qbt_host_deps_full}${color_yellow_light}\"${color_end}"
+	printf '%b\n' " ${color_yellow_light}  qbt_host_deps_url=\"${color_green_light}${qbt_host_deps_url}${color_yellow_light}\"${color_end}"
+	printf '%b\n\n' " ${color_yellow_light}  qbt_host_deps_repo=\"${color_green_light}${qbt_host_deps_repo}${color_yellow_light}\"${color_end}"
 }
 #######################################################################################################################################################
 # This function converts a version string to a number for comparison purposes.
@@ -653,7 +661,7 @@ _check_dependencies() {
 			fi
 		done && unset qbt_tt
 
-		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_magenta}core_dependencies${color_end}"
+		[[ "${silent}" != 'silent' ]] && printf '\n%b\n\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_magenta}install_core${color_end}"
 
 		# This checks over the qbt_core_deps array for the OS specified dependencies to see if they are installed
 		while IFS= read -r pkg; do
@@ -693,11 +701,16 @@ _check_dependencies() {
 			fi
 
 			if [[ "${qbt_test_tools[*]}" =~ "false" ]]; then
-				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} ------ install test_tools"
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_test${color_end} ------ installs minimum required tools to run tests"
 			fi
 
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ install ${color_magenta}core_dependencies${color_end}"
-			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- update + install ${color_magenta}test_tools${color_end} + ${color_magenta}install_core${color_end}"
+			printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}install_core${color_end} ------ installs required build tools to use script"
+
+			if ! "${install_simulation[@]}" bash &> /dev/null; then
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- ${color_magenta}update${color_end} + ${color_magenta}install_test${color_end} + ${color_magenta}install_core${color_end}"
+			else
+				printf '%b\n' " $unicode_blue_circle ${color_blue_light}$script_basename${color_end} ${color_magenta}bootstrap_deps${color_end} ---- ${color_magenta}install_test${color_end} + ${color_magenta}install_core${color_end}"
+			fi
 		fi
 
 	else
@@ -710,7 +723,7 @@ _check_dependencies() {
 	fi
 
 	if [[ "${qbt_core_deps[*]}" =~ "false" ]]; then
-		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing required ${color_magenta}core_dependencies${color_end}"
+		printf '\n%b\n' " $unicode_red_circle ${color_yellow}Warning:${color_end} Missing required components of ${color_magenta}install_core${color_end}"
 	fi
 
 	# Check if user is able to install the dependencies, if yes then do so, if no then exit.
@@ -1130,6 +1143,76 @@ _test_url() {
 	else
 		printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow}Test URL failed:${color_end} ${color_yellow_light}There could be an issue with your proxy settings or network connection${color_end}"
 		exit
+	fi
+}
+#######################################################################################################################################################
+# The _qbt_host_deps function will pull in a statically (musl) prebuilt dependency package to allow cross building qt6 without needing qemu.
+# It will install a qt6 host platform prebuilt version for native tooling used during the cmake crossbuild of qt6.
+# This mostly solves the issue of using containers in Github workflows where you cannot modify the how image before the container is deployed.
+#
+# Since the package is synced to the workflow file releases it can also be used to speed up building as it fulfils dependency requirements.
+# qbt_host_deps_build: build against these deps to speed up the cross building process. Otherwise
+# qbt_host_deps_qt6: all modules required for qtbase/qttools so you only need to build boost/libtorrent/qbittorrent
+# qbt_host_deps_full: all modules required for qbittorrent so you only need to build qbittorrent
+#######################################################################################################################################################
+_qbt_host_deps() {
+
+	# Validate dependency options - they're mutually exclusive - no default setting as we cannot know which option was intended.
+	if [[ "${qbt_host_deps_qt6}" == "yes" && "${qbt_host_deps_full}" == "yes" ]]; then
+		printf '\n%b\n\n' " ${unicode_red_circle} ${color_red}Configuration error${color_end}: ${color_yellow}qbt_host_deps_qt6${color_end} and ${color_yellow}qbt_host_deps_full${color_end} can't both be set to ${color_green}yes${color_end}."
+		exit 1
+	fi
+
+	if [[ "${qbt_host_deps_qt6}" == "yes" && "${qbt_host_deps_full}" == "no" ]] || [[ "${qbt_host_deps_qt6}" == "no" && "${qbt_host_deps_full}" == "yes" ]]; then
+		# Default to expecting qemu to be present for qt6 builds. No will pull in these prebuilt dependency packages https://github.com/userdocs/qbt-host-deps
+		qbt_host_deps_qt6="${qbt_host_deps_qt6:-no}"   # qt6 only
+		qbt_host_deps_full="${qbt_host_deps_full:-no}" # qt6 + libtorrent
+
+		if [[ "${os_arch}" =~ ^(amd64|x86_64)$ ]]; then
+			host_arch="x86_64"
+		elif [[ "${os_arch}" =~ ^(arm64|aarch64)$ ]]; then
+			host_arch="aarch64"
+		else
+			printf '%b\n' " ${unicode_red_circle} Unsupported host architecture for prebuilt dependencies."
+			printf '%b\n' " ${unicode_red_circle} Only x86_64 or aarch64 hosts supported for crossbuiilding"
+			exit 1
+
+		fi
+
+		if [[ "${qbt_cross_name}" == "default" ]]; then
+			native_or_cross="native"
+		else
+			native_or_cross="cross"
+		fi
+
+		qbt_host_deps_repo="qbt-host-deps-test"
+
+		if [[ "${qbt_host_deps_qt6}" == "yes" ]]; then # Qt6 dependencies only
+			if [[ "${qbt_skip_icu}" == "yes" ]]; then
+				qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-iconv.tar.xz"
+			else
+				qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-icu.tar.xz"
+			fi
+			qbt_modules_install_processed=("boost" "libtorrent" "qbittorrent")
+		elif [[ "${qbt_host_deps_full}" == "yes" ]]; then # Full dependencies including libtorrent
+			if [[ "${qbt_libtorrent_version}" == "1.2" ]]; then
+				if [[ "${qbt_skip_icu}" == "yes" ]]; then
+					qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-iconv-lt12.tar.xz"
+				else
+					qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-icu-lt12.tar.xz"
+				fi
+			elif [[ "${qbt_libtorrent_version}" == "2.0" ]]; then
+				if [[ "${qbt_skip_icu}" == "yes" ]]; then
+					qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-iconv-lt20.tar.xz"
+				else
+					qbt_host_deps_url="https://github.com/userdocs/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-${native_or_cross}-qt6-icu-lt20.tar.xz"
+				fi
+			fi
+			qbt_modules_install_processed=("boost" "qbittorrent")
+		fi
+		source_default["${qbt_host_deps_url##*/}"]="file"
+		source_archive_url["${qbt_host_deps_url##*/}"]="${qbt_host_deps_url}"
+		_download "${qbt_host_deps_url##*/}"
 	fi
 }
 #######################################################################################################################################################
@@ -1620,7 +1703,9 @@ _download_file() {
 
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 
-	[[ "${app_name}" == "cmake_ninja" ]] && additional_cmds=("--strip-components=1")
+	if [[ "${app_name}" == "cmake_ninja" ]] || [[ "${app_name}" == "${qbt_host_deps_url##*/}" ]]; then
+		additional_cmds=("--strip-components=1")
+	fi
 
 	if [[ "${qbt_cache_dir_options}" != "bs" ]]; then
 		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}" "${additional_cmds[@]}"
@@ -2049,7 +2134,7 @@ _multi_arch() {
 				multi_qttools=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")           # ${multi_qttools[@]}
 				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
 
-				if [[ "${qbt_qt6_qemu}" == "no" ]]; then
+				if [[ "${qbt_host_deps_qt6}" == "yes" || "${qbt_host_deps_full}" == "yes" ]]; then
 					multi_qtbase+=("-D QT_HOST_PATH=/usr/local")
 				fi
 			else
@@ -2822,6 +2907,7 @@ _set_cxx_standard
 _set_build_cons
 _debug "${@}"                # requires shifted params from options block 2
 _installation_modules "${@}" # requires shifted params from options block 2
+_qbt_host_deps
 #######################################################################################################################################################
 # If any modules fail the qbt_modules_test then exit now.
 #######################################################################################################################################################
