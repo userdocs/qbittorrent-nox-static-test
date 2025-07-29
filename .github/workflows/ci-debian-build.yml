@@ -104,7 +104,6 @@ jobs:
           persist-credentials: false
 
       - name: bootstrap patches ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: mkdir -p ${qbt_build_dir}/patches && cp -r patches/* ${qbt_build_dir}/patches/
 
       - name: Bootstrap test tools ${{ inputs.distinct_id }}
@@ -118,66 +117,53 @@ jobs:
           fi
 
       - name: Bootstrap core deps ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} install_core
 
       - name: Bootstrap build ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} -bs-a
 
       - name: glibc ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} glibc
 
       - name: zlib ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} zlib
 
       - name: iconv ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} iconv
 
       - name: icu ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} icu
 
       - name: openssl ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} openssl
 
       - name: boost ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} boost
 
       - name: libtorrent ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} libtorrent
 
       - name: double conversion ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes' && matrix.qbt_build_tool == 'cmake'
+        if: matrix.qbt_build_tool == 'cmake'
         run: bash ${script_name} double_conversion
 
       - name: qtbase ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} qtbase
 
       - name: qttools ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} qttools
 
       - name: qbittorrent ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         run: bash ${script_name} qbittorrent
 
       - name: Upload ${{ env.artifact_name }} artifacts ${{ inputs.distinct_id }}
-        if: env.disable_qt5 != 'yes'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
           path: ${{ env.qbt_build_dir }}/completed/qbittorrent-nox
 
       - name: Host - Upload logs on error
-        if: ( cancelled() || failure() ) && env.disable_qt5 != 'yes'
+        if: ( cancelled() || failure() )
         uses: actions/upload-artifact@v4
         with:
           name: "${{ env.artifact_name }}-logs"
