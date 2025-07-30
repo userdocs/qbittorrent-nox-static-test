@@ -58,7 +58,7 @@ jobs:
           - qbt_build_tool: "cmake"
             qbt_qt_version: "6"
 
-    name: "${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
+    name: "${{ matrix.runs_on}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
       qbt_build_dir: "qbt-build"
