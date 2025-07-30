@@ -26,9 +26,6 @@ on:
 
 jobs:
   build:
-    defaults:
-      run:
-        shell: bash
     runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
@@ -177,35 +174,35 @@ jobs:
         run: docker exec -u gh:gh ${container_name} bash ${script_name} qbittorrent
 
       - name: Docker - Set release asset name ${{ inputs.distinct_id }}
-        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.host_name}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
-      - name: Generate artifact attestation  ${{ inputs.distinct_id }}
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.host_name}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
+      # - name: Generate artifact attestation  ${{ inputs.distinct_id }}
+      #   uses: actions/attest-build-provenance@v2
+      #   with:
+      #     subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
-      - name: Docker - Release Info ${{ inputs.distinct_id }}
-        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${{ env.qbt_build_dir }}/completed''
+      # - name: Docker - Release Info ${{ inputs.distinct_id }}
+      #   run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${{ env.qbt_build_dir }}/completed''
 
-      - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.host_name}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
-          path: |
-            ${{ env.qbt_build_dir }}/completed/*
-            !${{ env.qbt_build_dir }}/completed/*.png
+      # - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
+      #   if: success()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+      #     path: |
+      #       ${{ env.qbt_build_dir }}/completed/*
+      #       !${{ env.qbt_build_dir }}/completed/*.png
 
-      - name: Host - Upload cmake graphs artifact ${{ inputs.distinct_id }}
-        if: success() && matrix.qbt_build_tool == ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
-          path: "${{ env.qbt_build_dir }}/completed/*.png"
+      # - name: Host - Upload cmake graphs artifact ${{ inputs.distinct_id }}
+      #   if: success() && matrix.qbt_build_tool == ''
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
+      #     path: "${{ env.qbt_build_dir }}/completed/*.png"
 
       # - name: Host - Upload build dir on error or cancel
       #   if: ( cancelled() || failure() )
       #   uses: actions/upload-artifact@v4
       #   with:
-      #     name: "${{ matrix.host_name}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}-logs"
+      #     name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
       #     path: "${{ env.qbt_build_dir }}"

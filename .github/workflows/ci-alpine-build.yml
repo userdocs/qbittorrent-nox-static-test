@@ -1,4 +1,3 @@
-# @credits https://github.com/c0re100/qBittorrent-Enhanced-Edition
 name: ci - alpine build
 
 on:
@@ -24,6 +23,7 @@ on:
         description: "script name"
         required: true
         type: string
+
 jobs:
   build:
     runs-on: ${{ matrix.runs_on }}
