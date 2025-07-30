@@ -159,12 +159,12 @@ jobs:
         run: docker exec -u gh:gh ${container_name} bash ${script_name} qbittorrent
 
       - name: Docker - Set release asset name ${{ inputs.distinct_id }}
-        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.host_name}}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-noxqbittorrent-nox
+        run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
       - name: Generate artifact attestation  ${{ inputs.distinct_id }}
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.host_name}}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-noxqbittorrent-nox"
+          subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
         run: docker exec -u gh:gh -w /home/gh/${{ env.qbt_build_dir }}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${{ env.qbt_build_dir }}/completed''
@@ -173,7 +173,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.host_name}}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-noxqbittorrent-nox
+          name: libtorrent-v${{ matrix.qbt_libtorrent_version }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
           path: |
             ${{ env.qbt_build_dir }}/completed/*
             !${{ env.qbt_build_dir }}/completed/*.png
