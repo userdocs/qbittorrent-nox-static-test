@@ -185,9 +185,9 @@ jobs:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
           path: "${{ env.qbt_build_dir }}/completed/*.png"
 
-      - name: Host - Upload build dir on error or cancel
-        if: ( cancelled() || failure() )
-        uses: actions/upload-artifact@v4
-        with:
-          name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
-          path: "${{ env.qbt_build_dir }}"
+      # - name: Host - Upload build dir on error or cancel
+      #   if: ( cancelled() || failure() )
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
+      #     path: "${{ env.qbt_build_dir }}"
