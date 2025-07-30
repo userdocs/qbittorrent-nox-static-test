@@ -38,7 +38,7 @@ jobs:
         container_codename: ["bookworm", "noble"]
         qbt_build_tool: ["cmake"]
         qbt_libtorrent_version: ["1.2", "2.0"]
-        qbt_cross_name: ["", "aarch64", "x86_64", "riscv64"]
+        qbt_cross_name: ["default", "aarch64", "x86_64", "riscv64"]
         exclude:
           - container_id: "debian"
             qbt_cross_name: "riscv64"
@@ -52,19 +52,19 @@ jobs:
             qbt_cross_name: "aarch64"
         include:
           - runs_on: "ubuntu-24.04"
-            host_name: "x86_64"
+            host_name: "x86_64-"
           - runs_on: "ubuntu-24.04-arm"
-            host_name: "aarch64"
+            host_name: "aarch64-"
           - qbt_build_tool: "cmake"
             qbt_qt_version: "6"
 
-    name: "${{ matrix.host_name }}-${{ matrix.qbt_cross_name }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
+    name: "${{ matrix.host_name }}${{ matrix.qbt_cross_name }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}"
 
     env: # host
       qbt_build_dir: "qbt-build"
       qbt_host_deps: "yes"
       disable_qt5: ""
-      artifact_name: "${{ matrix.host_name }}-${{ matrix.qbt_cross_name }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
+      artifact_name: "${{ matrix.host_name }}${{ matrix.qbt_cross_name }}-${{ matrix.container_id }}-${{ matrix.container_codename }}-${{ matrix.qbt_libtorrent_version }}-qt-${{ matrix.qbt_qt_version }}-${{ matrix.qbt_build_tool }}-nox"
       script_name: ${{ inputs.script_name }}
 
     container:
