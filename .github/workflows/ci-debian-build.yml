@@ -133,7 +133,11 @@ jobs:
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
         run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
 
-      - name: Docker - zlib-ng ${{ inputs.distinct_id }}
+      - name: Docker - glibc ${{ inputs.distinct_id }}
+        if : matrix.os_id != 'alpine'
+        run: docker exec -u gh:gh ${container_name} bash ${script_name} glibc
+
+      - name: Docker - zlib ${{ inputs.distinct_id }}
         run: docker exec -u gh:gh ${container_name} bash ${script_name} zlib
 
       - name: Docker - iconv ${{ inputs.distinct_id }}
