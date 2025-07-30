@@ -65,7 +65,9 @@ jobs:
       group: ci-debian-build
       cancel-in-progress: true
     permissions:
+      id-token: write
       contents: read
+      attestations: write
     uses: ./.github/workflows/ci-debian-build.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
