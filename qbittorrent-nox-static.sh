@@ -351,7 +351,7 @@ _set_default_values() {
 	if [[ ${os_id} =~ ^(alpine)$ ]]; then
 		delete+=("glibc")
 		[[ -z ${qbt_cache_dir} ]] && delete_pkgs+=("coreutils" "gpg")
-		qbt_required_pkgs=("autoconf" "automake" "bash" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c")
+		qbt_required_pkgs=("autoconf" "automake" "bash" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c" "xz")
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			delete_pkgs+=("build-base")
@@ -363,7 +363,7 @@ _set_default_values() {
 	# if debian based then set the required packages array
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 		[[ -z ${qbt_cache_dir} ]] && delete_pkgs+=("autopoint" "gperf")
-		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c")
+		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c" "xz-utils")
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			delete_pkgs+=("build-essential")
@@ -878,7 +878,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags="${qbt_optimise_linker},--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,max-page-size=65536,--no-copy-dt-needed-entries,--build-id"
+	qbt_linker_flags="${qbt_optimise_linker},--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
 
 	#######################################################################################################################################################
 	# GCC and CHOST info start
