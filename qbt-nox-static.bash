@@ -394,6 +394,7 @@ _set_default_values() {
 		qbt_core_deps["py${qbt_python_version}-numpy"]="false"
 		qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
 		qbt_core_deps["ttf-freefont"]="false"
+		qbt_core_deps["xz"]="false"
 		# qbt_core_deps["musl-dbg"]="false"
 		# qbt_core_deps["linux-headers"]="false"
 
@@ -430,6 +431,7 @@ _set_default_values() {
 		qbt_core_deps["python${qbt_python_version}-numpy"]="false"
 		qbt_core_deps["texinfo"]="false"
 		qbt_core_deps["unzip"]="false"
+		qbt_core_deps["xz-utils"]="false"
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			qbt_deps_delete["build-essential"]="false"
