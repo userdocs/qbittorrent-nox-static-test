@@ -53,13 +53,13 @@ jobs:
             qbt_cross_name: "aarch64"
         include:
           - runs_on: "ubuntu-24.04"
-            host_name: "x86_64-"
+            host_name: "x86_64"
           - runs_on: "ubuntu-24.04-arm"
-            host_name: "aarch64-"
+            host_name: "aarch64"
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
 
-    name: "${{ matrix.runs_on}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
+    name: "${{ matrix.host_name}}-${{ matrix.os_id }}-${{ matrix.os_version_id }}-${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
     env:
       qbt_build_dir: "qbt-build"
