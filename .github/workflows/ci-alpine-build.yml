@@ -25,21 +25,21 @@ on:
         required: true
         type: string
 jobs:
-  build-alpine:
-    runs-on: ubuntu-24.04-arm
+  build:
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
+        runs_on: ["ubuntu-24.04-arm"]
         os_id: [alpine]
         os_version_id: [edge]
-        qbt_cross_name:
-          ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
+        qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: [""]
+        qbt_qt_version: ["6"]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
-            qbt_qt_version: "6"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
