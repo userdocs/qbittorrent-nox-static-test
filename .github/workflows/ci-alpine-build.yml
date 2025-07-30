@@ -107,7 +107,8 @@ jobs:
       - name: Host - patches ${{ inputs.distinct_id }}
         run: mkdir -p ${qbt_build_dir}/patches && cp -r patches/* ${qbt_build_dir}/patches/
 
-      - name: Docker - Bootstrap test tools ${{ inputs.distinct_id }}
+      - name: Docker - bootstrap_deps ${{ inputs.distinct_id }}
+        if: inputs.script_name == 'qbt-nox-static.bash'
         run: docker exec ${container_name} bash ${script_name} bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
