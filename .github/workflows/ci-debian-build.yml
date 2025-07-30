@@ -110,9 +110,9 @@ jobs:
       - name: Host - Debian based specific env ${{ inputs.distinct_id }}
         if : matrix.os_id != 'alpine'
         run: |
-          printf '%s\n' "LANG: C.UTF-8" >> env.custom
-          printf '%s\n' "LC_ALL: C.UTF-8" >> env.custom
-          printf '%s\n\n' "DEBIAN_FRONTEND: noninteractive" >> env.custom
+          printf '%s\n' "LANG=C.UTF-8" >> env.custom
+          printf '%s\n' "LC_ALL=C.UTF-8" >> env.custom
+          printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
       - name: Host - Bootstrap qemu
         uses: userdocs/actions/qemu@main
