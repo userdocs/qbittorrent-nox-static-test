@@ -158,7 +158,8 @@ multi_arch_options["loongarch64"]="loongarch64"
 _set_default_values() {
 	# For debian based docker deploys to not get prompted to set the timezone.
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		export DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
+		export DEBIAN_FRONTEND="noninteractive"
+		export TZ="Europe/London"
 	fi
 
 	# qbt mcm docker images - these env settings tell the script that the host env is the crossbuild containers
@@ -641,17 +642,11 @@ _script_version() {
 # This function will check for a list of defined dependencies from the qbt_core_deps array. Apps like python3-dev are dynamically set
 #######################################################################################################################################################
 _check_dependencies() {
-	if [[ $os_id =~ (debian|ubuntu) ]]; then
-		local command_test_tool=("dpkg" "-s")
-		local command_install_deps=("apt-get" "install" "-y")
-		local command_update_upgrade_os=("bash" "-c" "apt-get update && apt-get upgrade -y && apt-get autoremove -y")
-		local install_simulation=("apt" "install" "--simulate")
-	elif [[ $os_id == "alpine" ]]; then
-		local command_test_tool=("apk" "info" "-e" "--no-cache")
-		local command_install_deps=("apk" "add" "-u" "--no-cache" "--repository=${CDN_URL}")
-		local command_update_upgrade_os=("bash" "-c" "apk update --no-cache && apk upgrade --no-cache --repository=${CDN_URL} && apk fix")
-		local install_simulation=("apk" "add" "--simulate" "--no-cache")
-	fi
+	local pkgman=()
+	local command_test_tool=()
+	local command_install_deps=()
+	local command_update_upgrade_os=()
+	local install_simulation=()
 
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
@@ -670,6 +665,20 @@ _check_dependencies() {
 			command_privilege=("sudo")
 		else
 			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
+		fi
+
+		if [[ $os_id =~ (debian|ubuntu) ]]; then
+			pkgman+=("${command_privilege[@]}" "dpkg" "-s")
+			command_test_tool+=("${command_privilege[@]}" "dpkg" "-s")
+			command_install_deps+=("${command_privilege[@]}" "apt-get" "install" "-y")
+			command_update_upgrade_os+=("${command_privilege[@]}" "bash" "-c" "apt-get update && apt-get upgrade -y && apt-get autoremove -y")
+			install_simulation+=("${command_privilege[@]}" "apt" "install" "--simulate")
+		elif [[ $os_id == "alpine" ]]; then
+			pkgman+=("${command_privilege[@]}" "apk" "info" "-e" "--no-cache")
+			command_test_tool+=("${command_privilege[@]}" "apk" "info" "-e" "--no-cache")
+			command_install_deps+=("${command_privilege[@]}" "apk" "add" "-u" "--no-cache" "--repository=${CDN_URL}")
+			command_update_upgrade_os+=("${command_privilege[@]}" "bash" "-c" "apk update --no-cache && apk upgrade --no-cache --repository=${CDN_URL} && apk fix")
+			install_simulation+=("${command_privilege[@]}" "apk" "add" "--simulate" "--no-cache")
 		fi
 	}
 
@@ -736,13 +745,7 @@ _check_dependencies() {
 		# This checks over the qbt_core_deps array for the OS specified dependencies to see if they are installed
 		while IFS= read -r pkg; do
 
-			if [[ ${os_id} =~ ^(alpine)$ ]]; then
-				pkgman() { "${command_privilege[@]}" apk info -e --no-cache "${pkg}"; }
-			fi
-
-			if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-				pkgman() { "${command_privilege[@]}" dpkg -s "${pkg}"; }
-			fi
+			pkgman() { "${pkgman[@]}" "${pkg}"; }
 
 			if pkgman > /dev/null 2>&1; then
 				[[ ${silent} != 'silent' ]] && printf '%b\n' " ${unicode_green_circle} ${color_magenta}${pkg}${color_end}"
@@ -757,9 +760,9 @@ _check_dependencies() {
 		done < <(printf '%s\n' "${!qbt_core_deps[@]}" | sort)
 	}
 
-	_check_dependency_status "${@}"
-
 	_privilege_check
+
+	_check_dependency_status "${@}"
 
 	if [[ ${qbt_privileges_required["root"]} == "true" || ${qbt_privileges_required["sudo"]} == "true" ]]; then
 
@@ -801,7 +804,7 @@ _check_dependencies() {
 
 		_update_os() {
 			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
-			"${command_privilege[@]}" "${command_update_upgrade_os[@]}"
+			"${command_update_upgrade_os[@]}"
 			# needed to use these functions in the -bs flags
 			declare -fx _update_os
 		}

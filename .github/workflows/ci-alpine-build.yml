@@ -36,7 +36,7 @@ jobs:
         qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: [""]
-        qbt_qt_version: ["6"]
+        qbt_qbittorrent_tag: [""]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
@@ -60,6 +60,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      # - name: Download qbt-nox-static.bash
+      #   run: |
+      #     # Make sure the branch is set to master for qbittorrent-nox-static and main qbittorrent-nox-static-test
+      #     curl -LO "https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/${script_name}"
+      #     chmod +x "${script_name}"
 
       - name: Host - Create Docker template env file ${{ inputs.distinct_id }}
         run: |
@@ -116,7 +122,7 @@ jobs:
 
       - name: Docker - bootstrap_deps ${{ inputs.distinct_id }}
         if: inputs.script_name == 'qbt-nox-static.bash'
-        run: docker exec ${container_name} bash ${script_name} bootstrap_deps
+        run: docker exec -u gh:gh ${container_name} bash ${script_name} bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
         run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
