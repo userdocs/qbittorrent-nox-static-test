@@ -8,7 +8,8 @@ docs/node_modules
 # Production
 docs/build
 
-# Generated files
+# Generated file
+docs/*
 docs/.docs
 docs/.docusaurus
 docs/.cache-loader
