@@ -46,19 +46,19 @@ print_output() {
 
 	case "$type" in
 		INFO)
-			printf '%b[INFO]%b %s\n' '\033[0;34m' '\033[0m' "$message"
+			printf '%b[INFO]    %b %s\n' '\033[0;34m' '\033[0m' "$message"
 			;;
 		WARNING)
-			printf '%b[WARNING]%b %s\n' '\033[1;33m' '\033[0m' "$message"
+			printf '%b[WARNING] %b %s\n' '\033[1;33m' '\033[0m' "$message"
 			;;
 		ERROR)
-			printf '%b[ERROR]%b %s\n' '\033[0;31m' '\033[0m' "$message"
+			printf '%b[ERROR]   %b %s\n' '\033[0;31m' '\033[0m' "$message"
 			;;
 		SUCCESS)
-			printf '%b[SUCCESS]%b %s\n' '\033[0;32m' '\033[0m' "$message"
+			printf '%b[SUCCESS] %b %s\n' '\033[0;32m' '\033[0m' "$message"
 			;;
 		FAILURE)
-			printf '%b[FAILURE]%b %s\n' '\033[0;35m' '\033[0m' "$message"
+			printf '%b[FAILURE] %b %s\n' '\033[0;35m' '\033[0m' "$message"
 			;;
 		*)
 			printf '%s\n' "$message"
