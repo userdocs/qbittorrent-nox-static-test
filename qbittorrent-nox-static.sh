@@ -872,7 +872,21 @@ _custom_flags() {
 	# Compiler optimization flags (for CFLAGS/CXXFLAGS)
 	qbt_optimization_flags="${qbt_optimise_gcc} -pipe -fdata-sections -ffunction-sections -fPIC"
 	# Preprocessor only flags - _FORTIFY_SOURCE=3 has been in the GNU C Library (glibc) since version 2.34
-	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -D_GLIBCXX_ASSERTIONS"
+	qbt_preprocessor_flags="-U_FORTIFY_SOURCE -D_GLIBCXX_ASSERTIONS"
+
+	# If Alpine add it since it does not break anything.
+	if [[ ${os_id} =~ ^(alpine)$ ]]; then
+		qbt_preprocessor_flags+=" -D_FORTIFY_SOURCE=3"
+	fi
+
+	# Glibc 2.41 changed -D_FORTIFY_SOURCE to be internal. Having it breaks the build.
+	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
+		# if os is debian based then check glibc version is less than 241 to add the flag
+		if ((${app_version[glibc]/\./} < 241)); then
+			qbt_preprocessor_flags+=" -D_FORTIFY_SOURCE=3"
+		fi
+	fi
+
 	# Security flags for compiler
 	qbt_security_flags="-fstack-clash-protection -fstack-protector-strong -fno-plt -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -fexceptions"
 	# Warning control

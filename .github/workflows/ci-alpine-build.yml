@@ -121,9 +121,8 @@ jobs:
             additional_debian_apps: "bash curl git"
 
       - name: Host - patches ${{ inputs.distinct_id }}
-        run: |
-          mkdir -p ${qbt_build_dir}/patches
-          [[ -d ${qbt_build_dir}/patches ]] && cp -rf patches/* ${qbt_build_dir}/patches/ || true
+        if: hashFiles('patches/**') != ''
+        run: mkdir -p ${qbt_build_dir}/patches && cp -rf patches/* ${qbt_build_dir}/patches/
 
       - name: Docker - bootstrap_deps ${{ inputs.distinct_id }}
         if: inputs.script_name == 'qbt-nox-static.bash'

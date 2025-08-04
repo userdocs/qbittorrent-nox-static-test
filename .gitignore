@@ -8,8 +8,7 @@ docs/node_modules
 # Production
 docs/build
 
-# Generated file
-docs/*
+# Generated files
 docs/.docs
 docs/.docusaurus
 docs/.cache-loader
@@ -24,6 +23,7 @@ docs/.env.production.local
 docs/npm-debug.log*
 docs/yarn-debug.log*
 docs/yarn-error.log*
-.github/workflows/deploy.yml
-.github/ISSUE_TEMPLATE/*
 .github/dependabot.yml
+.github/ISSUE_TEMPLATE/bug_report.yml
+.github/ISSUE_TEMPLATE/config.yml
+.github/workflows/deploy.yml

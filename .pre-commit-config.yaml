@@ -3,9 +3,9 @@ repos:
     hooks:
       - id: make-scripts-executable
         name: Make script files executable
-        entry: bash -c 'git add --chmod=+x qbt-nox-static.bash qbittorrent-nox-static.sh'
+        entry: bash -c 'git add --chmod=+x qi.bash qbt-nox-static.bash qbittorrent-nox-static.sh'
         language: system
-        files: '(qbt-nox-static\.bash|qbittorrent-nox-static\.sh)$'
+        files: '(qi\.bash|qbt-nox-static\.bash|qbittorrent-nox-static\.sh)$'
         pass_filenames: false
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
