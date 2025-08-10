@@ -38,40 +38,77 @@ check_supported_distro() {
 	fi
 }
 
-# Output functions for user feedback
-# Handle [INFO] (blue) [WARNING] (yellow) [ERROR] (red) [SUCCESS] (Green) [FAILURE] (magenta)
+# Color definitions for output formatting
+COLOR_INFO='\033[0;94m'    # cyan \e[96m
+COLOR_WARNING='\033[1;93m' # yellow
+COLOR_ERROR='\033[0;91m'   # red
+COLOR_SUCCESS='\033[0;92m' # green
+COLOR_FAILURE='\033[0;91m' # red
+COLOR_ACTION='\033[0;96m'  # Cyan
+COLOR_RESET='\033[0m'      # reset
+
+unicode_red_light_circle="\e[91m\U2B24\e[0m"
+unicode_green_light_circle="\e[92m\U2B24\e[0m"
+unicode_yellow_light_circle="\e[93m\U2B24\e[0m"
+unicode_blue_light_circle="\e[94m\U2B24\e[0m"
+unicode_cyan_light_circle="\e[96m\U2B24\e[0m"
+unicode_grey_light_circle="\e[97m\U2B24\e[0m"
+
+# Output functions for user feedback (enhanced with emojis)
 print_output() {
 	local type="$1"
 	local message="$2"
+	local icon color
 
 	case "$type" in
 		INFO)
-			printf '%b[INFO]    %b %s\n' '\033[0;34m' '\033[0m' "$message"
+			icon="${unicode_blue_light_circle}"
+			color="$COLOR_INFO"
+			;;
+		ACTION)
+			icon="${unicode_cyan_light_circle}"
+			color="$COLOR_ACTION"
 			;;
 		WARNING)
-			printf '%b[WARNING] %b %s\n' '\033[1;33m' '\033[0m' "$message"
+			icon="${unicode_yellow_light_circle}"
+			color="$COLOR_WARNING"
 			;;
 		ERROR)
-			printf '%b[ERROR]   %b %s\n' '\033[0;31m' '\033[0m' "$message"
+			icon="${unicode_red_light_circle}"
+			color="$COLOR_ERROR"
 			;;
 		SUCCESS)
-			printf '%b[SUCCESS] %b %s\n' '\033[0;32m' '\033[0m' "$message"
+			icon="${unicode_green_light_circle}"
+			color="$COLOR_SUCCESS"
 			;;
 		FAILURE)
-			printf '%b[FAILURE] %b %s\n' '\033[0;35m' '\033[0m' "$message"
+			icon="${unicode_red_light_circle}"
+			color="$COLOR_FAILURE"
 			;;
 		*)
-			printf '%s\n' "$message"
+			icon="${unicode_grey_light_circle}"
+			color=""
 			;;
 	esac
+
+	# Colorize message suffix after ':' if present
+	if [[ $message == *:* ]]; then
+		local prefix="${message%%:*}:"
+		local suffix="${message#*: }"
+		printf '%b\n' "$color $icon $prefix ${color}$suffix $COLOR_RESET"
+	else
+		printf '%b\n' "$color $icon $message"
+	fi
 }
 
-# Convenience wrappers for common output types
+# Convenience wrappers
 print_info() { print_output "INFO" "$1"; }
+print_action() { print_output "ACTION" "$1"; }
 print_warning() { print_output "WARNING" "$1"; }
 print_error() { print_output "ERROR" "$1"; }
 print_success() { print_output "SUCCESS" "$1"; }
 print_failure() { print_output "FAILURE" "$1"; }
+print_generic() { print_output "" "$1"; }
 
 # Detect architecture and map to binary name
 detect_arch() {
@@ -201,13 +238,13 @@ verify_binary_integrity() {
 
 	# Try GitHub CLI attestation verification first (most secure)
 	if check_gh_cli; then
-		print_info "Verifying with GitHub CLI attestations..."
+		print_action "Verifying with GitHub CLI attestations..."
 		if gh attestation verify "$install_path" --repo "$repo" 2> /dev/null; then
-			print_success "✓ GitHub CLI attestation verification passed"
+			print_success "GitHub CLI attestation verification passed"
 			return 0
 		else
-			print_warning "⚠ GitHub CLI attestation verification failed or not available"
-			print_info "Falling back to GitHub API verification..."
+			print_warning "GitHub CLI attestation verification failed or not available"
+			print_action "Falling back to GitHub API verification..."
 		fi
 	else
 		if [[ -n ${GITHUB_ACTIONS:-} ]]; then
@@ -224,7 +261,7 @@ verify_binary_integrity() {
 	local tool
 	tool=$(check_download_tools)
 
-	print_info "Verifying SHA256 against GitHub API..."
+	print_action "Verifying SHA256 against GitHub API..."
 
 	# Fetch release assets from GitHub API
 	local api_response
@@ -255,7 +292,7 @@ verify_binary_integrity() {
 	local api_digests
 	if command -v jq > /dev/null 2>&1; then
 		# Use jq if available (preferred method) - extract just the hash value
-		api_digests=$(printf '%s' "$api_response" | jq -r '.assets[].digest.sha256 // empty' 2> /dev/null | sed 's/^sha256://')
+		api_digests=$(printf '%s' "$api_response" | jq -r '.assets[].digest // empty' 2> /dev/null | sed 's/^sha256://')
 	else
 		# Fall back to sed if jq is not available - extract just the hash value
 		api_digests=$(printf '%s' "$api_response" | sed -rn 's|(.*)sha256:([^"]*)".*|\2|p' 2> /dev/null)
@@ -278,10 +315,10 @@ verify_binary_integrity() {
 	done <<< "$api_digests"
 
 	if [[ $match_found == "true" ]]; then
-		print_success "✓ GitHub API SHA256 verification passed"
+		print_success "GitHub API SHA256 verification passed"
 		return 0
 	else
-		print_warning "⚠ GitHub API SHA256 verification failed"
+		print_warning "GitHub API SHA256 verification failed"
 		print_warning "Local SHA256:  $local_sha"
 		print_warning "API Digests:"
 		while IFS= read -r api_digest; do
@@ -306,7 +343,7 @@ get_release_tag() {
 	case "$tool" in
 		wget)
 			response=$(wget -qO- "$api" 2> /dev/null) || {
-				handle_error $? "wget -qO- $api" "Failed to fetch release information from API"
+				handle_error $? "wget -qO $api" "Failed to fetch release information from API"
 			}
 			;;
 		curl)
@@ -347,7 +384,15 @@ get_release_tag() {
 		exit 1
 	fi
 
-	printf '%s' "release-${qbt_ver}_v${libt_ver}"
+	# Parse revision field
+	local revision
+	revision=$(printf '%s' "$response" | sed -rn 's|.*"revision": "(.*)".*|\1|p')
+	if [[ -z $revision ]]; then
+		print_warning "Failed to parse revision from API response"
+	fi
+
+	# Output release tag and revision
+	printf '%s %s' "release-${qbt_ver}_v${libt_ver}" "${revision:-}"
 }
 
 # Download file
@@ -357,7 +402,7 @@ download() {
 	local tool
 	tool=$(check_download_tools)
 
-	print_info "Downloading: $url"
+	print_action "Downloading: $url"
 	case "$tool" in
 		wget)
 			wget -qO "$output" "$url" || {
@@ -365,8 +410,8 @@ download() {
 			}
 			;;
 		curl)
-			curl -sL -o "$output" "$url" || {
-				handle_error $? "curl -sL -o $output $url" "Failed to download binary"
+			curl -fsSL -o "$output" "$url" || {
+				handle_error $? "curl -fsSL -o $output $url" "Failed to download binary"
 			}
 			;;
 	esac
@@ -379,36 +424,46 @@ download() {
 		exit 1
 	fi
 }
+
 # Main installation
 main() {
 	# Check if running on supported distribution
 	check_supported_distro
 
 	print_info "qBittorrent-nox Static Binary Installer"
-	print_info "========================================"
+	print_generic "======================================="
 
 	local arch="${FORCE_ARCH:-$(detect_arch)}"
 	local libtorrent_ver="${LIBTORRENT_VERSION:-v2}"
 	local install_path="$HOME/bin/qbittorrent-nox"
+	# Get release and download
+	local release_tag revision
+	# Capture release tag and revision from get_release_tag
+	read release_tag revision <<< "$(get_release_tag)"
 
 	print_info "Architecture: $arch"
-	print_info "Download tool: $(check_download_tools)"
 	print_info "LibTorrent version: $libtorrent_ver"
+	# Output revision if available
+	if [[ -n $revision ]]; then
+		print_info "Build revision: $revision"
+	fi
 	print_info "Attestation verification: $(check_gh_cli && printf '%s' "enabled" || printf '%s' "disabled (gh cli not found)")"
 
-	# Get release and download
-	local release_tag
-	release_tag=$(get_release_tag)
-	local url
-	url=$(create_download_url "$arch" "$release_tag")
-
-	# Create install directory
+	# Prepare installation directory
+	print_action "Creating install directory: $HOME/bin"
 	mkdir -p "$HOME/bin" || {
 		handle_error $? "mkdir -p $HOME/bin" "Failed to create installation directory"
 	}
 
+	# Get release and download
+	local url
+	url=$(create_download_url "$arch" "$release_tag")
+
 	# Download and install binary
 	download "$url" "$install_path"
+
+	# Set executable permissions
+	print_action "Setting executable permissions for: $install_path"
 	chmod 755 "$install_path" || {
 		handle_error $? "chmod 755 $install_path" "Failed to set executable permissions"
 	}
@@ -416,17 +471,33 @@ main() {
 	print_success "Installation complete: $install_path"
 
 	# Verify binary integrity (SHA256 + attestations)
-	verify_binary_integrity "$install_path" "$release_tag" "$arch"
+	local integrity_failed=false
+	if ! verify_binary_integrity "$install_path" "$release_tag" "$arch"; then
+		integrity_failed=true
+	fi
 
 	# Test binary
-	if "$install_path" --version > /dev/null 2>&1; then
+	local test_output test_exit_code binary_failed=false
+	test_output=$("$install_path" --version 2>&1)
+	test_exit_code=$?
+
+	if [[ $test_exit_code -eq 0 ]]; then
 		local version_info
-		version_info=$("$install_path" --version | head -1)
+		version_info=$(printf '%s' "$test_output" | head -1)
 		print_success "Binary test passed"
 		print_info "Version: $version_info"
 	else
-		print_warning "Binary test failed - the binary may not be compatible with your system"
-		print_warning "You may need to install additional dependencies"
+		binary_failed=true
+		print_warning "Binary test failed"
+		if [[ $test_output == *"Exec format error"* ]]; then
+			print_error "Architecture mismatch detected - wrong binary for your system"
+			print_info "Solution: Install qemu-user-static to run different architectures"
+			print_info "  - On Alpine: apk add qemu-user-static"
+			print_info "  - On Debian/Ubuntu: apt-get install qemu-user-static"
+		else
+			print_warning "The binary may not be compatible with your system"
+			print_info "Try: ldd $install_path (to check missing libraries)"
+		fi
 	fi
 
 	# PATH check
@@ -436,49 +507,69 @@ main() {
 		print_info 'Then run: source ~/.bashrc'
 	fi
 
-	print_success "Installation completed successfully!"
+	# Final status message
+	if [[ $integrity_failed == true ]] || [[ $binary_failed == true ]]; then
+		print_warning "Installation completed with errors!"
+		if [[ $binary_failed == true ]]; then
+			print_info "Binary test failed - the application may not work properly"
+		fi
+		if [[ $integrity_failed == true ]]; then
+			print_info "Integrity verification failed - consider re-downloading"
+		fi
+	else
+		print_success "Installation completed successfully!"
+	fi
 	print_info "Run with: qbittorrent-nox"
 }
 
-# Simple argument parsing
-case "${1:-}" in
-	--help | -h)
-		cat << EOF
-Usage: $0 [OPTIONS]
+# Simple argument parsing: loop through all args
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-h | --help)
+			cat <<- EOF
 
-Options:
-  --libtorrent VER     LibTorrent version (v1, v2) [default: v2]
-  --help               Show this help
+				Usage: qi.bash [OPTIONS]
 
-Environment Variables:
-  LIBTORRENT_VERSION   LibTorrent version (v1, v2) [default: v2]
-  FORCE_ARCH           Force architecture (x86_64, x86, aarch64, armv7, armhf, riscv64)
+				Options:
 
-Examples:
-  $0                   # Install with LibTorrent v2
-  $0 --libtorrent v1   # Install with LibTorrent v1
-  FORCE_ARCH=armv7 $0  # Force armv7 architecture
-EOF
-		exit 0
-		;;
-	--libtorrent)
-		case "${2:-}" in
-			v1 | v2)
-				LIBTORRENT_VERSION="$2"
-				;;
-			*)
-				print_error "Invalid libtorrent version. Use: v1 or v2"
-				exit 1
-				;;
-		esac
-		;;
-	"")
-		# No arguments, proceed with defaults
-		;;
-	*)
-		print_error "Unknown option: $1. Use --help for usage"
-		exit 1
-		;;
-esac
+				  -lt | --libtorrent VER   LibTorrent version (v1, v2) [default: v2]
+				  -fa | --force-arch ARCH  Force architecture (x86_64, x86, aarch64, armv7, armhf, riscv64) [ENV: FORCE_ARCH]
+				  --help                   Show this help
+
+				Environment Variables:
+
+				  LIBTORRENT_VERSION       LibTorrent version (v1, v2) [default: v2]
+				  FORCE_ARCH               Force architecture (x86_64, x86, aarch64, armv7, armhf, riscv64)
+
+				Examples:
+
+				  ./qi.bash                # Install with LibTorrent v2
+				  ./qi.bash -lt v1         # Install with LibTorrent v1
+				  ./qi.bash -fa armv7      # Force armv7 architecture
+
+			EOF
+			exit 0
+			;;
+		-lt | --libtorrent)
+			shift
+			case "$1" in
+				v1 | v2) LIBTORRENT_VERSION="$1" ;;
+				*)
+					print_error "Invalid libtorrent version: $1. Use: v1 or v2"
+					exit 1
+					;;
+			esac
+			;;
+		-fa | --force-arch)
+			shift
+			FORCE_ARCH="$1"
+			;;
+		*)
+			print_error "Unknown option: $1. Use -h or --help for usage"
+			exit 1
+			;;
+	esac
+	shift
+done
 
 main

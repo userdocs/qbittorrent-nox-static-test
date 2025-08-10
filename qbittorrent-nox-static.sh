@@ -154,7 +154,8 @@ multi_arch_options["loongarch64"]="loongarch64"
 _set_default_values() {
 	# For debian based docker deploys to not get prompted to set the timezone.
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		export DEBIAN_FRONTEND="noninteractive" && TZ="Europe/London"
+		export DEBIAN_FRONTEND="noninteractive"
+		export TZ="Europe/London"
 	fi
 
 	# qbt mcm docker images - these env settings tell the script that the host env is the crossbuild containers
@@ -220,7 +221,7 @@ _set_default_values() {
 	# Using this can also break builds when non backported changes are present which will require a custom jamfile
 	qbt_libtorrent_master_jamfile="${qbt_libtorrent_master_jamfile:-no}"
 
-	# Strip symbols by default as we need full debug builds to be useful gdb to backtrace so stripping is a sensible default optimisation.
+	# Strip symbols by default as we need full debug builds to be useful gdb to backtrace so stripping is a sensible default optimization.
 	qbt_optimise_strip="${qbt_optimise_strip:-yes}"
 
 	# Github actions specific - Build revisions - The workflow will set this dynamically so that the urls are not hardcoded to a single repo
@@ -235,7 +236,7 @@ _set_default_values() {
 	# Define our list of available modules in an array.
 	qbt_modules=("all" "install" "glibc" "zlib" "iconv" "icu_host_deps" "icu" "openssl" "boost" "libtorrent" "double_conversion" "qtbase_host_deps" "qtbase" "qttools_host_deps" "qttools" "qbittorrent")
 
-	# Create this array empty. Modules listed in or added to this array will be removed from the default list of modules, changing the behaviour of all or install
+	# Create this array empty. Modules listed in or added to this array will be removed from the default list of modules, changing the behavior of all or install
 	delete=()
 
 	# Create this array empty. Packages listed in or added to this array will be removed from the default list of packages, changing the list of installed dependencies
@@ -1165,7 +1166,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		github_tag[glibc]="glibc-2.40"
+		github_tag[glibc]="$(_git_git ls-remote -q -t --refs "${github_url[glibc]}" | awk '/glibc-/{sub("refs/tags/", "");sub("(.*)(cvs|fedora)(.*)", ""); if($2 ~ /^glibc-[0-9]+\.[0-9]+$/) print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 	else
 		github_tag[ninja]="$(_git_git ls-remote -q -t --refs "${github_url[ninja]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	fi

@@ -1407,7 +1407,7 @@ _set_module_urls() {
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-		github_tag[glibc]="glibc-2.42"
+		github_tag[glibc]="$(_git_git ls-remote -q -t --refs "${github_url[glibc]}" | awk '/glibc-/{sub("refs/tags/", "");sub("(.*)(cvs|fedora)(.*)", ""); if($2 ~ /^glibc-[0-9]+\.[0-9]+$/) print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 	else
 		github_tag[ninja]="$(_git_git ls-remote -q -t --refs "${github_url[ninja]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	fi

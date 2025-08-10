@@ -25,13 +25,25 @@ Cross-platform static builds of qBittorrent-nox with the latest dependencies
 Latest release using libtorrent `v2`
 
 ```bash
-curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash | bash
+bash <(curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash)
 ```
 
 Latest release using libtorrent `v1.2`
 
 ```bash
-curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash | bash -s -- --libtorrent v1
+bash <(curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash) -lt v1
+```
+
+Using Libtorrent v1.2 and forcing the armv7 binary
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash) -lt v1 -fa armv7
+```
+
+Show the help section
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/refs/heads/master/qi.bash) -h
 ```
 
 You can now run it using this command:

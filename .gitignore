@@ -23,7 +23,3 @@ docs/.env.production.local
 docs/npm-debug.log*
 docs/yarn-debug.log*
 docs/yarn-error.log*
-.github/dependabot.yml
-.github/ISSUE_TEMPLATE/bug_report.yml
-.github/ISSUE_TEMPLATE/config.yml
-.github/workflows/deploy.yml

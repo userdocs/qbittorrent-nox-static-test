@@ -1,4 +1,4 @@
-name: "qi.bash tests"
+name: qi.bash tests
 
 on:
   workflow_dispatch:
@@ -49,18 +49,19 @@ jobs:
         container_name: "build"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
 
       - name: Create docker ${{ env.container_name }} ${{ matrix.container_image }} ${{ matrix.platform }} container
         run: >
           docker run --name ${container_name} -it -d
           -w /root
           -v ${{ github.workspace }}:/root
+          -e "LANG=C.UTF-8"
           -e "GH_TOKEN=${{ github.token }}"
           --platform ${{ matrix.platform }}
           ${{ matrix.arch }}/${{ matrix.container_image }}
@@ -70,6 +71,12 @@ jobs:
         run: |
           docker exec ${container_name} apk update
           docker exec ${container_name} apk add bash github-cli
+
+      - name: Run apk update
+        if: matrix.container_image == 'ubuntu:latest'
+        run: |
+          docker exec ${container_name} apt-get update
+          docker exec ${container_name} apt-get install -y jq
 
       - name: Run apk update
         if: matrix.container_image == 'alpine:edge'
@@ -100,4 +107,3 @@ jobs:
           printf '\n%b\n' "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           docker exec ${container_name} bash -l qi.bash | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
           printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
