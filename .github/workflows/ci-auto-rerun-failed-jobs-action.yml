@@ -21,6 +21,9 @@ on:
 
 run-name: ci auto rerun failed jobs - attempt ${{ inputs.attempts }}
 
+permissions:
+  contents: read
+
 jobs:
   gh-cli-rerun:
     name: rerun - attempt ${{ inputs.attempts }}
@@ -30,6 +33,11 @@ jobs:
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+
       - name: Host - Checkout action ${{ inputs.distinct_id }}
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
