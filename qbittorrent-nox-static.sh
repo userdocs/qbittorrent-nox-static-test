@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.0.20"
+script_version="2.0.21"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -112,11 +112,11 @@ elif [[ ${os_id} =~ ^(alpine)$ ]]; then
 fi
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! ${os_version_codename} =~ ^(alpine|bookworm|noble)$ ]] || [[ ${os_version_codename} =~ ^(alpine)$ && ${os_version_id//\./} -lt ${alpine_min_version:-3150} ]]; then
+if [[ ! ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]] || [[ ${os_version_codename} =~ ^(alpine)$ && ${os_version_id//\./} -lt ${alpine_min_version:-3150} ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
 	printf '%b\n\n' " ${unicode_yellow_circle} ${text_dim}These are the supported platforms${color_end}"
-	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}bookworm${color_end}"
+	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}trixie${color_end}"
 	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}noble${color_end}"
 	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.15.0${color_end} ${text_dim}or greater${color_end}"
 	exit
@@ -352,7 +352,31 @@ _set_default_values() {
 	if [[ ${os_id} =~ ^(alpine)$ ]]; then
 		delete+=("glibc")
 		[[ -z ${qbt_cache_dir} ]] && delete_pkgs+=("coreutils" "gpg")
-		qbt_required_pkgs=("autoconf" "automake" "bash" "build-base" "coreutils" "curl" "git" "gpg" "pkgconf" "libtool" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "py${qbt_python_version}-numpy" "py${qbt_python_version}-numpy-dev" "linux-headers" "ttf-freefont" "graphviz" "cmake" "re2c" "xz")
+		qbt_required_pkgs=(
+			"autoconf"
+			"automake"
+			"bash"
+			"build-base"
+			"cmake"
+			"coreutils"
+			"curl"
+			"git"
+			"graphviz"
+			"gpg"
+			"libtool"
+			"linux-headers"
+			"ninja-build"
+			"ninja-is-really-ninja"
+			"perl"
+			"pkgconf"
+			"py${qbt_python_version}-numpy"
+			"py${qbt_python_version}-numpy-dev"
+			"python${qbt_python_version}"
+			"python${qbt_python_version}-dev"
+			"re2c"
+			"ttf-freefont"
+			"xz"
+		)
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			delete_pkgs+=("build-base")
@@ -364,7 +388,33 @@ _set_default_values() {
 	# if debian based then set the required packages array
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 		[[ -z ${qbt_cache_dir} ]] && delete_pkgs+=("autopoint" "gperf")
-		qbt_required_pkgs=("autopoint" "gperf" "gettext" "texinfo" "gawk" "bison" "build-essential" "crossbuild-essential-${cross_arch}" "curl" "pkg-config" "automake" "libtool" "git" "openssl" "perl" "python${qbt_python_version}" "python${qbt_python_version}-dev" "python${qbt_python_version}-numpy" "unzip" "graphviz" "re2c" "xz-utils")
+
+		qbt_required_pkgs=(
+			"automake"
+			"autopoint"
+			"bison"
+			"build-essential"
+			"cmake"
+			"crossbuild-essential-${cross_arch}"
+			"curl"
+			"gawk"
+			"gettext"
+			"git"
+			"graphviz"
+			"gperf"
+			"libtool"
+			"ninja-build"
+			"openssl"
+			"perl"
+			"pkg-config"
+			"python${qbt_python_version}"
+			"python${qbt_python_version}-dev"
+			"python${qbt_python_version}-numpy"
+			"re2c"
+			"texinfo"
+			"unzip"
+			"xz-utils"
+		)
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			delete_pkgs+=("build-essential")
@@ -390,7 +440,7 @@ _set_default_values() {
 	# Configure default dependencies and modules if cmake is not specified
 	if [[ ${qbt_build_tool} != 'cmake' ]]; then
 		delete+=("double_conversion")
-		delete_pkgs+=("unzip" "ttf-freefont" "graphviz" "cmake" "re2c")
+		delete_pkgs+=("unzip" "ttf-freefont" "graphviz" "cmake" "ninja-build" "ninja-is-really-ninja" "re2c")
 	else
 		[[ ${qbt_skip_icu} != "no" ]] && delete+=("icu")
 	fi
@@ -407,7 +457,7 @@ _qt_std_cons() {
 }
 
 _os_std_cons() {
-	if [[ ${os_version_codename} =~ ^(alpine|bookworm|noble)$ ]]; then
+	if [[ ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]]; then
 		printf "yes"
 		return
 	fi
@@ -463,7 +513,7 @@ _qbittorrent_build_cons() {
 }
 
 _set_cxx_standard() {
-	if [[ "$(_qt_std_cons)" == "yes" && "$(_os_std_cons)" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" ]]; then
+	if [[ "$(_qt_std_cons)" == "yes" && "$(_os_std_cons)" == "yes" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" ]]; then
 		qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
 	else
 		qbt_standard="17" qbt_cxx_standard="c++${qbt_standard}"
@@ -945,10 +995,8 @@ _custom_flags() {
 		qbt_security_flags+=" -fcf-protection=full"
 	fi
 
-	if [[ ! ${os_version_codename} =~ ^(bookworm)$ ]]; then
-		if [[ ${os_arch} =~ ^(arm64|aarch64)$ && ${qbt_cross_name} == "default" ]]; then
-			qbt_security_flags+=" -mbranch-protection=standard"
-		fi
+	if [[ ${os_arch} =~ ^(arm64|aarch64)$ && ${qbt_cross_name} == "default" ]]; then
+		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
 	if [[ ${os_id} =~ ^(alpine)$ ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" ]]; then
@@ -1140,10 +1188,7 @@ _set_module_urls() {
 	# Configure the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		github_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds.git"
 		github_url[glibc]="https://sourceware.org/git/glibc.git"
-	else
-		github_url[ninja]="https://github.com/userdocs/qbt-ninja-build.git"
 	fi
 
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
@@ -1165,12 +1210,9 @@ _set_module_urls() {
 	# Configure the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		github_tag[cmake_ninja]="$(_git_git ls-remote -q -t --refs "${github_url[cmake_ninja]}" | awk '{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 		github_tag[glibc]="$(_git_git ls-remote -q -t --refs "${github_url[glibc]}" | awk '/glibc-/{sub("refs/tags/", "");sub("(.*)(cvs|fedora)(.*)", ""); if($2 ~ /^glibc-[0-9]+\.[0-9]+$/) print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
-	else
-		github_tag[ninja]="$(_git_git ls-remote -q -t --refs "${github_url[ninja]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	fi
-	github_tag[zlib]="develop"
+	github_tag[zlib]="develop" # same for zlib and zlib-ng
 	#github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",|\2|p')"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
@@ -1185,12 +1227,7 @@ _set_module_urls() {
 	# Configure the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		app_version[cmake_debian]="${github_tag[cmake_ninja]%_*}"
-		app_version[ninja_debian]="${github_tag[cmake_ninja]#*_}"
 		app_version[glibc]="${github_tag[glibc]#glibc-}"
-	else
-		app_version[cmake]="$(apk info -d --no-cache cmake | awk '/cmake-/{sub("(cmake-)", "");sub("(-r)", ""); print $1 }' | sort -r | head -n1)"
-		app_version[ninja]="${github_tag[ninja]#v}"
 	fi
 
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
@@ -1212,7 +1249,6 @@ _set_module_urls() {
 	# Configure the source_archive_url associative array for all the applications this script uses and we call them as ${source_archive_url[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		source_archive_url[cmake_ninja]="https://github.com/userdocs/qbt-cmake-ninja-crossbuilds/releases/latest/download/${os_id}-${os_version_codename}-cmake-${os_arch}.tar.xz"
 		source_archive_url[glibc]="https://ftpmirror.gnu.org/gnu/libc/${github_tag[glibc]}.tar.xz"
 	fi
 
@@ -1245,7 +1281,6 @@ _set_module_urls() {
 	# Configure the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		qbt_workflow_archive_url[cmake_ninja]="${source_archive_url[cmake_ninja]}"
 		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
 	fi
 
@@ -1268,7 +1303,6 @@ _set_module_urls() {
 	# Configure workflow override options
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		qbt_workflow_override[cmake_ninja]="no"
 		qbt_workflow_override[glibc]="no"
 	fi
 	qbt_workflow_override[zlib]="no"
@@ -1285,7 +1319,6 @@ _set_module_urls() {
 	# Configure the default source type we use for the download function
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		source_default[cmake_ninja]="file"
 		source_default[glibc]="file"
 	fi
 	source_default[zlib]="file"
@@ -1506,7 +1539,7 @@ _cache_dirs() {
 	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
 
-	if [[ ${qbt_workflow_files} == "yes" && ${qbt_workflow_override[${app_name}]} == "no" || ${app_name} =~ ^(cmake_ninja)$ ]]; then
+	if [[ ${qbt_workflow_files} == "yes" && ${qbt_workflow_override[${app_name}]} == "no" ]]; then
 		source_default["${app_name}"]="file"
 	elif [[ ${qbt_cache_dir_options} == "bs" || -d ${qbt_dl_folder_path} ]]; then
 		source_default["${app_name}"]="folder"
@@ -1650,11 +1683,7 @@ _download_file() {
 
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 
-	if [[ ${app_name} == "cmake_ninja" ]]; then
-		tar_flags=("--strip-components=1")
-	else
-		tar_flags=("--strip-components=0")
-	fi
+	tar_flags=("--strip-components=0")
 
 	tar_additional_cmds+=("-C" "${qbt_install_dir}")
 
@@ -1662,12 +1691,8 @@ _download_file() {
 		_cmd tar xf "${qbt_dl_file_path}" "${tar_flags[@]}" "${tar_additional_cmds[@]}"
 		# we don't need to cd into the boost if we download it via source archives
 
-		if [[ ${app_name} == "cmake_ninja" ]]; then
-			_delete_function
-		else
-			mkdir -p "${qbt_dl_folder_path}${sub_dir}"
-			_pushd "${qbt_dl_folder_path}${sub_dir}"
-		fi
+		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
+		_pushd "${qbt_dl_folder_path}${sub_dir}"
 	fi
 
 	_cache_dirs_qbt_env
@@ -1709,7 +1734,6 @@ _fix_multiarch_static_links() {
 # This function is for removing files and folders we no longer need
 #######################################################################################################################################################
 _delete_function() {
-	[[ ${app_name} != "cmake_ninja" ]] && printf '\n'
 	if [[ ${qbt_skip_delete} != "yes" ]]; then
 		printf '%b\n' " ${unicode_green_circle}${color_red_light} Deleting ${app_name} uncached installation files and folders${color_end}"
 		[[ -f ${qbt_dl_file_path} ]] && rm -rf {"${qbt_install_dir:?}/$(tar tf "${qbt_dl_file_path}" | grep -Eom1 "(.*)[^/]")","${qbt_install_dir}/${app_name}.tar.xz"}
@@ -1718,38 +1742,6 @@ _delete_function() {
 	else
 		printf '%b\n' " ${unicode_yellow_circle}${color_red_light} Skipping ${app_name} deletion${color_end}"
 	fi
-}
-#######################################################################################################################################################
-# cmake installation
-#######################################################################################################################################################
-_cmake() {
-	if [[ ${qbt_build_tool} == 'cmake' ]]; then
-		printf '\n%b\n' " ${unicode_blue_light_circle} ${color_blue_light}Checking if cmake and ninja need to be installed${color_end}"
-		mkdir -p "${qbt_install_dir}/bin"
-
-		if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-			if [[ "$(cmake --version 2> /dev/null | awk 'NR==1{print $3}')" != "${app_version[cmake_debian]}" ]]; then
-				_download cmake_ninja
-				_post_command "Debian cmake and ninja installation"
-
-				printf '\n%b\n' " ${unicode_yellow_circle} Using cmake: ${color_yellow_light}${app_version[cmake_debian]}"
-				printf '\n%b\n' " ${unicode_yellow_circle} Using ninja: ${color_yellow_light}${app_version[ninja_debian]}"
-			fi
-		fi
-
-		if [[ ${os_id} =~ ^(alpine)$ ]]; then
-			if [[ "$("${qbt_install_dir}/bin/ninja" --version 2> /dev/null | sed 's/\.git//g')" != "${app_version[ninja]}" ]]; then
-				_curl "https://github.com/userdocs/qbt-ninja-build/releases/latest/download/ninja-${os_arch}" -o "${qbt_install_dir}/bin/ninja"
-				_post_command ninja
-				chmod 700 "${qbt_install_dir}/bin/ninja"
-
-				printf '\n%b\n' " ${unicode_yellow_circle} Using cmake: ${color_yellow_light}${app_version[cmake]}"
-				printf '\n%b\n' " ${unicode_yellow_circle} Using ninja: ${color_yellow_light}${app_version[ninja]}"
-			fi
-		fi
-		printf '\n%b\n' " ${unicode_green_circle} ${color_green_light}cmake and ninja are installed and ready to use${color_end}"
-	fi
-	_pushd "${qbt_working_dir}"
 }
 #######################################################################################################################################################
 # This function handles the Multi Arch dynamics of the script.
@@ -2379,10 +2371,6 @@ while (("${#}")); do
 			_apply_patches bootstrap
 			shift
 			;;
-		-bs-c | --bootstrap-cmake)
-			_cmake
-			shift
-			;;
 		-bs-r | --bootstrap-release)
 			_release_info
 			shift
@@ -2404,7 +2392,6 @@ while (("${#}")); do
 			_installation_modules
 			_apply_patches bootstrap
 			_release_info
-			_cmake
 			_multi_arch bootstrap
 			_qbt_host_deps
 			shift
@@ -2684,12 +2671,6 @@ while (("${#}")); do
 			printf '\n%b\n\n' " ${color_cyan}${qbt_install_dir_short}/patches/qbittorrent/${app_version[qbittorrent]}/patch${color_end}"
 			exit
 			;;
-		-h-bs-c | --help-bootstrap-cmake)
-			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
-			printf '\n%b\n' " This bootstrap will install cmake and ninja build to the build directory"
-			printf '\n%b\n\n'"${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-c${color_end}"
-			exit
-			;;
 		-h-bs-r | --help-bootstrap-release)
 			printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 			printf '\n%b\n' "${color_red_light} GitHub action specific. You probably don't need it${color_end}"
@@ -2716,7 +2697,6 @@ while (("${#}")); do
 			printf '\n%b\n' "${color_green_light} Usage:${color_end} ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs-a${color_end}"
 			printf '\n%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Patches${color_end}"
 			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Release info${color_end}"
-			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Cmake and ninja build${color_end} if the ${color_blue_light}-c${color_end} flag is passed"
 			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Multi arch${color_end} if the ${color_blue_light}-ma${color_end} flag is passed"
 			printf '\n%b\n' " Equivalent of doing: ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs -bs-r${color_end}"
 			printf '\n%b\n\n' " And with ${color_blue_light}-c${color_end} and ${color_blue_light}-ma${color_end} : ${color_cyan_light}${qbt_working_dir_short}/${script_basename}${color_end} ${color_blue_light}-bs -bs-c -bs-ma -bs-r ${color_end}"
@@ -2954,15 +2934,14 @@ fi
 #######################################################################################################################################################
 # Functions part 4: no function past this point will be executed unless a valid module was passed
 #######################################################################################################################################################
-_cmake
 _multi_arch
 _qbt_host_deps
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _glibc_bootstrap() {
 	sub_dir="/BUILD"
 }
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _glibc() {
 	"${qbt_dl_folder_path}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-cet --enable-static-nss --disable-nscd --srcdir="${qbt_dl_folder_path}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
@@ -2972,7 +2951,7 @@ _glibc() {
 	unset sub_dir
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _zlib() {
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
 		./configure --prefix="${qbt_install_dir}" --static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -3006,7 +2985,7 @@ _zlib() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _iconv() {
 	if [[ -n ${qbt_cache_dir} && -d "${qbt_cache_dir}/${app_name}" ]]; then
 		./gitsub.sh pull --depth 1
@@ -3018,7 +2997,7 @@ _iconv() {
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _set_icu_sub_dir() {
 	if [[ -n ${qbt_cache_dir} && -d "${qbt_cache_dir}/${app_name}" && ${qbt_workflow_files} == "no" ]]; then
 		sub_dir="/icu4c/source"
@@ -3027,12 +3006,12 @@ _set_icu_sub_dir() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _icu_host_deps_bootstrap() {
 	_set_icu_sub_dir
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _icu_host_deps() {
 	mkdir -p "${qbt_host_deps_path}"
 	_pushd "${qbt_host_deps_path}"
@@ -3043,12 +3022,12 @@ _icu_host_deps() {
 	unset sub_dir
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _icu_bootstrap() {
 	_set_icu_sub_dir
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _icu() {
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -3057,7 +3036,7 @@ _icu() {
 	unset sub_dir
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _openssl() {
 	openssl_config=("threads" "no-shared" "no-dso" "no-docs" "no-async" "no-comp" "no-idea" "no-mdc2" "no-rc5" "no-ec2m" "no-ssl3" "no-seed" "no-weak-ssl-ciphers")
 	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" "${qbt_openssl_build_type}" "${openssl_config[@]}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
@@ -3066,7 +3045,7 @@ _openssl() {
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _boost_bootstrap() {
 	# If using source files and the source fails, default to git, if we are not using workflows sources.
 	if [[ ${boost_url_status} =~ (403|404) && ${qbt_workflow_files} == "no" ]]; then
@@ -3074,7 +3053,7 @@ _boost_bootstrap() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _boost() {
 	if [[ ${source_default["${app_name}"]} == "file" ]]; then
 		mv -f "${qbt_dl_folder_path}/" "${qbt_install_dir}/boost"
@@ -3095,7 +3074,7 @@ _boost() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _libtorrent() {
 	export BOOST_ROOT="${qbt_install_dir}/boost"
 	export BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
@@ -3156,7 +3135,7 @@ _libtorrent() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _double_conversion() {
 	if [[ ${qbt_build_tool} == 'cmake' && ${qbt_qt_version} =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
@@ -3175,7 +3154,7 @@ _double_conversion() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _qtbase_host_deps() {
 	if [[ ${qbt_build_tool} == 'cmake' && ${qbt_qt_version} =~ ^6 ]]; then
 		cmake -Wno-dev -Wno-deprecated -G Ninja -B build \
@@ -3198,7 +3177,7 @@ _qtbase_host_deps() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _qtbase() {
 	cat > "mkspecs/${qbt_cross_qtbase}/qmake.conf" <<- QT_MKSPECS
 		MAKEFILE_GENERATOR      = UNIX
@@ -3294,7 +3273,7 @@ _qtbase() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _qttools_host_deps() {
 	cmake -Wno-dev -Wno-deprecated -G Ninja -B build \
 		-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
@@ -3309,7 +3288,7 @@ _qttools_host_deps() {
 	cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _qttools() {
 	if [[ ${qbt_build_tool} == 'cmake' && ${qbt_qt_version} =~ ^6 ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
@@ -3339,7 +3318,7 @@ _qttools() {
 	fi
 }
 #######################################################################################################################################################
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2329
 _qbittorrent() {
 	[[ ${os_id} =~ ^(alpine)$ ]] && stacktrace="OFF"
 
