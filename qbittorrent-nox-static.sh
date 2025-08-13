@@ -1983,11 +1983,7 @@ _multi_arch() {
 						alpine)
 							qbt_cross_host="riscv64-linux-musl"
 							;;&
-						debian)
-							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on an Alpine or Ubuntu OS Host"
-							exit
-							;;
-						ubuntu)
+						debian | ubuntu)
 							qbt_cross_host="riscv64-linux-gnu"
 							;;&
 						*)
