@@ -26,7 +26,7 @@ repos:
       - id: check-shebang-scripts-are-executable
 
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.11.0
+    rev: v1.12.0
     hooks:
       - id: zizmor
 
@@ -42,6 +42,6 @@ repos:
       - id: shell-fmt
         args: ["-ci", "-sr", "-i", "0"]
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.16.3
+    rev: v8.28.0
     hooks:
       - id: gitleaks
