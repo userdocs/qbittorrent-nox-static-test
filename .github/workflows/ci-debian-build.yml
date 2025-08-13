@@ -41,7 +41,7 @@ jobs:
           - os_id: "debian"
             os_version_id: "noble"
           - os_id: "ubuntu"
-            os_version_id: "trixe"
+            os_version_id: "trixie"
 
           - runs_on: "ubuntu-24.04"
             qbt_cross_name: "x86_64"
