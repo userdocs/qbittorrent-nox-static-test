@@ -234,7 +234,24 @@ _set_default_values() {
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
 	# Define our list of available modules in an array.
-	qbt_modules=("all" "install" "glibc" "zlib" "iconv" "icu_host_deps" "icu" "openssl" "boost" "libtorrent" "double_conversion" "qtbase_host_deps" "qtbase" "qttools_host_deps" "qttools" "qbittorrent")
+	qbt_modules=(
+		"all"
+		"install"
+		"glibc"
+		"zlib"
+		"iconv"
+		"icu_host_deps"
+		"icu"
+		"openssl"
+		"boost"
+		"libtorrent"
+		"double_conversion"
+		"qtbase_host_deps"
+		"qtbase"
+		"qttools_host_deps"
+		"qttools"
+		"qbittorrent"
+	)
 
 	# Create this array empty. Modules listed in or added to this array will be removed from the default list of modules, changing the behavior of all or install
 	delete=()
