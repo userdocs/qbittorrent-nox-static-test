@@ -84,7 +84,7 @@ jobs:
       id-token: write
       contents: read
       attestations: write
-    uses: ./.github/workflows/ci-alpine-build.yml
+    uses: ./.github/workflows/ci-alpine-build-test.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
       workflow-files: ${{ github.event.inputs.workflow-files == 'true' && 'yes' || 'no' }}
@@ -92,42 +92,42 @@ jobs:
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
       script_name: ${{ github.event.inputs.script_name }}
 
-  ci-alpine-release:
-    needs: [ci-alpine-build]
-    if: github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
-    concurrency:
-      group: ci-alpine-release
-      cancel-in-progress: true
-    permissions:
-      contents: write
-    uses: ./.github/workflows/ci-alpine-release.yml
-    with:
-      distinct_id: ${{ github.event.inputs.distinct_id }}
+  # ci-alpine-release:
+  #   needs: [ci-alpine-build]
+  #   if: github.event.inputs.release == 'true' && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+  #   concurrency:
+  #     group: ci-alpine-release
+  #     cancel-in-progress: true
+  #   permissions:
+  #     contents: write
+  #   uses: ./.github/workflows/ci-alpine-release.yml
+  #   with:
+  #     distinct_id: ${{ github.event.inputs.distinct_id }}
 
-  ci-auto-rerun-failed-jobs:
-    if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
-    needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
-    concurrency:
-      group: ci-auto-rerun-failed-jobs
-      cancel-in-progress: true
-    permissions:
-      actions: write
-    runs-on: ubuntu-24.04-arm
-    env:
-      GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
-      github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
-      retries: ${{ github.event.inputs.retries || '1' }}
-      distinct_id: ${{ github.event.inputs.distinct_id }}
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
-      - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
-        run: >
-          gh workflow run ci-auto-rerun-failed-jobs-action.yml
-          --repo "${github_repo:-$GITHUB_REPOSITORY}"
-          -f github_repo=${GITHUB_REPOSITORY}
-          -f run_id=${GITHUB_RUN_ID}
-          -f attempts=${GITHUB_RUN_ATTEMPT}
-          -f retries=${retries}
-          -f distinct_id=${distinct_id}
+  # ci-auto-rerun-failed-jobs:
+  #   if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
+  #   needs: [ci-debian-build, ci-alpine-build, ci-alpine-release]
+  #   concurrency:
+  #     group: ci-auto-rerun-failed-jobs
+  #     cancel-in-progress: true
+  #   permissions:
+  #     actions: write
+  #   runs-on: ubuntu-24.04-arm
+  #   env:
+  #     GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
+  #     github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+  #     retries: ${{ github.event.inputs.retries || '1' }}
+  #     distinct_id: ${{ github.event.inputs.distinct_id }}
+  #   steps:
+  #     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+  #       with:
+  #         persist-credentials: false
+  #     - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
+  #       run: >
+  #         gh workflow run ci-auto-rerun-failed-jobs-action.yml
+  #         --repo "${github_repo:-$GITHUB_REPOSITORY}"
+  #         -f github_repo=${GITHUB_REPOSITORY}
+  #         -f run_id=${GITHUB_RUN_ID}
+  #         -f attempts=${GITHUB_RUN_ATTEMPT}
+  #         -f retries=${retries}
+  #         -f distinct_id=${distinct_id}
