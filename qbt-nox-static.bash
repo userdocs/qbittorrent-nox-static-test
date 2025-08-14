@@ -101,11 +101,10 @@ get_os_info() {
 #######################################################################################################################################################
 # Checks to see if we are on a supported OS and release.
 #######################################################################################################################################################
-os_id="$(get_os_info ID)"                                                         # Get the ID for this OS.
-os_version_codename="$(get_os_info VERSION_CODENAME)"                             # Get the codename for this OS. Note, Alpine does not have a unique codename.
-os_version_id="$(get_os_info VERSION_ID)"                                         # Get the version number for this codename, for example: 10, 20.04, 3.12.4
-[[ "$(wc -w <<< "${os_version_id//\./ }")" -eq "2" ]] && alpine_min_version="310" # Account for variation in the versioning 3.1 or 3.1.0 to make sure the check works correctly
-[[ ${os_id} =~ ^(alpine)$ ]] && os_version_codename="alpine"                      # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
+os_id="$(get_os_info ID)"                                    # Get the ID for this OS.
+os_version_codename="$(get_os_info VERSION_CODENAME)"        # Get the codename for this OS. Note, Alpine does not have a unique codename.
+os_version_id="$(get_os_info VERSION_ID)"                    # Get the version number for this codename, for example: 10, 20.04, 3.12.4
+[[ ${os_id} =~ ^(alpine)$ ]] && os_version_codename="alpine" # If alpine, set the codename to alpine. We check for min v3.10 later with codenames.
 
 if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 	# dpkg --print-architecture give amd64/arm64 and arch gives x86_64/aarch64
@@ -116,13 +115,13 @@ elif [[ ${os_id} =~ ^(alpine)$ ]]; then
 fi
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.10
-if [[ ! ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]] || [[ ${os_version_codename} =~ ^(alpine)$ && ${os_version_id//\./} -lt ${alpine_min_version:-3150} ]]; then
+if [[ ! ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]] || [[ ${os_version_codename} =~ ^(alpine)$ && "$(apk version -t "${os_version_id}" "3.18")" == "<" ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
 	printf '%b\n\n' " ${unicode_yellow_circle} ${text_dim}These are the supported platforms${color_end}"
 	printf '%b\n' " ${color_magenta_light}Debian${color_end} - ${color_blue_light}trixie${color_end}"
 	printf '%b\n' " ${color_magenta_light}Ubuntu${color_end} - ${color_blue_light}noble${color_end}"
-	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.15.0${color_end} ${text_dim}or greater${color_end}"
+	printf '%b\n\n' " ${color_magenta_light}Alpine${color_end} - ${color_blue_light}3.18${color_end} ${text_dim}or greater${color_end}"
 	exit
 fi
 #######################################################################################################################################################
@@ -1104,7 +1103,7 @@ _custom_flags() {
 		# Debug builds always get priority
 		qbt_strip_qmake='-nostrip'
 		qbt_strip_flags='-g'
-		qbt_optimise_gcc="-O0 -g"
+		qbt_optimise_gcc="-Og -g" # https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-Og
 		qbt_optimise_linker="-Wl,-O0"
 	elif [[ ${qbt_optimise_strip} == "yes" ]]; then
 		# Only strip if not debugging
@@ -1116,7 +1115,7 @@ _custom_flags() {
 		# defaults if both are set to no
 		qbt_strip_qmake='-nostrip'
 		qbt_strip_flags=''
-		qbt_optimise_gcc="-O0"
+		qbt_optimise_gcc="-Og -g" # https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-Og
 		qbt_optimise_linker="-Wl,-O0"
 	fi
 
