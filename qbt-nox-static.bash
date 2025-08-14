@@ -2351,6 +2351,7 @@ _release_info() {
 		qbittorrent ${app_version[qbittorrent]} libtorrent ${app_version[libtorrent]}
 	TITLE_INFO
 
+	set -x
 	if _git_git ls-remote -t --exit-code "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -q '"name": "dependency-version.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
 			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > "${release_info_dir}/remote-dependency-version.json"; do
@@ -2422,6 +2423,7 @@ _release_info() {
 		[[ ${multi_arch_options[${qbt_cross_name}]} == loongarch64 ]] && printf '%s\n' "|   loongarch64   |    loongarch64-linux-musl    |   la64v1.0    |                                --with-arch=la64v1.0 --with-abi=lp64d                                 |"
 		printf '\n'
 	} >> "${release_info_dir}/qt${qt_version_short_array[0]}-${qbt_cross_name}-release.md"
+	set +x
 	return
 }
 #######################################################################################################################################################
