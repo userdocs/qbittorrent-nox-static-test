@@ -131,6 +131,12 @@ jobs:
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
         run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
 
+      - name: Docker - Release Info ${{ inputs.distinct_id }}
+        run: |
+          printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+          cat ${qbt_build_dir}/release_info/qt6-dependency-version.json | tee -a $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Docker - glibc ${{ inputs.distinct_id }}
         if : matrix.os_id != 'alpine'
         run: docker exec -u gh:gh ${container_name} bash ${script_name} glibc
