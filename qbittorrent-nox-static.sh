@@ -2187,8 +2187,8 @@ _release_info() {
 		|           Libtorrent           | ${app_version[libtorrent]}  |
 		|             Boost              |    ${app_version[boost]}    |
 		|            OpenSSL             |   ${app_version[openssl]}   |
-		|         ${qbt_zlib_type}       |    ${app_version[zlib]}     |
-		|            revision            |   ${qbt_revision_version}   |
+		|        ${qbt_zlib_type}        |    ${app_version[zlib]}     |
+		|            revision            | ${qbt_revision_version:-0}  |
 
 		## Architecture and build info
 
