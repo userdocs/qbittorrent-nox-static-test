@@ -129,11 +129,14 @@ jobs:
         if: inputs.script_name == 'qbt-nox-static.bash'
         run: docker exec -u gh:gh ${container_name} bash ${script_name} bootstrap_deps
 
+      # - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
+      #   run: |
+      #     printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+      #     docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
+      #     printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
-        run: |
-          printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
-          docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
-          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
         run: |
