@@ -56,6 +56,8 @@ jobs:
         env:
           lt_version: ${{ matrix.qbt_libtorrent_version }}
         run: |
+          shopt -s nullglob
+
           revision="$(jq -r .revision "${lt_version}"/*-dependency-version.json | sort -nr | head -n1)"
           boost="$(jq -r .boost "${lt_version}"/*-dependency-version.json | head -n1)"
 
