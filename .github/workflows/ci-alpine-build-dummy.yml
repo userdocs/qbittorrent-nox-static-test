@@ -188,7 +188,7 @@ jobs:
       #     subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
-        run: docker exec -u gh:gh -w /home/gh/${qbt_build_dir}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${qbt_build_dir}/completed''
+        run: mv *.md *.json '/home/gh/${qbt_build_dir}/completed''
 
       - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
         if: success()
