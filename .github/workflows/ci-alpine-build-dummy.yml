@@ -141,6 +141,8 @@ jobs:
           cat ${qbt_build_dir}/release_info/qt6-dependency-version.json | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
           printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
+          mv -f ${qbt_build_dir}/release_info/qt6-dependency-version.json ${qbt_build_dir}/release_info/qt6-${{ matrix.qbt_cross_name }}-dependency-version.json
+
       # - name: Docker - glibc ${{ inputs.distinct_id }}
       #   if : matrix.os_id != 'alpine'
       #   run: docker exec -u gh:gh ${container_name} bash ${script_name} glibc
