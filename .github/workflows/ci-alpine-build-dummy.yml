@@ -130,7 +130,10 @@ jobs:
         run: docker exec -u gh:gh ${container_name} bash ${script_name} bootstrap_deps
 
       - name: Docker - Bootstrap build ${{ inputs.distinct_id }}
-        run: docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a
+        run: |
+          printf '%b\n' "\`\`\`bash\n" >> $GITHUB_STEP_SUMMARY
+          docker exec -u gh:gh ${container_name} bash ${script_name} -bs-a | tee -a $GITHUB_STEP_SUMMARY
+          printf '%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
         run: |
