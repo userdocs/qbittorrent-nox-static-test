@@ -84,7 +84,7 @@ jobs:
       id-token: write
       contents: read
       attestations: write
-    uses: ./.github/workflows/ci-alpine-build-dummy.yml
+    uses: ./.github/workflows/ci-alpine-build.yml
     with:
       distinct_id: ${{ github.event.inputs.distinct_id }}
       workflow-files: ${{ github.event.inputs.workflow-files == 'true' && 'yes' || 'no' }}
