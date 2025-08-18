@@ -1,0 +1,25 @@
+name: qbt - trigger script update
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'qbittorrent-nox-static.sh'
+      - 'qbt-nox-static.bash'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    permissions:
+      actions: write
+      contents: read
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+    - name: Trigger grab_files workflow in userdocs/qbt
+      run: |
+        gh workflow run grab_files.yaml --repo userdocs/qbt
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
