@@ -11,7 +11,7 @@ on:
 permissions: {}
 
 jobs:
-  build:
+  trigger_workflow:
     permissions:
       actions: write
       contents: read
