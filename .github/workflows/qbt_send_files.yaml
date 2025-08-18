@@ -12,9 +12,6 @@ permissions: {}
 
 jobs:
   trigger_workflow:
-    permissions:
-      actions: write
-      contents: read
     runs-on: ubuntu-24.04-arm
 
     steps:
