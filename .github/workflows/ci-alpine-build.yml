@@ -30,7 +30,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs_on: ["ubuntu-24.04-arm"]
         os_id: [alpine]
         os_version_id: [edge]
         qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
@@ -40,6 +39,22 @@ jobs:
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
+
+          - qbt_cross_name: "armhf"
+            runs_on: ["ubuntu-24.04-arm"]
+          - qbt_cross_name: "armv7"
+            runs_on: ["ubuntu-24.04-arm"]
+          - qbt_cross_name: "aarch64"
+            runs_on: ["ubuntu-24.04-arm"]
+          - qbt_cross_name: "riscv64"
+            runs_on: ["ubuntu-24.04-arm"]
+          - qbt_cross_name: "riscv64"
+            runs_on: ["ubuntu-24.04-arm"]
+          - qbt_cross_name: "x86_64"
+            runs_on: ["ubuntu-24.04"]
+          - qbt_cross_name: "x86"
+            runs_on: ["ubuntu-24.04"]
+
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
