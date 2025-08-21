@@ -45,7 +45,6 @@ jobs:
 
     env:
       qbt_build_dir: "qbt-build"
-      container_name: "multiarch"
       script_name: ${{ inputs.script_name }}
       set_skip_icu: ${{ inputs.icu }}
       set_workflow_files: ${{ inputs.workflow-files }}
@@ -108,19 +107,27 @@ jobs:
       - name: Host - Bootstrap qemu
         uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
 
-      - uses: userdocs/actions/qbt_docker@main # v1.0.1
+      - uses: userdocs/actions/qbt_docker@main
+        id: qbt_docker
         with:
-            # if the env.custom file exists, it will be used to pass environment
-            distinct_id: ${{ inputs.distinct_id }}
-            use_host_env: "false"
-            container_name: ${{ env.container_name }}
-            os_id: ${{ matrix.os_id }}
+            # if the env.custom file exists, it will be used to pass as env to container.
+            # You create env.custom file in the steps before this then it is appended to the host env if use_host_env is true
+            distinct_id: "" # for codex-/return-dispatch action
+            use_host_env: "false" # this puts the host env into the container env like using container: would
+            container_name: "" # defaults to builder; use outputs to set this in next step
+            os_id: ${{ matrix.os_id }} # this action works with ghcr.io/userdocs/* images and generic images like debian/ubuntu/alpine
             os_version_id: ${{ matrix.os_version_id }}
-            custom_docker_commands: ""
-            additional_alpine_apps: "bash curl git"
-            additional_debian_apps: "bash curl git"
-            uid: "gh" # default is gh
-            gid: "1001" # default is 1001
+            custom_docker_commands: "" # custom docker cli commands to run in the container
+            additional_alpine_apps: "curl git" # apk add this string
+            additional_debian_apps: "curl git" # apt install this string
+            uid: gh # default is gh and gh requires sudo. ghcr.io/userdocs/* takes root/gh/github/username. generic will take what you set here
+            gid: 1001 # default is 1001 ghcr.io/userdocs/* root:0 gh 1001:1001 github 1002:1001 username 1000:1000
+
+      - name: Set qbt_docker outputs to environment
+        run: |
+          printf '%s\n' "container_name=${{ steps.qbt_docker.outputs.container_name }}" >> $GITHUB_ENV
+          printf '%s\n' "uid=${{ steps.qbt_docker.outputs.uid }}" >> $GITHUB_ENV
+          printf '%s\n' "wd=${{ steps.qbt_docker.outputs.wd }}" >> $GITHUB_ENV
 
       - name: Host - patches ${{ inputs.distinct_id }}
         if: hashFiles('patches/**') != ''
@@ -177,7 +184,7 @@ jobs:
         run: docker exec ${container_name} bash ${script_name} qbittorrent
 
       - name: Docker - Set release asset name ${{ inputs.distinct_id }}
-        run: docker exec -w /home/gh/${qbt_build_dir}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+        run: docker exec -w ${wd}/${qbt_build_dir}/completed ${container_name} mv -f qbittorrent-nox ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
 
       - name: Generate artifact attestation  ${{ inputs.distinct_id }}
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
@@ -185,7 +192,7 @@ jobs:
           subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
-        run: docker exec -w /home/gh/${qbt_build_dir}/release_info ${container_name} bash -c 'mv *.md *.json '/home/gh/${qbt_build_dir}/completed''
+        run: docker exec -w ${wd}/${qbt_build_dir}/release_info ${container_name} bash -c 'mv *.md *.json '${wd}/${qbt_build_dir}/completed''
 
       - name: Host - Upload libtorrent-v${{ matrix.qbt_libtorrent_version }}-qbittorrent-nox and release info artifact ${{ inputs.distinct_id }}
         if: success()
