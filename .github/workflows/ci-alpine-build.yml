@@ -105,6 +105,7 @@ jobs:
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
       - name: Host - Bootstrap qemu
+        if: ${{ matrix.qbt_cross_name != 'aarch64' || matrix.qbt_cross_name != 'armv7' || matrix.qbt_cross_name != 'armhf' }}
         uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
 
       - uses: userdocs/actions/qbt_docker@main
