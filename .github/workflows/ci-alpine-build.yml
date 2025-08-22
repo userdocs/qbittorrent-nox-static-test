@@ -111,18 +111,9 @@ jobs:
       - uses: userdocs/actions/qbt_docker@main
         id: qbt_docker
         with:
-            # if the env.custom file exists, it will be used to pass as env to container.
-            # You create env.custom file in the steps before this then it is appended to the host env if use_host_env is true
-            # distinct_id: "" # for codex-/return-dispatch action
-            # use_host_env: "false" # this puts the host env into the container env like using container: would
-            # container_name: "" # defaults to builder; use outputs to set this in next step
             os_id: ${{ matrix.os_id }} # this action works with ghcr.io/userdocs/* images and generic images like debian/ubuntu/alpine
             os_version_id: ${{ matrix.os_version_id }}
-            # custom_docker_commands: "" # custom docker cli commands to run in the container
-            # additional_alpine_apps: "curl git" # apk add this string
-            # additional_debian_apps: "curl git" # apt install this string
-            # uid: gh # default is gh and gh requires sudo. ghcr.io/userdocs/* takes root/gh/github/username. generic will take what you set here
-            # gid: 1001 # default is 1001 ghcr.io/userdocs/* root:0 gh 1001:1001 github 1002:1001 username 1000:1000
+            additional_alpine_apps: "curl git" # apk add this string
 
       - name: Set qbt_docker outputs to environment
         run: |
