@@ -118,14 +118,7 @@ jobs:
         with:
             os_id: ${{ matrix.os_id }} # this action works with ghcr.io/userdocs/* images and generic images like debian/ubuntu/alpine
             os_version_id: ${{ matrix.os_version_id }}
-            # additional_alpine_apps: "curl git" # apk add this string
-            additional_debian_apps: "curl git" # apt install this string
-
-      - name: Set qbt_docker outputs to environment
-        run: |
-          printf '%s\n' "container_name=${{ steps.qbt_docker.outputs.container_name }}" >> $GITHUB_ENV
-          printf '%s\n' "uid=${{ steps.qbt_docker.outputs.uid }}" >> $GITHUB_ENV
-          printf '%s\n' "wd=${{ steps.qbt_docker.outputs.wd }}" >> $GITHUB_ENV
+            additional_alpine_apps: "curl git" # apk add this string
 
       - name: Host - patches ${{ inputs.distinct_id }}
         if: hashFiles('patches/**') != ''
