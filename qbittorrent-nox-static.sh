@@ -445,7 +445,6 @@ _set_default_values() {
 			qbt_core_deps["patch"]="false"
 
 			qbt_deps_delete["build-essential"]="false"
-			ninj
 		fi
 	fi
 
@@ -3231,7 +3230,7 @@ _glibc() {
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
 	_post_command build
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-
+	make localedata/install-locales SUPPORTED-LOCALES='C.UTF-8/UTF-8' |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	unset sub_dir
 }
 #######################################################################################################################################################

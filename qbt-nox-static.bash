@@ -445,7 +445,6 @@ _set_default_values() {
 			qbt_core_deps["patch"]="false"
 
 			qbt_deps_delete["build-essential"]="false"
-			ninj
 		fi
 	fi
 
