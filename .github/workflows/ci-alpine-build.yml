@@ -105,11 +105,11 @@ jobs:
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@main
+        uses: userdocs/actions/qemu@749d0010d8abde6c8a8ffc720856de5e799bdfea
         with:
           target_arch: ${{ matrix.qbt_cross_name }} # takes the matrix array that is listing target architectures
 
-      - uses: userdocs/actions/qbt_docker@main
+      - uses: userdocs/actions/qbt_docker@749d0010d8abde6c8a8ffc720856de5e799bdfea
         id: qbt_docker
         with:
             os_id: ${{ matrix.os_id }} # this action works with ghcr.io/userdocs/* images and generic images like debian/ubuntu/alpine
