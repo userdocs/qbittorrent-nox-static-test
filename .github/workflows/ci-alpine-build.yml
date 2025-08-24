@@ -111,6 +111,7 @@ jobs:
       - uses: userdocs/actions/qbt_docker@main
         id: qbt_docker
         with:
+            use_root: true
             os_id: ${{ matrix.os_id }} # this action works with ghcr.io/userdocs/* images and generic images like debian/ubuntu/alpine
             os_version_id: ${{ matrix.os_version_id }}
             additional_alpine_apps: "curl git" # apk add this string
