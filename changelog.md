@@ -9,6 +9,7 @@ This essentially completes the transition from the legacy script to the current 
 fixed:
     - install binary function was not working correctly and has been updated.
     - fixed building glibc in debug mode due to incorrect flags
+    - fixed glibc utf-8 warning when building qbittorrent. install the locale C.UTF-8 from glibc source dir
     - fix alpine version check properly compare versions.
     - fixed boost version check that was creating a malformed url for github and beta releases.
 
