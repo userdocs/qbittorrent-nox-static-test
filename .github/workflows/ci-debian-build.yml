@@ -120,7 +120,9 @@ jobs:
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
+        uses: userdocs/actions/qemu@main
+        with:
+          target_arch: ${{ matrix.qbt_cross_name }} # takes the matrix array that is listing target architectures
 
       - uses: userdocs/actions/qbt_docker@main
         id: qbt_docker
