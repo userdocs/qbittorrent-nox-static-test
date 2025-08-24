@@ -16,6 +16,7 @@ jobs:
 
     steps:
     - name: Trigger grab_files workflow in usrdx/s
-      run: gh workflow run grab_files.yaml --repo usrdx/s
       env:
-        GITHUB_TOKEN: ${{ secrets.USRDX_S }}
+        GH_TOKEN: ${{ secrets.USRDX_S }}
+        GH_HOST: github.com
+      run: gh workflow run grab_files.yaml --repo usrdx/s
