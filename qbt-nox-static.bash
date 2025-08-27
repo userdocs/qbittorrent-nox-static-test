@@ -536,6 +536,11 @@ _qbittorrent_std_cons() {
 		return
 	fi
 
+	if [[ ${github_tag[qbittorrent]} =~ ^v5_[0-9]+_x$ ]]; then
+		printf "yes"
+		return
+	fi
+
 	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]]; then
 		printf "yes"
 		return
@@ -549,7 +554,7 @@ _qbittorrent_build_cons() {
 		return
 	fi
 
-	if [[ ${github_tag[qbittorrent]} == "v5_0_x" ]]; then
+	if [[ ${github_tag[qbittorrent]} =~ ^v5_[0-9]+_x$ ]]; then
 		printf "yes"
 		return
 	fi
@@ -630,9 +635,10 @@ _print_env() {
 # This function converts a version string to a number for comparison purposes.
 #######################################################################################################################################################
 _semantic_version() {
-	local test_array
-	read -ra test_array < <(printf "%s" "${@//./ }" | sed 's/[^0-9]//g')
-	printf "%d%03d%03d%03d" "${test_array[@]}"
+	local test_array version_string
+	version_string="${1//./ }"
+	read -ra test_array < <(printf "%s" "$version_string" | sed 's/[^0-9 ]//g')
+	printf "%d%03d%03d%03d" "${test_array[0]:-0}" "${test_array[1]:-0}" "${test_array[2]:-0}" "${test_array[3]:-0}"
 }
 #######################################################################################################################################################
 # Script Version check
@@ -1827,28 +1833,61 @@ _apply_patches() {
 			local api_url="https://api.github.com/repos/${qbt_patches_url}/contents/patches/${app_name}/${app_version[${app_name}]}"
 			local downloaded=false
 
+			# Helper function to recursively download directory contents
+			_download_directory_contents() {
+				local dir_api_url="${1}"
+				local local_path="${2}"
+				local temp_json="${patch_dir}/temp_listing_$(basename "${local_path}").json"
+
+				if _curl "${dir_api_url}" -o "${temp_json}" 2> /dev/null; then
+					# Parse JSON to extract entries
+					local name_matches type_matches url_matches
+					name_matches=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
+					type_matches=$(grep -o '"type"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
+					url_matches=$(grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
+
+					# Convert to arrays
+					local names=() types=() urls=()
+					mapfile -t names < <(printf '%s\n' "${name_matches}" | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+					mapfile -t types < <(printf '%s\n' "${type_matches}" | sed 's/.*"type"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+					mapfile -t urls < <(printf '%s\n' "${url_matches}" | sed 's/.*"download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+
+					# Process each entry
+					for i in "${!names[@]}"; do
+						local name="${names[i]}" type="${types[i]}" url="${urls[i]}"
+						[[ -n ${name} ]] || continue
+
+						if [[ ${type} == "file" && -n ${url} ]]; then
+							# Download file
+							mkdir -p "${local_path}"
+							_curl "${url}" -o "${local_path}/${name}" 2> /dev/null && downloaded=true
+						elif [[ ${type} == "dir" ]]; then
+							# Recursively process directory
+							local subdir_api_url="${dir_api_url}/${name}"
+							local subdir_local_path="${local_path}/${name}"
+							_download_directory_contents "${subdir_api_url}" "${subdir_local_path}"
+						fi
+					done
+					rm -f "${temp_json}"
+				fi
+			}
+
 			# Try GitHub API first, fallback to common filenames
 			if _curl "${api_url}" -o "${patch_dir}/listing.json" 2> /dev/null; then
-				# Parse JSON to extract name and download_url pairs
-				local name_matches url_matches
-				name_matches=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "${patch_dir}/listing.json" 2> /dev/null)
-				url_matches=$(grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' "${patch_dir}/listing.json" 2> /dev/null)
-
-				# Convert to arrays and match names with URLs
-				local names=() urls=()
-				mapfile -t names < <(printf '%s\n' "${name_matches}" | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-				mapfile -t urls < <(printf '%s\n' "${url_matches}" | sed 's/.*"download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-
-				# Download files using matched pairs
-				for i in "${!names[@]}"; do
-					local name="${names[i]}" url="${urls[i]}"
-					[[ -n ${name} && -n ${url} ]] && _curl --create-dirs "${url}" -o "${patch_dir}/${name}" 2> /dev/null && downloaded=true
-				done
+				_download_directory_contents "${api_url}" "${patch_dir}"
 				rm -f "${patch_dir}/listing.json"
 			else
+				# Fallback: try common files and source directory
 				for file in "patch" "url" "01.patch" "02.patch" "01.diff" "02.diff"; do
 					_curl --create-dirs "${remote_base}/${file}" -o "${patch_dir}/${file}" 2> /dev/null && downloaded=true
 				done
+
+				# Try to download source directory contents
+				local source_api_url="${api_url}/source"
+				if _curl "${source_api_url}" -o "${patch_dir}/source_listing.json" 2> /dev/null; then
+					_download_directory_contents "${source_api_url}" "${patch_dir}/source"
+					rm -f "${patch_dir}/source_listing.json"
+				fi
 			fi
 
 			# Remove any 0-byte files that may have been created during downloads
@@ -1888,7 +1927,7 @@ _apply_patches() {
 			printf '%b\n' " ${unicode_blue_light_circle} Assuming source contents mirror the download folder structure"
 			printf '%b\n\n' " ${unicode_red_circle} ${color_yellow_light}Copying files from source directory...${color_end}"
 			cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
-			printf '\n%b\n' " ${unicode_green_circle} ${color_green_light}Source file replacement completed successfully${color_end}"
+			printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Source file replacement completed successfully${color_end}"
 
 		# Method 2: Local patches method
 		elif _has_valid_patch_files "${patch_dir}"; then
@@ -1899,7 +1938,7 @@ _apply_patches() {
 			if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
 				printf '%b\n\n' " ${unicode_red_circle} ${color_red}Applying patches${color_end} - ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${app_version[${app_name}]}${color_end}"
 				_apply_patch "${patch_file}"
-				printf '\n%b\n' " ${unicode_green_circle} ${color_green_light}Local patch method completed successfully${color_end}"
+				printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Local patch method completed successfully${color_end}"
 			else
 				printf '%b\n' " ${unicode_yellow_circle} Local patch processing failed - no valid patches generated"
 			fi
@@ -1912,23 +1951,26 @@ _apply_patches() {
 
 			if _download_remote; then
 				printf '%b\n' " ${unicode_green_circle} Remote patches downloaded successfully"
-				printf '%b\n' " ${unicode_blue_light_circle} ${color_yellow_light}Switching to LOCAL method${color_end} for downloaded patches"
 
-				if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
-					printf '%b\n\n' " ${unicode_red_circle} ${color_red}Applying patches${color_end} - ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${app_version[${app_name}]}${color_end}"
-					_apply_patch "${patch_file}"
-					printf '\n%b\n' " ${unicode_green_circle} ${color_green_light}Remote→Local patch method completed successfully${color_end}"
-				else
-					printf '%b\n' " ${unicode_yellow_circle} Downloaded patches could not be processed"
+				# Re-evaluate what was downloaded and use appropriate method
+				if [[ -d "${patch_dir}/source" && -n "$(ls -A "${patch_dir}/source" 2> /dev/null)" ]]; then
+					printf '%b\n' " ${unicode_blue_light_circle} ${color_yellow_light}Switching to SOURCE method${color_end} for downloaded source directory"
+					printf '%b\n' " ${unicode_blue_light_circle} Source directory contains files - using file replacement method"
+					printf '%b\n' " ${unicode_blue_light_circle} Assuming source contents mirror the download folder structure"
+					printf '%b\n' " ${unicode_red_circle} ${color_yellow_light}Copying files from source directory...${color_end}"
+					cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
+					printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Remote→Source method completed successfully${color_end}"
+				elif _has_valid_patch_files "${patch_dir}"; then
+					printf '%b\n' " ${unicode_blue_light_circle} ${color_yellow_light}Switching to LOCAL method${color_end} for downloaded patches"
+					if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
+						printf '%b\n\n' " ${unicode_red_circle} ${color_red}Applying patches${color_end} - ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${app_version[${app_name}]}${color_end}"
+						_apply_patch "${patch_file}"
+						printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Remote→Local patch method completed successfully${color_end}"
+					else
+						printf '%b\n' " ${unicode_yellow_circle} Downloaded patches could not be processed"
+					fi
 				fi
-			else
-				printf '%b\n' " ${unicode_yellow_circle} No remote patches available for ${app_name} ${app_version[${app_name}]}"
-				printf '%b\n' " ${unicode_blue_light_circle} Continuing build without patches..."
 			fi
-		else
-			printf '%b\n' " ${unicode_yellow_circle} ${color_yellow_light}Unknown patch directory state${color_end}"
-			printf '%b\n' " ${unicode_blue_light_circle} Patch directory exists but contains unrecognized content"
-			printf '%b\n' " ${unicode_blue_light_circle} Continuing build without patches..."
 		fi
 
 		# Handle libtorrent Jamfile
@@ -1947,8 +1989,6 @@ _apply_patches() {
 		fi
 
 	fi
-
-	printf '\n'
 }
 #######################################################################################################################################################
 # A unified download function to handle the processing of various options and directions the script can take.
