@@ -1,0 +1,71 @@
+diff --git a/src/base/bittorrent/torrentdescriptor.cpp b/src/base/bittorrent/torrentdescriptor.cpp
+index a8945d2..7e89e59 100644
+--- a/src/base/bittorrent/torrentdescriptor.cpp
++++ b/src/base/bittorrent/torrentdescriptor.cpp
+@@ -132,7 +132,7 @@ try
+     const lt::entry torrentEntry = lt::write_torrent_file(m_ltAddTorrentParams);
+     const nonstd::expected<void, QString> result = Utils::IO::saveToFile(path, torrentEntry);
+     if (!result)
+-        return result.get_unexpected();
++        return nonstd::make_unexpected(result.error());
+ 
+     return {};
+ }
+diff --git a/src/base/bittorrent/torrentimpl.cpp b/src/base/bittorrent/torrentimpl.cpp
+index 1c101d0..181ac50 100644
+--- a/src/base/bittorrent/torrentimpl.cpp
++++ b/src/base/bittorrent/torrentimpl.cpp
+@@ -2780,7 +2780,7 @@ nonstd::expected<QByteArray, QString> TorrentImpl::exportToBuffer() const
+ {
+     const nonstd::expected<lt::entry, QString> preparationResult = exportTorrent();
+     if (!preparationResult)
+-        return preparationResult.get_unexpected();
++        return nonstd::make_unexpected(preparationResult.error());
+ 
+     // usually torrent size should be smaller than 1 MB,
+     // however there are >100 MB v2/hybrid torrent files out in the wild
+@@ -2794,11 +2794,11 @@ nonstd::expected<void, QString> TorrentImpl::exportToFile(const Path &path) cons
+ {
+     const nonstd::expected<lt::entry, QString> preparationResult = exportTorrent();
+     if (!preparationResult)
+-        return preparationResult.get_unexpected();
++        return nonstd::make_unexpected(preparationResult.error());
+ 
+     const nonstd::expected<void, QString> saveResult = Utils::IO::saveToFile(path, preparationResult.value());
+     if (!saveResult)
+-        return saveResult.get_unexpected();
++        return nonstd::make_unexpected(saveResult.error());
+ 
+     return {};
+ }
+diff --git a/src/base/rss/rss_session.cpp b/src/base/rss/rss_session.cpp
+index 1fb2664..154c355 100644
+--- a/src/base/rss/rss_session.cpp
++++ b/src/base/rss/rss_session.cpp
+@@ -141,7 +141,7 @@ nonstd::expected<Folder *, QString> Session::addFolder(const QString &path)
+ {
+     const nonstd::expected<Folder *, QString> result = prepareItemDest(path);
+     if (!result)
+-        return result.get_unexpected();
++        return nonstd::make_unexpected(result.error());
+ 
+     auto *destFolder = result.value();
+     auto *folder = new Folder(path);
+@@ -157,7 +157,7 @@ nonstd::expected<Feed *, QString> Session::addFeed(const QString &url, const QSt
+ 
+     const nonstd::expected<Folder *, QString> result = prepareItemDest(path);
+     if (!result)
+-        return result.get_unexpected();
++        return nonstd::make_unexpected(result.error());
+ 
+     auto *destFolder = result.value();
+     auto *feed = new Feed(this, generateUID(), url, path, refreshInterval);
+@@ -225,7 +225,7 @@ nonstd::expected<void, QString> Session::moveItem(Item *item, const QString &des
+ 
+     const nonstd::expected<Folder *, QString> result = prepareItemDest(destPath);
+     if (!result)
+-        return result.get_unexpected();
++        return nonstd::make_unexpected(result.error());
+ 
+     auto *destFolder = result.value();
+     auto *srcFolder = static_cast<Folder *>(m_itemsByPath.value(Item::parentPath(item->path())));
