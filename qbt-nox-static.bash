@@ -1703,13 +1703,7 @@ _apply_patches() {
 			[[ -n ${app_version["${module_patch}"]} ]] && mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
 		done && unset module_patch
 
-		printf '\n%b\n\n' " ${unicode_yellow_circle} Using the defaults, these directories have been created:${color_end}"
-
-		for patch_info in "${qbt_modules_install_processed[@]}"; do
-			[[ -n ${app_version["${patch_info}"]} ]] && printf '%b\n' " ${color_cyan_light} ${qbt_install_dir_short}/patches/${patch_info}/${app_version["${patch_info}"]}${color_end}"
-		done && unset patch_info
-
-		printf '\n%b\n' " ${unicode_cyan_circle} If a patch file, named ${color_cyan_light}patch${color_end} is found in these directories it will be applied to the relevant module with a matching tag."
+		printf '\n%b\n' " ${unicode_yellow_circle} Patch directories created for ${#qbt_modules_install_processed[@]} modules${color_end}"
 	else
 		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
 		patch_file="${patch_dir}/patch"
@@ -1755,15 +1749,12 @@ _apply_patches() {
 
 		# Process local patches - never overwrites/updates files, only user does this
 		_process_local_patches() {
-			printf '%b\n' " ${unicode_blue_light_circle} Processing local patch files..."
-
 			# Always start fresh with patch file
 			true > "${patch_file}"
 			local has_content=false
 
 			# Step 1: Check if main patch file exists (highest priority for base)
 			if [[ -f "${patch_dir}/patch" && -s "${patch_dir}/patch" ]]; then
-				printf '%b\n' " ${unicode_green_circle} Found main patch file"
 				cat "${patch_dir}/patch" > "${patch_file}"
 				has_content=true
 			fi
@@ -1772,7 +1763,6 @@ _apply_patches() {
 			if [[ -f "${patch_dir}/url" && -s "${patch_dir}/url" ]]; then
 				local patch_url tmp_patch="${patch_dir}/url_download.tmp"
 				patch_url="$(< "${patch_dir}/url")"
-				printf '%b\n' " ${unicode_green_circle} Found URL file, downloading: ${color_yellow_light}${patch_url}${color_end}"
 
 				if _curl "${patch_url}" -o "${tmp_patch}"; then
 					if [[ ${has_content} == true ]]; then
@@ -1796,7 +1786,6 @@ _apply_patches() {
 			done
 
 			if [[ ${#additional_patches[@]} -gt 0 ]]; then
-				printf '%b\n' " ${unicode_green_circle} Found ${#additional_patches[@]} additional patch file(s), merging..."
 				for patch_src in "${additional_patches[@]}"; do
 					if [[ ${has_content} == true ]]; then
 						printf '\n\n# Merged from: %s\n' "${patch_src##*/}" >> "${patch_file}"
@@ -1809,20 +1798,13 @@ _apply_patches() {
 			fi
 
 			# Final validation
-			if [[ ${has_content} == true && -s ${patch_file} ]]; then
-				printf '%b\n' " ${unicode_green_circle} Local patch processing completed - merged patch ready"
-				return 0
-			else
-				printf '%b\n' " ${unicode_yellow_circle} No valid patch content found after processing"
-				return 1
-			fi
+			[[ ${has_content} == true && -s ${patch_file} ]]
 		}
 
 		# Download remote patches function
 		_download_remote() {
 			# Clean entire patch directory to ensure fresh remote patches
 			if [[ -d ${patch_dir} ]]; then
-				printf '%b\n' " ${unicode_yellow_circle} Cleaning patch directory for fresh remote patches"
 				rm -rf "${patch_dir:?}"
 			fi
 			mkdir -p "${patch_dir}"
@@ -1917,57 +1899,30 @@ _apply_patches() {
 
 		[[ ${source_default[${app_name}]} == "folder" && ! -d "${qbt_cache_dir}/${app_name}" ]] && printf '\n'
 
-		# Patching method selection with detailed user feedback
-		printf '%b\n' " ${unicode_blue_light_circle} ${color_cyan_light}Analyzing patch directory...${color_end}"
-
 		# Method 1: Source directory method (highest priority)
 		if [[ -d "${patch_dir}/source" && -n "$(ls -A "${patch_dir}/source" 2> /dev/null)" ]]; then
-			printf '%b\n' " ${unicode_green_circle} ${color_green_light}Method: SOURCE DIRECTORY${color_end} - Copying replacement files"
-			printf '%b\n' " ${unicode_blue_light_circle} Source directory contains files - using file replacement method"
-			printf '%b\n' " ${unicode_blue_light_circle} Assuming source contents mirror the download folder structure"
-			printf '%b\n\n' " ${unicode_red_circle} ${color_yellow_light}Copying files from source directory...${color_end}"
+			printf '%b\n' " ${unicode_green_circle} Using source directory method"
 			cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
-			printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Source file replacement completed successfully${color_end}"
 
 		# Method 2: Local patches method
 		elif _has_valid_patch_files "${patch_dir}"; then
-			printf '%b\n' " ${unicode_green_circle} ${color_green_light}Method: LOCAL PATCHES${color_end} - Processing local patch files"
-			printf '%b\n' " ${unicode_blue_light_circle} Found valid local patch files - using local patch method"
-			printf '%b\n' " ${unicode_blue_light_circle} Local method never overwrites files - user controls updates"
+			printf '%b\n' " ${unicode_green_circle} Using local patches method"
 
 			if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
-				printf '%b\n\n' " ${unicode_red_circle} ${color_red}Applying patches${color_end} - ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${app_version[${app_name}]}${color_end}"
 				_apply_patch "${patch_file}"
-				printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Local patch method completed successfully${color_end}"
-			else
-				printf '%b\n' " ${unicode_yellow_circle} Local patch processing failed - no valid patches generated"
 			fi
 
 		# Method 3: Remote patches method (when local is empty/0-byte/non-existent)
 		elif _is_patch_dir_empty "${patch_dir}"; then
-			printf '%b\n' " ${unicode_green_circle} ${color_green_light}Method: REMOTE PATCHES${color_end} - Downloading from remote repository"
-			printf '%b\n' " ${unicode_blue_light_circle} Patch directory is empty or has only 0-byte files"
-			printf '%b\n' " ${unicode_blue_light_circle} Attempting to download patches from remote repository..."
+			printf '%b\n' " ${unicode_green_circle} Using remote patches method"
 
 			if _download_remote; then
-				printf '%b\n' " ${unicode_green_circle} Remote patches downloaded successfully"
-
 				# Re-evaluate what was downloaded and use appropriate method
 				if [[ -d "${patch_dir}/source" && -n "$(ls -A "${patch_dir}/source" 2> /dev/null)" ]]; then
-					printf '%b\n' " ${unicode_blue_light_circle} ${color_yellow_light}Switching to SOURCE method${color_end} for downloaded source directory"
-					printf '%b\n' " ${unicode_blue_light_circle} Source directory contains files - using file replacement method"
-					printf '%b\n' " ${unicode_blue_light_circle} Assuming source contents mirror the download folder structure"
-					printf '%b\n' " ${unicode_red_circle} ${color_yellow_light}Copying files from source directory...${color_end}"
 					cp -rf "${patch_dir}/source/". "${qbt_dl_folder_path}/"
-					printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Remote→Source method completed successfully${color_end}"
 				elif _has_valid_patch_files "${patch_dir}"; then
-					printf '%b\n' " ${unicode_blue_light_circle} ${color_yellow_light}Switching to LOCAL method${color_end} for downloaded patches"
 					if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
-						printf '%b\n\n' " ${unicode_red_circle} ${color_red}Applying patches${color_end} - ${color_magenta_light}${app_name}${color_end} ${color_yellow_light}${app_version[${app_name}]}${color_end}"
 						_apply_patch "${patch_file}"
-						printf '\n%b\n\n' " ${unicode_green_circle} ${color_green_light}Remote→Local patch method completed successfully${color_end}"
-					else
-						printf '%b\n' " ${unicode_yellow_circle} Downloaded patches could not be processed"
 					fi
 				fi
 			fi
@@ -1978,13 +1933,11 @@ _apply_patches() {
 			local jamfile_dest="${qbt_dl_folder_path}/Jamfile"
 			if [[ ${qbt_libtorrent_master_jamfile} == "yes" ]]; then
 				_curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${jamfile_dest}"
-				printf '\n%b\n\n' " ${unicode_green_circle} Using libtorrent branch master Jamfile${color_end}"
 			elif [[ -f "${patch_dir}/Jamfile" ]]; then
 				cp -f "${patch_dir}/Jamfile" "${jamfile_dest}"
-				printf '%b\n\n' " ${unicode_green_circle} Using custom Jamfile${color_end}"
 			else
 				local remote_jamfile="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch:-main}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
-				_curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null || printf '\n%b\n\n' " ${unicode_green_circle} Using default libtorrent Jamfile${color_end}"
+				_curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null
 			fi
 		fi
 
