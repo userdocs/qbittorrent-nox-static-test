@@ -196,7 +196,7 @@ jobs:
 
       # - name: Host - Upload build dir on error or cancel
       #   if: ( cancelled() || failure() )
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       #   with:
       #     name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-logs"
       #     path: "${{ env.qbt_build_dir }}"
