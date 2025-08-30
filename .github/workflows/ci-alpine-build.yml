@@ -174,7 +174,7 @@ jobs:
           subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
       - name: Docker - Release Info ${{ inputs.distinct_id }}
-        working-directory: "${workspace}/${qbt_build_dir}/release_info"
+        working-directory: "${{ env.workspace }}/${{ env.qbt_build_dir }}/release_info"
         run: |
           mv *.md *.json "${workspace}/${qbt_build_dir}/completed"
 
