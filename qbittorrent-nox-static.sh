@@ -1819,7 +1819,8 @@ _apply_patches() {
 			_download_directory_contents() {
 				local dir_api_url="${1}"
 				local local_path="${2}"
-				local temp_json="${patch_dir}/temp_listing_$(basename "${local_path}").json"
+				local temp_json
+				temp_json="${patch_dir}/temp_listing_$(basename "${local_path}").json"
 
 				if _curl "${dir_api_url}" -o "${temp_json}" 2> /dev/null; then
 					# Parse JSON to extract entries
