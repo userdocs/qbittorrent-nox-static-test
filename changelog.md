@@ -1,4 +1,4 @@
-### v2.2.2 - 17/08/2025
+### v2.2.2 - 30/08/2025
 
 `qbt-nox-static.bash` was fully merged into `qbittorrent-nox-static.sh` so that the scripts no longer have significantly different code approaches to the same outcomes.
 
@@ -7,11 +7,23 @@ To maintain expected behavior I only needed to make a small adjustment to the sc
 This essentially completes the transition from the legacy script to the current without any breaking changes.
 
 fixed:
-    - install binary function was not working correctly and has been updated.
-    - fixed building glibc in debug mode due to incorrect flags
-    - fixed glibc utf-8 warning when building qbittorrent. install the locale C.UTF-8 from glibc source dir
-    - fix alpine version check properly compare versions.
-    - fixed boost version check that was creating a malformed url for github and beta releases.
+
+- install binary function was not working correctly and has been updated.
+- fixed building glibc in debug mode due to incorrect flags
+- fixed glibc utf-8 warning when building qbittorrent. install the locale C.UTF-8 from glibc source dir
+- fix alpine version check properly compare versions.
+- fixed boost version check that was creating a malformed url for github and beta releases.
+
+updated:
+
+- apply patches function is more capable now.
+  - source folder has top priority
+  - local patch files has next priority
+  - you can now have multiple patch/diff files in the dir as well as a url file.
+  - They will be merged into a single file called `patch` and applied.
+  - remote that third priority and will mirror the remote to the local dir when it is treated as a local patch files.
+- Download file and folder functions tweaked.
+- Set -a removed.
 
 ### v2.2.1 - 13/08/2025
 
