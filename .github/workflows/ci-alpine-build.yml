@@ -39,6 +39,7 @@ jobs:
         qbt_build_tool: [""]
         qbt_qbittorrent_tag: [""]
         qbt_boost_tag: ["boost-1.90.0.beta1"]
+        qbt_qt_tag: ["v6.11.0-beta1"] 
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
