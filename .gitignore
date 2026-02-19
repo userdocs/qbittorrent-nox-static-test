@@ -24,5 +24,3 @@ docs/npm-debug.log*
 docs/yarn-debug.log*
 docs/yarn-error.log*
 .claude/settings.local.json
-.github/workflows/deploy.yml
-.github/workflows/send_files.yaml
