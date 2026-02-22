@@ -148,6 +148,9 @@ jobs:
       - name: Docker - openssl ${{ inputs.distinct_id }}
         run: docker exec "${container_name}" bash "${script_name}" openssl
 
+      - name: FAIL
+        run: exit 1
+
       - name: Docker - boost ${{ inputs.distinct_id }}
         run: docker exec "${container_name}" bash "${script_name}" boost
 
