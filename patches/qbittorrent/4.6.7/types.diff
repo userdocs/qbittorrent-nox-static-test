@@ -1,0 +1,11 @@
+--- types.h.orig	2026-03-17 05:48:46.507479863 +0000
++++ types.h	2026-03-17 05:49:20.394936080 +0000
+@@ -32,6 +32,8 @@
+ #include <QHostAddress>
+ #include <QString>
+ #include <QVector>
++#include <QMap>
++#include <QHash>
+ 
+ #include "base/global.h"
+ 
