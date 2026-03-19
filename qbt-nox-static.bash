@@ -1251,15 +1251,15 @@ _custom_flags() {
 	[[ -z ${qbt_ldflags_consumed} ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} -fuse-ld=mold -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -fuse-ld=mold -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="${qbt_include_headers} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 
 		# Only set linker flags for final executables, not for libraries
 		if [[ ${app_name} =~ ^(icu|boost|qtbase|qbittorrent)$ ]]; then
-			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_ldflags:-}"
+			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -fuse-ld=mold -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_ldflags:-}"
 		else
-			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
+			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -fuse-ld=mold -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
 		fi
 
 		# Export compilation flags for build tools
