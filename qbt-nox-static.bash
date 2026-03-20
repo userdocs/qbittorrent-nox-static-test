@@ -28,7 +28,7 @@ script_version="2.2.2"
 # Unset some variables to set defaults.
 #################################################################################################################################################
 unset qbt_skip_delete qbt_git_proxy qbt_curl_proxy qbt_install_dir qbt_working_dir qbt_modules_test qbt_python_version
-unset qbt_cflags qbt_cxxflags_consumed qbt_cppflags_consumed qbt_ldflags_consumed
+unset qbt_cflags qbt_cflags_consumed qbt_cxxflags_consumed qbt_cppflags_consumed qbt_ldflags_consumed
 #################################################################################################################################################
 # Declare our associative arrays
 #################################################################################################################################################
@@ -582,7 +582,7 @@ _set_build_cons() {
 	if [[ ${exit_script} == "yes" ]]; then
 		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
 		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
-		exit
+		exit 1
 	fi
 }
 
@@ -1400,7 +1400,7 @@ _install_qbittorrent() {
 	fi
 }
 #######################################################################################################################################################
-# URL test for normal use and proxy use - make sure we can reach google.com before processing the URL functions
+# URL test for normal use and proxy use - make sure we can reach github.com before processing the URL functions
 #######################################################################################################################################################
 _test_url() {
 	test_url_status="$(_curl -o /dev/null --head --write-out '%{http_code}' "https://github.com")"
@@ -1432,12 +1432,10 @@ _qbt_host_deps() {
 			exit 1
 		fi
 
-		if [[ ${qbt_host_deps} == "yes" ]]; then
-			if [[ ${qbt_skip_icu} == "yes" ]]; then
-				qbt_host_deps_url="https://github.com/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-host-deps.tar.xz"
-			else
-				qbt_host_deps_url="https://github.com/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-icu-host-deps.tar.xz"
-			fi
+		if [[ ${qbt_skip_icu} == "yes" ]]; then
+			qbt_host_deps_url="https://github.com/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-host-deps.tar.xz"
+		else
+			qbt_host_deps_url="https://github.com/${qbt_host_deps_repo}/releases/latest/download/${host_arch}-icu-host-deps.tar.xz"
 		fi
 
 		source_default["${qbt_host_deps_url##*/}"]="file"
@@ -2361,12 +2359,8 @@ _download_file() {
 
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 
-	tar_flags=("--strip-components=0")
-
-	tar_additional_cmds+=("-C" "${qbt_install_dir}")
-
 	if [[ ${qbt_cache_dir_options} != "bs" ]]; then
-		_cmd tar xf "${qbt_dl_file_path}" "${tar_flags[@]}" "${tar_additional_cmds[@]}"
+		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
 		# we don't need to cd into the boost if we download it via source archives
 
 		mkdir -p "${qbt_dl_folder_path}${sub_dir}"
@@ -2397,9 +2391,10 @@ _fix_static_links() {
 }
 
 _fix_multiarch_static_links() {
-	if [[ -d "${qbt_install_dir}/${qbt_cross_host}" ]]; then
-		log_name="${qbt_cross_host}"
-		multiarch_lib_dir="${qbt_install_dir}/${qbt_cross_host}/lib"
+	local cross_host="${1}"
+	if [[ -d "${qbt_install_dir}/${cross_host}" ]]; then
+		log_name="${cross_host}"
+		multiarch_lib_dir="${qbt_install_dir}/${cross_host}/lib"
 		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -type f -name '*.a' -exec basename {} \;)
 		for file in "${library_list[@]}"; do
 			ln -fsn "${file}" "${multiarch_lib_dir}/${file%\.a}.so"
@@ -2700,7 +2695,7 @@ _multi_arch() {
 							fi
 							;;&
 						debian | ubuntu)
-							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on and Alpine Host with qt6"
+							printf '\n%b\n\n' " ${unicode_red_circle} The arch ${color_yellow_light}${qbt_cross_name}${color_end} can only be cross built on an Alpine Host with qt6"
 							exit 1
 							;;
 						*)
@@ -2755,6 +2750,7 @@ _multi_arch() {
 
 					_pushd "${qbt_install_dir}/bin"
 					for f in "${qbt_cross_host}"-*; do
+						[[ -e ${f} ]] || continue
 						ln -fsn "$f" "${f#"${qbt_cross_host}-"}"
 					done
 					_popd
@@ -2805,9 +2801,7 @@ _multi_arch() {
 			printf '\n%b\n\n' " ${unicode_red_circle} ${qbt_cross_name} is not a valid cross name option from this list:${color_end}"
 
 			while IFS= read -r qcn; do
-				for n in "${qcn[@]}"; do
-					printf '   %s\n' "$qcn"
-				done
+				printf '   %s\n' "$qcn"
 			done < <(printf '%s\n' "${!multi_arch_options[@]}" | sort)
 
 			printf '\n'
@@ -2837,8 +2831,14 @@ _release_info() {
 
 	if _git_git ls-remote -t --exit-code "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -q '"name": "dependency-version.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
+			local max_retries=10 retry_count=0
 			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > "${release_info_dir}/remote-dependency-version.json"; do
-				printf '%b\n' "Waiting for dependency-version.json URL."
+				((retry_count++))
+				if ((retry_count >= max_retries)); then
+					printf '%b\n' " ${unicode_yellow_circle} Failed to download dependency-version.json after ${max_retries} attempts, skipping revision check"
+					break
+				fi
+				printf '%b\n' "Waiting for dependency-version.json URL. (attempt ${retry_count}/${max_retries})"
 				sleep 2
 			done
 
@@ -3295,7 +3295,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-tag${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--qt-tag${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--help-qtt-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-sdu${color_end}   ${text_dim}or${color_end} ${color_blue_light}--script-debug-urls${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-sdu${color_end}   ${text_dim}or${color_end} ${color_blue_light}--help-script-debug-urls${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--static-ish${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-strip${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--static-ish${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-static-ish${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--strip${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-strip${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--workflow${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-workflow${color_end}"
 			printf '\n%b\n' " ${text_bold}${text_underlined}Module specific help - flags are used with the modules listed here.${color_end}"
@@ -3698,6 +3698,9 @@ _zlib() {
 _iconv() {
 	if [[ -n ${qbt_cache_dir} && -d "${qbt_cache_dir}/${app_name}" ]]; then
 		./gitsub.sh pull --depth 1
+	fi
+
+	if [[ ! -f ./configure ]]; then
 		./autogen.sh
 	fi
 
