@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 #
 # cSpell:includeRegExp #.*
 #
@@ -410,7 +409,7 @@ _set_default_values() {
 			qbt_core_deps["make"]="false"
 			qbt_core_deps["patch"]="false"
 
-			qbt_deps_delete["build-base"]="false"
+			qbt_deps_delete["build-base"]="true"
 		fi
 	fi
 
@@ -441,7 +440,7 @@ _set_default_values() {
 			qbt_core_deps["make"]="false"
 			qbt_core_deps["patch"]="false"
 
-			qbt_deps_delete["build-essential"]="false"
+			qbt_deps_delete["build-essential"]="true"
 		fi
 	fi
 
@@ -681,7 +680,7 @@ _check_dependencies() {
 		if sudo -n true &> /dev/null; then
 			printf '%b\n' " $unicode_green_circle ${color_red_light}sudo${color_end}"
 			qbt_privileges_required["sudo"]="true"
-			command_privilege=("sudo")
+			[[ ${qbt_privileges_required["root"]} != "true" ]] && command_privilege=("sudo")
 		else
 			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
 		fi
@@ -823,8 +822,6 @@ _check_dependencies() {
 		_update_os() {
 			printf '\n%b\n\n' " ${unicode_blue_light_circle} ${color_green}Updating${color_end}"
 			"${command_update_upgrade_os[@]}"
-			# needed to use these functions in the -bs flags
-			declare -fx _update_os
 		}
 
 		_install_tools() {
@@ -848,8 +845,6 @@ _check_dependencies() {
 			if [[ ${1} == "core" ]]; then
 				"${command_install_deps[@]}" "${qbt_core_deps_sorted[@]}"
 			fi
-			# needed to use these functions in the -bs flags
-			declare -fx _install_tools
 		}
 
 		if [[ $* =~ ([[:space:]]|^)(update)([[:space:]]|$) ]]; then
@@ -2346,8 +2341,7 @@ _download_file() {
 
 	# Set the extracted dir name to a var to easily use or remove it
 	local first_dir
-	first_dir="$(tar tf "${qbt_dl_file_path}" | head -1 | cut -f1 -d"/")"
-	if [[ -z ${first_dir} ]]; then
+	if ! first_dir=$(_get_archive_dir_name "${qbt_dl_file_path}"); then
 		_error_tag "${app_name}" "Archive appears empty or corrupt: ${qbt_dl_file_path}"
 	fi
 	qbt_dl_folder_path="${qbt_install_dir}/${first_dir}"
@@ -4088,6 +4082,7 @@ _qbittorrent() {
 #######################################################################################################################################################
 # A module installer loop. This will loop through the activated modules and install them via their corresponding functions
 #######################################################################################################################################################
+skipped_false=0
 for app_name in "${qbt_modules_install_processed[@]}"; do
 	if [[ ${qbt_cache_dir_options} != "bs" ]] && [[ ! -d "${qbt_install_dir}/boost" && ${app_name} =~ (libtorrent|qbittorrent) ]]; then
 		printf '\n%b\n\n' " ${unicode_red_circle}${color_red_light} Warning${color_end} This module depends on the boost module. Use them together: ${color_magenta_light}boost ${app_name}${color_end}"
