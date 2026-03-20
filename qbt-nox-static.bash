@@ -3635,7 +3635,12 @@ if [[ ${qbt_modules_test} == 'fail' || ${#} -eq '0' ]]; then
 	printf '\n%b\n' " ${unicode_yellow_circle}${text_bold} Below is a list of supported modules:${color_end}"
 	printf '\n%b\n' " ${unicode_magenta_circle}${color_magenta_light} ${qbt_modules_install_processed[*]}${color_end}"
 	_print_env
-	exit 1
+
+	if [[ ${qbt_modules_test} == 'fail' ]]; then
+		exit 1
+	fi
+
+	exit 0
 fi
 #######################################################################################################################################################
 # Functions part 4: no function past this point will be executed unless a valid module was passed
