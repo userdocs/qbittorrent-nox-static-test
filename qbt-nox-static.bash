@@ -571,6 +571,7 @@ _set_cxx_standard() {
 }
 
 _set_build_cons() {
+	local exit_script="no"
 	if [[ "$(_qbittorrent_build_cons)" == "yes" && ${qbt_qt_version} == "5" ]]; then
 		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support ${color_red}Qt5${color_yellow}. Please use ${color_green}Qt6${color_yellow} or a qBittorrent ${color_green}v4${color_yellow} tag.${color_end}"
 		exit_script="yes"
@@ -1069,44 +1070,32 @@ _debug() {
 	if [[ ${script_debug_urls} == "yes" ]]; then
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_url${color_end}"
 		while IFS= read -r github_url_sorted; do
-			for n in "${github_url_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_url[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${github_url_sorted}${color_end}: ${color_blue_light}${github_url[${github_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!github_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_tag${color_end}"
 		while IFS= read -r github_tag_sorted; do
-			for n in "${github_tag_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${github_tag[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${github_tag_sorted}${color_end}: ${color_blue_light}${github_tag[${github_tag_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!github_tag[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}app_version${color_end}"
 		while IFS= read -r app_version_sorted; do
-			for n in "${app_version_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${app_version[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${app_version_sorted}${color_end}: ${color_blue_light}${app_version[${app_version_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!app_version[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_archive_url${color_end}"
 		while IFS= read -r source_archive_url_sorted; do
-			for n in "${source_archive_url_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_archive_url[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${source_archive_url_sorted}${color_end}: ${color_blue_light}${source_archive_url[${source_archive_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}qbt_workflow_archive_url${color_end}"
 		while IFS= read -r qbt_workflow_archive_url_sorted; do
-			for n in "${qbt_workflow_archive_url_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${qbt_workflow_archive_url[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${qbt_workflow_archive_url_sorted}${color_end}: ${color_blue_light}${qbt_workflow_archive_url[${qbt_workflow_archive_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_default${color_end}"
 		while IFS= read -r source_default_sorted; do
-			for n in "${source_default_sorted[@]}"; do
-				printf '%b\n' " ${color_green_light}$n${color_end}: ${color_blue_light}${source_default[$n]}${color_end}"
-			done
+			printf '%b\n' " ${color_green_light}${source_default_sorted}${color_end}: ${color_blue_light}${source_default[${source_default_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!source_default[@]}" | sort)
 
 		printf '\n%b\n' " ${unicode_magenta_circle} ${color_yellow_light}Tests${color_end}"
@@ -2369,8 +2358,6 @@ _download_file() {
 
 	_cache_dirs_qbt_env
 
-	unset tar_additional_cmds
-
 	if [[ ${qbt_with_qemu} == "no" && ${qbt_restore_host_deps} == "yes" ]]; then
 		app_name="${app_name}_host_deps"
 	fi
@@ -3561,9 +3548,9 @@ while (("${#}")); do
 				printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
 				printf '\n%b\n' " Use a provided Qt tag when cloning from github."
 				printf '\n%b\n' " ${color_yellow}You can use this flag with this help command to see the value if called before the help option.${color_end}"
-				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -qt ${color_cyan_light}${github_tag[qtbase]}${color_end} ${color_blue_light}-h-qt${color_end}"
+				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -qtt ${color_cyan_light}${github_tag[qtbase]}${color_end} ${color_blue_light}-h-qtt${color_end}"
 				printf '\n%b\n' " ${text_dim}This flag must be provided with arguments.${color_end}"
-				printf '\n%b\n' " ${color_blue_light}-qt${color_end} ${color_cyan_light}${github_tag[qtbase]}${color_end}"
+				printf '\n%b\n' " ${color_blue_light}-qtt${color_end} ${color_cyan_light}${github_tag[qtbase]}${color_end}"
 			fi
 			printf '\n'
 			exit
@@ -3775,7 +3762,13 @@ _boost() {
 
 	if [[ ${qbt_build_tool} != 'cmake' ]]; then
 		# no valid to make bootstrap.sh build b2 statically so we do this otherwise it links dynamically a gcc.
-		sed -i "s|-o b2|-static --static -o b2|" "${qbt_install_dir}/boost/tools/build/src/engine/build.sh"
+		local boost_build_sh="${qbt_install_dir}/boost/tools/build/src/engine/build.sh"
+		if [[ -f ${boost_build_sh} ]]; then
+			sed -i "s|-o b2|-static --static -o b2|" "${boost_build_sh}"
+		else
+			printf '\n%b\n\n' " ${unicode_red_circle} ${color_red_light}Error:${color_end} Boost build.sh not found at expected path: ${boost_build_sh}"
+			exit 1
+		fi
 		"${qbt_install_dir}/boost/bootstrap.sh" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		ln -s "${qbt_install_dir}/boost/boost" "${qbt_install_dir}/boost/include"
 	else
@@ -3810,6 +3803,7 @@ _libtorrent() {
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
+		local arm_libatomic=""
 		[[ ${qbt_cross_name} =~ ^(armel|armhf|armv7|powerpc|mips|mipsel)$ ]] && arm_libatomic="-l:libatomic.a"
 		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2 or RC_2_0 when a custom pr branch was used. This will always give an accurate result.
 		libtorrent_version_hpp="$(sed -rn 's|(.*)LIBTORRENT_VERSION "(.*)"|\2|p' include/libtorrent/version.hpp)"
@@ -3934,6 +3928,7 @@ _qtbase() {
 
 	# force qmake to build and link statically against the cross compiler.
 	sed -i '/load(qt_config)/i QMAKE_LFLAGS = -static --static' "mkspecs/linux-g++/qmake.conf"
+	local arm_libatomic=""
 	[[ ${qbt_cross_name} =~ ^(armel|armhf|armv7|powerpc|mips|mipsel)$ ]] && arm_libatomic="-l:libatomic.a"
 
 	if [[ ${qbt_build_tool} == 'cmake' && ${qbt_qt_version} =~ ^6 ]]; then
