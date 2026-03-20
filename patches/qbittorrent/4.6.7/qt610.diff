@@ -22,6 +22,5 @@ index 156ddf6..fcfef23 100644
  #include <QVector>
 +#include <QMap>
 +#include <QHash>
- 
+
  #include "base/global.h"
- 
