@@ -74,10 +74,10 @@ _color_test() {
 			printf '%b\n' "${colors}${color_end}"
 		done
 		printf '\n'
-		exit
+		exit 0
 	else
 		printf '%s\n' "The terminal does not support color output."
-		exit
+		exit 1
 	fi
 }
 [[ ${1} == "ctest" ]] && _color_test # ./scriptname.sh ctest
@@ -114,7 +114,7 @@ elif [[ ${os_id} =~ ^(alpine)$ ]]; then
 	os_arch="$(apk --print-arch)"
 fi
 
-# Check against allowed codenames or if the codename is alpine version greater than 3.10
+# Check against allowed codenames or if the codename is alpine version greater than 3.18
 if [[ ! ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]] || [[ ${os_version_codename} =~ ^(alpine)$ && "$(apk version -t "${os_version_id}" "3.18")" == "<" ]]; then
 	printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow} This is not a supported OS. There is no reason to continue.${color_end}"
 	printf '%b\n\n' " id: ${text_dim}${color_yellow_light}${os_id}${color_end} codename: ${text_dim}${color_yellow_light}${os_version_codename}${color_end} version: ${text_dim}${color_red_light}${os_version_id}${color_end}"
@@ -238,6 +238,14 @@ _set_default_values() {
 	# Env setting for the icu tag
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
+	# Default to expecting qemu to be present for cross builds.
+	# yes will use the _qbt_host_deps function to pull in this prebuilt dependency package https://github.com/userdocs/qbt-host-deps
+	qbt_host_deps="${qbt_host_deps:-no}"
+	# Where are the deps installed to relative to qbt_install_dir
+	qbt_host_deps_path="${qbt_install_dir}/host_deps"
+	# Which repo is hosting them.
+	qbt_host_deps_repo="${qbt_host_deps_repo:-userdocs/qbt-host-deps}"
+
 	if [[ ${qbt_with_qemu} == "yes" ]] || [[ ${qbt_with_qemu} == "no" && ${qbt_host_deps} == "yes" ]]; then
 		qbt_modules_delete["icu_host_deps"]="true"
 		qbt_modules_delete["qtbase_host_deps"]="true"
@@ -249,14 +257,6 @@ _set_default_values() {
 			qbt_modules_delete["icu_host_deps"]="true"
 		fi
 	fi
-
-	# Default to expecting qemu to be present for cross builds.
-	# yes will use the _qbt_host_deps function to pull in this prebuilt dependency package https://github.com/userdocs/qbt-host-deps
-	qbt_host_deps="${qbt_host_deps:-no}"
-	# Where are the deps installed to relative to qbt_install_dir
-	qbt_host_deps_path="${qbt_install_dir}/host_deps"
-	# Which repo is hosting them.
-	qbt_host_deps_repo="${qbt_host_deps_repo:-userdocs/qbt-host-deps}"
 
 	# dependency version management - Env setting for the boost tag
 	if [[ ${qbt_libtorrent_version} == "1.2" || ${qbt_libtorrent_tag} =~ ^(v1\.2\.|RC_1_2) ]]; then
@@ -414,11 +414,6 @@ _set_default_values() {
 	fi
 
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then # Debian specific dependencies
-		if [[ -z ${qbt_cache_dir} ]]; then
-			qbt_deps_delete["autopoint"]="true"
-			qbt_deps_delete["gperf"]="true"
-		fi
-
 		if [[ -z ${qbt_cache_dir} ]]; then
 			qbt_deps_delete["autopoint"]="true"
 			qbt_deps_delete["gperf"]="true"
@@ -958,10 +953,26 @@ _tee() {
 # error functions
 #######################################################################################################################################################
 _error_tag() {
-	[[ ${github_tag[*]} =~ error_tag ]] && {
+	# If arguments are passed, report the specific error and exit
+	if [[ -n ${1} ]]; then
+		printf '\n%b\n\n' " ${unicode_red_circle} ${color_red_light}${1}:${color_end} ${2:-A tag resolved to error_tag}"
+		exit 1
+	fi
+
+	# Otherwise, iterate the github_tag array and report all error_tag entries
+	local error_found="no"
+
+	for tag_key in "${!github_tag[@]}"; do
+		if [[ ${github_tag[${tag_key}]} == "error_tag" ]]; then
+			printf '\n%b\n' " ${unicode_red_circle} ${color_red_light}${tag_key}:${color_end} tag resolved to error_tag"
+			error_found="yes"
+		fi
+	done
+
+	if [[ ${error_found} == "yes" ]]; then
 		printf '\n'
-		exit
-	}
+		exit 1
+	fi
 }
 #######################################################################################################################################################
 # _curl test download functions - default is no proxy - _curl is a test function and _curl_curl is the command function
@@ -1141,8 +1152,8 @@ _custom_flags() {
 
 	# Glibc 2.41 changed -D_FORTIFY_SOURCE to be internal. Having it breaks the build.
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		# if os is debian based then check glibc version is less than 241 to add the flag
-		if ((${app_version[glibc]/\./} < 241)); then
+		# if os is debian based then check glibc version is less than 2.41 to add the flag
+		if [[ "$(_semantic_version "${app_version[glibc]}")" -lt "$(_semantic_version "2.41")" ]]; then
 			qbt_preprocessor_flags+=" -D_FORTIFY_SOURCE=3"
 		fi
 	fi
@@ -1152,7 +1163,7 @@ _custom_flags() {
 	# Warning control
 	qbt_warning_flags="-w"
 	# Linker specific flags
-	qbt_linker_flags="${qbt_optimise_linker},--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,-z,--no-copy-dt-needed-entries,--build-id"
+	qbt_linker_flags="${qbt_optimise_linker},--as-needed,--sort-common,-z,nodlopen,-z,noexecstack,-z,now,-z,relro,--no-copy-dt-needed-entries,--build-id"
 
 	#######################################################################################################################################################
 	# GCC and CHOST info start
@@ -1496,14 +1507,14 @@ _set_module_urls() {
 	fi
 	github_tag[zlib]="develop" # same for zlib and zlib-ng
 	#github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",|\2|p')"
+	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",?|\2|p')"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
-	github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(v6|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+	github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 	github_tag[boost]=$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)
 	github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/{sub("refs/tags/", "");sub("(.*)(-a|-b|-r)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/{sub("refs/tags/", "");sub("(.*)(-a|-b|-r)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/{sub("refs/tags/", "");sub("(.*)(-alpha|-beta|-rc)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/{sub("refs/tags/", "");sub("(.*)(-alpha|-beta|-rc)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[qbittorrent]="$(_git_git ls-remote -q -t --refs "${github_url[qbittorrent]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	##########################################################################################################################################################
 	# Configure the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
@@ -1709,6 +1720,10 @@ _apply_patches() {
 		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
 		patch_file="${patch_dir}/patch"
 
+		# Resolve the patches repo default branch once for use in remote downloads and Jamfile fallback
+		local qbt_patches_url_branch
+		qbt_patches_url_branch="$(_git_git ls-remote -q --symref "https://github.com/${qbt_patches_url}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
+
 		# Helper function to check patch directory status
 		_check_patch_files() {
 			local dir="${1}" mode="${2:-has_valid}"
@@ -1829,9 +1844,6 @@ _apply_patches() {
 				rm -rf "${patch_dir:?}"
 			fi
 			mkdir -p "${patch_dir}"
-
-			local qbt_patches_url_branch
-			qbt_patches_url_branch="$(_git_git ls-remote -q --symref "https://github.com/${qbt_patches_url}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
 
 			# Validate branch name for security (allow alphanumeric, dash, underscore, dot)
 			if [[ ! ${qbt_patches_url_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
@@ -1979,7 +1991,7 @@ _apply_patches() {
 				_curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${jamfile_dest}"
 			elif [[ -f "${patch_dir}/Jamfile" ]]; then
 				cp -f "${patch_dir}/Jamfile" "${jamfile_dest}"
-			else
+			elif [[ -n ${qbt_patches_url_branch} ]]; then
 				local remote_jamfile="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 				_curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null
 			fi
@@ -2446,7 +2458,7 @@ _multi_arch() {
 							qbt_cross_host="arm-linux-musleabihf"
 							;;&
 						debian | ubuntu)
-							cross_arch="armel"
+							cross_arch="armhf"
 							qbt_cross_host="arm-linux-gnueabihf"
 							;;&
 						*)
@@ -2964,7 +2976,7 @@ while (("${#}")); do
 			fi
 			;;
 		-q | --qmake)
-			qbt_build_tool="--qmake"
+			qbt_build_tool="qmake"
 			shift
 			;;
 		-s | --strip)
@@ -3106,7 +3118,7 @@ while (("${#}")); do
 		-lm | --libtorrent-master)
 			github_tag[libtorrent]="$(_git "${github_url[libtorrent]}" -t "RC_${qbt_libtorrent_version//./_}")"
 			app_version[libtorrent]="${github_tag[libtorrent]}"
-			source_default[qbittorrent]="folder"
+			source_default[libtorrent]="folder"
 			qbt_workflow_override[libtorrent]="yes"
 			_test_git_ouput "${github_tag[libtorrent]}" "libtorrent" "RC_${qbt_libtorrent_version//./_}"
 			shift
@@ -4044,6 +4056,7 @@ for app_name in "${qbt_modules_install_processed[@]}"; do
 			############################################################
 			skipped_false=$((skipped_false + 1))
 			############################################################
+			unset sub_dir
 			if command -v "_${app_name}_bootstrap" &> /dev/null; then
 				"_${app_name}_bootstrap"
 			fi
