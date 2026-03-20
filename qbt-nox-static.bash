@@ -220,7 +220,7 @@ _set_default_values() {
 	# testing = easy way to switch to test qbt-musl-cross-make-test builds via an env in the workflow.
 	qbt_mcm_url="${qbt_mcm_url:-userdocs/qbt-musl-cross-make}"
 
-	# Default to this version of libtorrent is no tag or branch is specified. qbt_libtorrent_version=1.2 or -lt v1.2.18
+	# Default to this version of libtorrent is no tag or branch is specified. qbt_libtorrent_version=1.2 or 2.0 or 2.1 or -lt v1.2.18
 	qbt_libtorrent_version="${qbt_libtorrent_version:-2.0}"
 
 	# Use release Jamfile unless we need a specific fix from the relevant RC branch.
@@ -511,7 +511,7 @@ _os_std_cons() {
 }
 
 _libtorrent_std_cons() {
-	if [[ ${github_tag[libtorrent]} =~ ^(RC_1_2|RC_2_0)$ ]]; then
+	if [[ ${github_tag[libtorrent]} =~ ^(RC_1_2|RC_2_0|RC_2_1)$ ]]; then
 		printf "yes"
 		return
 	fi
@@ -521,6 +521,10 @@ _libtorrent_std_cons() {
 		return
 	fi
 	if [[ ${github_tag[libtorrent]} =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]]; then
+		printf "yes"
+		return
+	fi
+	if [[ ${github_tag[libtorrent]} =~ ^v2\.1\. ]]; then
 		printf "yes"
 		return
 	fi
@@ -1693,10 +1697,10 @@ _installation_modules() {
 #######################################################################################################################################################
 _apply_patches() {
 	[[ -n ${1} ]] && app_name="${1}"
-	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0 and so on.
-	default_jamfile="${app_version[libtorrent]//./\_}"
+	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0, RC_2_1 and so on.
+	default_jamfile="${app_version[libtorrent]//./_}"
 
-	# Remove everything after second underscore. Occasionally the tag will be short, like v2.0 so we need to make sure not remove the underscore if there is only one present.
+	# Remove everything after second underscore. Occasionally the tag will be short, like v2.0 or v2.1 so we need to make sure not remove the underscore if there is only one present.
 	local underscores="${default_jamfile//[^_]/}"
 	if [[ ${#underscores} -le 1 ]]; then
 		default_jamfile="RC_${default_jamfile}"
@@ -2863,7 +2867,7 @@ _release_info() {
 
 		An example project thats provides a complete solution: https://hotio.dev/containers/qbittorrent/
 
-		- [libtorrent versions](https://github.com/userdocs/qbittorrent-nox-static?tab=readme-ov-file#libtorrent-versions) \`v1.2\` and \`2.0\` builds in a single container
+		- [libtorrent versions](https://github.com/userdocs/qbittorrent-nox-static?tab=readme-ov-file#libtorrent-versions) \`v1.2\`, \`v2.0\` and \`v2.1\` builds in a single container
 		- Tracks [build revisions](https://github.com/userdocs/qbittorrent-nox-static?tab=readme-ov-file#revisions) for critical patches and dependency updates.
 		- wireguard vpn configuration - https://hotio.dev/containers/qbittorrent/#wireguard
 
@@ -3309,7 +3313,7 @@ while (("${#}")); do
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_zlib_type=\"\"${color_end} ${text_dim}-----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}zlib | zlib-ng${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_skip_icu=\"\"${color_end} ${text_dim}----------------- ${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_boost_tag=\"\"${color_end} ${text_dim}-----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}Takes a valid git tag or branch${color_end}"
-			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_version=\"\"${color_end} ${text_dim}--------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}1.2 | 2.0${color_end}"
+			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_version=\"\"${color_end} ${text_dim}--------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}1.2 | 2.0 | 2.1${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_tag=\"\"${color_end} ${text_dim}------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}Takes a valid git tag or branch${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_master_jamfile=\"\"${color_end} ${text_dim}-${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_qt_version=\"\"${color_end} ${text_dim}----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}5 | 5.15 | 6 | 6.2 | 6.3 and so on${color_end}"
@@ -3821,7 +3825,7 @@ _libtorrent() {
 	else
 		local arm_libatomic=""
 		[[ ${qbt_cross_name} =~ ^(armel|armhf|armv7|powerpc|mips|mipsel)$ ]] && arm_libatomic="-l:libatomic.a"
-		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2 or RC_2_0 when a custom pr branch was used. This will always give an accurate result.
+		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2, RC_2_0 or RC_2_1 when a custom pr branch was used. This will always give an accurate result.
 		libtorrent_version_hpp="$(sed -rn 's|(.*)LIBTORRENT_VERSION "(.*)"|\2|p' include/libtorrent/version.hpp)"
 		if [[ ${libtorrent_version_hpp} =~ ^1\.1\. ]]; then
 			libtorrent_library_filename="libtorrent.a"
