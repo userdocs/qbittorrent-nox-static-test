@@ -28,7 +28,7 @@ script_version="2.2.2"
 # Unset some variables to set defaults.
 #################################################################################################################################################
 unset qbt_skip_delete qbt_git_proxy qbt_curl_proxy qbt_install_dir qbt_working_dir qbt_modules_test qbt_python_version
-unset qbt_cflags qbt_cflags_consumed qbt_cxxflags_consumed qbt_cppflags_consumed qbt_ldflags_consumed
+unset qbt_cflags qbt_cxxflags qbt_cppflags qbt_ldflags qbt_cflags_consumed qbt_cxxflags_consumed qbt_cppflags_consumed qbt_ldflags_consumed
 #################################################################################################################################################
 # Declare our associative arrays
 #################################################################################################################################################
