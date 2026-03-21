@@ -112,6 +112,8 @@ if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 elif [[ ${os_id} =~ ^(alpine)$ ]]; then
 	# apk --print-arch gives x86_64/aarch64
 	os_arch="$(apk --print-arch)"
+else
+	os_arch="unknown"
 fi
 
 # Check against allowed codenames or if the codename is alpine version greater than 3.18
@@ -329,7 +331,12 @@ _set_default_values() {
 			qbt_use_qt6="ON"
 			;;&
 		"")
-			[[ ${qbt_build_tool} == 'cmake' ]] && qbt_qt_version="6" || qbt_qt_version="5"
+			if [[ ${qbt_build_tool} == 'cmake' ]]; then
+				qbt_qt_version="6"
+			else
+				qbt_qt_version="5"
+				qbt_use_qt6="OFF"
+			fi
 			;;&
 		*)
 			[[ ! ${qbt_qt_version} =~ ^(5|6)$ ]] && qbt_workflow_files="no"
@@ -639,7 +646,8 @@ _semantic_version() {
 	local test_array version_string
 	version_string="${1//./ }"
 	read -ra test_array < <(printf "%s" "$version_string" | sed 's/[^0-9 ]//g')
-	printf "%d%03d%03d%03d" "${test_array[0]:-0}" "${test_array[1]:-0}" "${test_array[2]:-0}" "${test_array[3]:-0}"
+	# Use 10# prefix to prevent octal interpretation of zero-padded numbers like 08, 09
+	printf "%d%03d%03d%03d" "$((10#${test_array[0]:-0}))" "$((10#${test_array[1]:-0}))" "$((10#${test_array[2]:-0}))" "$((10#${test_array[3]:-0}))"
 }
 #######################################################################################################################################################
 # Script Version check
@@ -728,7 +736,7 @@ _check_dependencies() {
 	_check_dependency_status() {
 		local silent="${1:-}"
 
-		filtered_params=()
+		local filtered_params=()
 		for pparam in "$@"; do
 			if [[ $pparam != "silent" ]]; then
 				filtered_params+=("$pparam")
@@ -916,8 +924,9 @@ _cmd() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317,SC2329
 _post_command() {
-	outcome=("${PIPESTATUS[@]}")
-	[[ -n ${1} ]] && command_type="${1}"
+	local command_type="${1:-tested}"
+	shift
+	local outcome=("${@}")
 	if [[ ${outcome[*]} =~ [1-9] ]]; then
 		printf '\n%b\n' " ${unicode_red_circle}${color_red} Error:${color_end} The ${command_type:-tested} command produced an exit code greater than 0 - Check the logs ${color_end}"
 		printf '\n%b\n' " ${unicode_yellow_circle}${color_yellow} Warning:${color_end} Developers can be easily startled or confused by wild issues, if you are seeing this warning and cannot resolve the issue yourself, please open an issue at this repo first:"
@@ -996,19 +1005,22 @@ _git_git() {
 }
 
 _git() {
-	if [[ ${2} == '-t' ]]; then
-		git_test_cmd=("${1}" "${2}" "${3}")
-	else
-		# Scan all arguments for a URL
-		for arg in "${@}"; do
-			if [[ ${arg} =~ https:// ]]; then
-				git_test_cmd=("${arg}")
-				break
-			fi
-		done
+	local git_test_cmd=("${@}")
+	local git_test_url=""
+
+	for arg in "${@}"; do
+		if [[ ${arg} =~ ^(https|git):// ]]; then
+			git_test_url="${arg}"
+			break
+		fi
+	done
+
+	if [[ -z ${git_test_url} ]]; then
+		printf '\n%b\n\n' " ${color_yellow}Git: No URL found in arguments${color_end}"
+		exit 1
 	fi
 
-	if ! _curl -fIL "${git_test_cmd[@]}" &> /dev/null; then
+	if ! _curl -fIL "${git_test_url}" &> /dev/null; then
 		printf '\n%b\n\n' " ${color_yellow}Git test 1: There is an issue with your proxy settings or network connection${color_end}"
 		exit 1
 	fi
@@ -1176,6 +1188,8 @@ _custom_flags() {
 		gcc_version="$("${gcc_command[@]}" -dumpversion | cut -d. -f1)"
 	fi
 
+	gcc_version="${gcc_version:-0}"
+
 	# Defaults - if no qbt_cross_host use defaults in path
 	export CHOST=""
 	export CC="gcc"
@@ -1217,7 +1231,7 @@ _custom_flags() {
 	if [[ ${os_id} =~ ^(alpine)$ ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" ]]; then
 		if [[ ! ${app_name} =~ ^(openssl)$ ]]; then
 			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-			qbt_linker_flags+=" -Wl,-flto -fuse-linker-plugin"
+			qbt_linker_flags+=" -flto"
 		fi
 	fi
 
@@ -1231,15 +1245,6 @@ _custom_flags() {
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
 	if [[ $qbt_optimise == "yes" ]]; then
 		qbt_optimise_march="-march=native"
-	fi
-
-	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
-	if [[ ${qbt_optimise_strip} == "yes" && ${qbt_build_debug} == "no" ]]; then
-		qbt_strip_qmake='strip'
-		qbt_strip_flags='-s'
-	else
-		qbt_strip_qmake='-nostrip'
-		qbt_strip_flags='-g'
 	fi
 
 	# Static linking specific
@@ -1257,8 +1262,8 @@ _custom_flags() {
 	[[ -z ${qbt_ldflags_consumed} ]] && qbt_ldflags="${LDFLAGS}" qbt_ldflags_consumed="yes"
 
 	_custom_flags_set() {
-		CFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} -fuse-ld=mold -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -fuse-ld=mold -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
+		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="${qbt_include_headers} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 
 		# Only set linker flags for final executables, not for libraries
@@ -1307,7 +1312,7 @@ _install_qbittorrent() {
 				method="${2}"
 				mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "/usr/local/bin")
 				install_command=("${command_privilege[@]}" "cp" "-rf" "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin")
-				chmod_command=("${command_privilege[@]}" "chmod" "+x" "-R" "/usr/local/bin/qbittorrent-nox")
+				chmod_command=("${command_privilege[@]}" "chmod" "+x" "/usr/local/bin/qbittorrent-nox")
 				chown_command=()
 				;;
 			custom)
@@ -1319,7 +1324,7 @@ _install_qbittorrent() {
 
 				mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "${3}")
 				install_command=("${command_privilege[@]}" "cp" "-rf" "${qbt_install_dir}/completed/qbittorrent-nox" "${3}")
-				chmod_command=("${command_privilege[@]}" "chmod" "+x" "-R" "${3}/qbittorrent-nox")
+				chmod_command=("${command_privilege[@]}" "chmod" "+x" "${3}/qbittorrent-nox")
 
 				# Check if path is relative or within user's home directory
 				# if yes then chown file as the local user nor sudo or root
@@ -1331,7 +1336,7 @@ _install_qbittorrent() {
 				method="local"
 				mkdir_command=("mkdir" "-p" "${LOCAL_USER_HOME}/bin")
 				install_command=("cp" "-rf" "${qbt_install_dir}/completed/qbittorrent-nox" "${LOCAL_USER_HOME}/bin")
-				chmod_command=("chmod" "+x" "-R" "${LOCAL_USER_HOME}/bin/qbittorrent-nox")
+				chmod_command=("chmod" "+x" "${LOCAL_USER_HOME}/bin/qbittorrent-nox")
 				chown_command=()
 				;;
 		esac
@@ -1504,7 +1509,7 @@ _set_module_urls() {
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
 	github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
-	github_tag[boost]=$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)
+	github_tag[boost]="$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
 	github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
@@ -1856,7 +1861,8 @@ _apply_patches() {
 				temp_json="${patch_dir}/temp_listing_$$_$(basename "${local_path}").json"
 
 				if _curl "${dir_api_url}" -o "${temp_json}" 2> /dev/null; then
-					# Parse JSON to extract entries
+					# Parse JSON using grep - assumes GitHub API response format with
+					# fields on separate lines and no escaped quotes in values
 					local name_matches type_matches url_matches
 					name_matches=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
 					type_matches=$(grep -o '"type"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
@@ -2105,7 +2111,7 @@ _cache_dirs_qbt_env() {
 			printf '%b\n' "     When the main .qbt_env changes, cached files may need updating to match new versions"
 			printf '\n%b\n' "   ${unicode_blue_light_circle} Run with ${color_blue_light}-cd ${qbt_cache_dir} bs${color_end} to update the cache with current dependency versions"
 			printf '\n%b\n\n' "   ${unicode_blue_light_circle} Use ${color_blue_light}diff \"${script_parent_path}/.qbt_env\" \"${qbt_cache_dir}/.qbt_env\"${color_end} to see differences"
-			exit 1
+			return 1
 		fi
 	fi
 }
@@ -2413,7 +2419,7 @@ _delete_function() {
 		else
 			printf '\n%b\n' " ${unicode_red_circle} Warning: Invalid app_name for deletion: ${app_name}"
 		fi
-		_pushd "${qbt_working_dir}"
+		cd "${qbt_working_dir}" || exit 1
 	else
 		printf '\n%b\n' " ${unicode_yellow_circle}${color_red_light} Skipping ${app_name} deletion${color_end}"
 	fi
@@ -3283,7 +3289,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--qbittorrent-tag${color_end}       ${color_yellow}Help:${color_end} ${color_blue_light}-h-qt${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-qbittorrent-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--qt-tag${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-qtt${color_end}   ${text_dim}or${color_end} ${color_blue_light}--help-qt-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-sdu${color_end}   ${text_dim}or${color_end} ${color_blue_light}--script-debug-urls${color_end}     ${color_yellow}Help:${color_end} ${color_blue_light}-h-sdu${color_end}   ${text_dim}or${color_end} ${color_blue_light}--help-script-debug-urls${color_end}"
-			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--static-ish${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-static-ish${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--static-ish${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-si${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-staticish${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--strip${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-s${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-strip${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--workflow${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-wf${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-workflow${color_end}"
 			printf '\n%b\n' " ${text_bold}${text_underlined}Module specific help - flags are used with the modules listed here.${color_end}"
@@ -3654,7 +3660,7 @@ _glibc_bootstrap() {
 _glibc() {
 	"${qbt_dl_folder_path}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-cet --enable-static-nss --disable-nscd --srcdir="${qbt_dl_folder_path}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/$app_name.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	make localedata/install-locales SUPPORTED-LOCALES='C.UTF-8/UTF-8' |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	unset sub_dir
@@ -3665,7 +3671,7 @@ _zlib() {
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
 		./configure --prefix="${qbt_install_dir}" --static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
 
@@ -3682,13 +3688,13 @@ _zlib() {
 				-D WITH_GTEST=OFF \
 				-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 			cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-			_post_command build
+			_post_command build "${PIPESTATUS[@]}"
 			cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 			dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 		else
 			./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 			make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-			_post_command build
+			_post_command build "${PIPESTATUS[@]}"
 			make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		fi
 	fi
@@ -3706,7 +3712,7 @@ _iconv() {
 
 	./configure "${multi_iconv[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -3730,7 +3736,7 @@ _icu_host_deps() {
 	_pushd "${qbt_host_deps_path}"
 	"${qbt_install_dir}/${app_name/_host_deps/}${sub_dir}/runConfigureICU" Linux --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	_pushd "${qbt_install_dir}/${app_name/_host_deps/}${sub_dir}"
 	unset sub_dir
 }
@@ -3744,7 +3750,7 @@ _icu_bootstrap() {
 _icu() {
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	unset sub_dir
 }
@@ -3754,7 +3760,7 @@ _openssl() {
 	openssl_config=("threads" "no-shared" "no-dso" "no-docs" "no-async" "no-comp" "no-idea" "no-mdc2" "no-rc5" "no-ec2m" "no-ssl3" "no-seed" "no-weak-ssl-ciphers")
 	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" "${qbt_openssl_build_type}" "${openssl_config[@]}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -3813,7 +3819,7 @@ _libtorrent() {
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
@@ -3838,7 +3844,7 @@ _libtorrent() {
 		fi
 
 		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness:-$(getconf LONG_BIT)}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${qbt_standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
 			prefix=${qbt_install_dir}
@@ -3870,7 +3876,7 @@ _double_conversion() {
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	fi
 }
@@ -3893,7 +3899,7 @@ _qtbase_host_deps() {
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_host_deps_path}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
 }
@@ -3963,7 +3969,7 @@ _qtbase() {
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ ${qbt_qt_version} =~ ^5 ]]; then
@@ -3986,7 +3992,7 @@ _qtbase() {
 			-no-feature-glib -no-feature-opengl -no-feature-dbus -no-feature-gui -no-feature-widgets -no-feature-testlib -no-compile-examples \
 			-skip tests -nomake tests -skip examples -nomake examples |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
@@ -4006,7 +4012,7 @@ _qttools_host_deps() {
 		-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 		-D CMAKE_INSTALL_PREFIX="${qbt_host_deps_path}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	_post_command build
+	_post_command build "${PIPESTATUS[@]}"
 	cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 }
 #######################################################################################################################################################
@@ -4024,14 +4030,14 @@ _qttools() {
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ ${qbt_qt_version} =~ ^5 ]]; then
 		"${qbt_install_dir}/bin/qmake" -set prefix "${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		"${qbt_install_dir}/bin/qmake" QMAKE_CXXFLAGS="-std=${qbt_cxx_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	else
 		printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
@@ -4060,7 +4066,7 @@ _qbittorrent() {
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		cmake --install build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	else
@@ -4073,7 +4079,7 @@ _qbittorrent() {
 			--disable-gui \
 			--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-		_post_command build
+		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	fi
 
