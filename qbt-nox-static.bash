@@ -2014,7 +2014,6 @@ _download() {
 	fi
 
 	# The location we download source archives and folders to
-	unset sub_dir
 	qbt_dl_dir="${qbt_install_dir}"
 	qbt_dl_file_path="${qbt_dl_dir}/${app_name}.tar.xz"
 	qbt_dl_folder_path="${qbt_dl_dir}/${app_name}"
@@ -3663,7 +3662,6 @@ _glibc() {
 	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	make localedata/install-locales SUPPORTED-LOCALES='C.UTF-8/UTF-8' |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	unset sub_dir
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317,SC2329
@@ -3738,7 +3736,6 @@ _icu_host_deps() {
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	_pushd "${qbt_install_dir}/${app_name/_host_deps/}${sub_dir}"
-	unset sub_dir
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317,SC2329
@@ -3752,7 +3749,6 @@ _icu() {
 	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
-	unset sub_dir
 }
 #######################################################################################################################################################
 # shellcheck disable=SC2317,SC2329
