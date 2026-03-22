@@ -2346,9 +2346,11 @@ _download_file() {
 
 	# Set the extracted dir name to a var to easily use or remove it
 	local first_dir
+
 	if ! first_dir=$(_get_archive_dir_name "${qbt_dl_file_path}"); then
 		_error_tag "${app_name}" "Archive appears empty or corrupt: ${qbt_dl_file_path}"
 	fi
+
 	qbt_dl_folder_path="${qbt_install_dir}/${first_dir}"
 
 	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
