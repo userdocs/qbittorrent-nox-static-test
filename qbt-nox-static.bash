@@ -92,7 +92,7 @@ script_basename="${script_full_path##*/}"
 #######################################################################################################################################################
 get_os_info() {
 	# shellcheck source=/dev/null
-	if . /etc/os-release &> /dev/null; then
+	if source /etc/os-release &> /dev/null; then
 		printf "%s" "${!1%_*}" # the expansion part is specific to the Alpine VERSION_ID format 1.2.3_alpha but won't break anything in Debian based format e.g. 12/24.04
 	else
 		printf "%s" "unknown" # This will make the script exit on the version check and provide useful reason.
@@ -108,10 +108,10 @@ os_version_id="$(get_os_info VERSION_ID)"                    # Get the version n
 
 if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 	# dpkg --print-architecture give amd64/arm64 and arch gives x86_64/aarch64
-	os_arch="$(dpkg --print-architecture)"
+	os_arch="$(dpkg --print-architecture 2> /dev/null)"
 elif [[ ${os_id} =~ ^(alpine)$ ]]; then
 	# apk --print-arch gives x86_64/aarch64
-	os_arch="$(apk --print-arch)"
+	os_arch="$(apk --print-arch 2> /dev/null)"
 else
 	os_arch="unknown"
 fi
@@ -4093,7 +4093,7 @@ for app_name in "${qbt_modules_install_processed[@]}"; do
 	else
 		if [[ ${skip_modules["${app_name}"]} == "no" ]]; then
 			############################################################
-			skipped_false=$((skipped_false + 1))
+			((skipped_false++))
 			############################################################
 			unset sub_dir
 			if command -v "_${app_name}_bootstrap" &> /dev/null; then
