@@ -1231,7 +1231,7 @@ _custom_flags() {
 	if [[ ${os_id} =~ ^(alpine)$ ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" ]]; then
 		if [[ ! ${app_name} =~ ^(openssl)$ ]]; then
 			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-			qbt_linker_flags+=" -flto"
+			qbt_linker_flags+=" -flto -fuse-linker-plugin"
 		fi
 	fi
 
@@ -1268,9 +1268,9 @@ _custom_flags() {
 
 		# Only set linker flags for final executables, not for libraries
 		if [[ ${app_name} =~ ^(icu|boost|qtbase|qbittorrent)$ ]]; then
-			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -fuse-ld=mold -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_ldflags:-}"
+			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_ldflags:-}"
 		else
-			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -fuse-ld=mold -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
+			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_ldflags:-}"
 		fi
 
 		# Export compilation flags for build tools
