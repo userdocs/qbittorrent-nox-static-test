@@ -103,10 +103,10 @@ jobs:
           printf '%s\n' "LC_ALL=C.UTF-8" >> env.custom
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
-      - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
-        with:
-          target_arch: ${{ matrix.qbt_cross_name }}
+      # - name: Host - Bootstrap qemu
+      #   uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+      #   with:
+      #     target_arch: ${{ matrix.qbt_cross_name }}
 
       - name: Host - Bootstrap docker container
         uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
