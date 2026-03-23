@@ -2810,6 +2810,7 @@ _multi_arch() {
 
 				if [[ ${qbt_use_host_deps} == "yes" ]]; then
 					multi_qtbase+=("-D QT_HOST_PATH=${qbt_host_deps_path}")
+					multi_qttools+=("-D QT_HOST_PATH=${qbt_host_deps_path}")
 				fi
 			else
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
