@@ -73,6 +73,7 @@ No breaking changes. Some work towards Libtorrent RC_2_1 support but mostly bugs
 | 67  | Medium   | Missing case handler for `-h-bs-c` / `--help-bootstrap-cmake` — documented but does nothing             | Fixed  |
 | 68  | Medium   | Qt tag filtering `sub("(.*)(-a\|-b\|-r)", "")` mangles pre-release tags instead of filtering them       | Fixed  |
 | 69  | Medium   | `qbt_dl_folder_path` collapses to install dir on corrupt archive (carried from v1)                      | Fixed  |
+| 70  | Medium   | fix qt apps multiarch command for qbt_host_deps                                                         | Fixed  |
 
 ### v2.2.2 - 30/08/2025
 
