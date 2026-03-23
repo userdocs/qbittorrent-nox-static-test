@@ -643,11 +643,43 @@ _print_env() {
 # This function converts a version string to a number for comparison purposes.
 #######################################################################################################################################################
 _semantic_version() {
-	local test_array version_string
-	version_string="${1//./ }"
-	read -ra test_array < <(printf "%s" "$version_string" | sed 's/[^0-9 ]//g')
-	# Use 10# prefix to prevent octal interpretation of zero-padded numbers like 08, 09
-	printf "%d%03d%03d%03d" "$((10#${test_array[0]:-0}))" "$((10#${test_array[1]:-0}))" "$((10#${test_array[2]:-0}))" "$((10#${test_array[3]:-0}))"
+	local version_string="${1#v}" # Strip leading v
+	local base tag tag_num
+	local major=0 minor=0 patch=0 build=0 prerelease=999
+
+	# Extract version base and pre-release tag
+	if [[ ${version_string} =~ ^([0-9\.]+)[-\.]?([a-zA-Z]+)[-\.]?([0-9]+)?(.*)$ ]]; then
+		base="${BASH_REMATCH[1]}"
+		tag="${BASH_REMATCH[2]}"
+		tag_num="${BASH_REMATCH[3]}"
+	else
+		base="${version_string}"
+		tag=""
+		tag_num=""
+	fi
+
+	# Convert base safely
+	local -a base_array
+	read -ra base_array < <(printf "%s" "${base//./ }" | sed 's/[^0-9 ]//g')
+
+	major="$((10#${base_array[0]:-0}))"
+	minor="$((10#${base_array[1]:-0}))"
+	patch="$((10#${base_array[2]:-0}))"
+	build="$((10#${base_array[3]:-0}))"
+
+	# Weigh prerelease tags to ensure they resolve as mathematically lower than final versions
+	if [[ -n ${tag} ]]; then
+		case "${tag,,}" in
+			a | alpha) prerelease=$((100 + 10#${tag_num:-0})) ;;
+			b | beta) prerelease=$((200 + 10#${tag_num:-0})) ;;
+			r | rc) prerelease=$((300 + 10#${tag_num:-0})) ;;
+			*) prerelease=999 ;;
+		esac
+	fi
+
+	# Use 10# prefix for values to prevent octal interpretation of zero-padded numbers like 08, 09
+	# Prepend 10 to the final string to prevent bash `[[ -lt ]]` evaluation from parsing it as octal if major is 0
+	printf "10%d%03d%03d%03d%03d" "${major}" "${minor}" "${patch}" "${build}" "${prerelease}"
 }
 #######################################################################################################################################################
 # Script Version check
