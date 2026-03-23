@@ -705,6 +705,7 @@ _check_dependencies() {
 	local command_install_deps=()
 	local command_update_upgrade_os=()
 	local install_simulation=()
+	local filtered_params=()
 
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
@@ -768,7 +769,7 @@ _check_dependencies() {
 	_check_dependency_status() {
 		local silent="${1:-}"
 
-		local filtered_params=()
+		filtered_params=()
 		for pparam in "$@"; do
 			if [[ $pparam != "silent" ]]; then
 				filtered_params+=("$pparam")
@@ -2802,15 +2803,18 @@ _multi_arch() {
 			multi_qtbase=("-xplatform" "${qbt_cross_qtbase}")    # ${multi_qtbase[@]}
 
 			if [[ ${qbt_build_tool} == 'cmake' ]]; then
-				multi_libtorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")        # ${multi_libtorrent[@]}
-				multi_double_conversion=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++") # ${multi_double_conversion[@]}
-				multi_qtbase=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")            # ${multi_qtbase[@]}
-				multi_qttools=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")           # ${multi_qttools[@]}
-				multi_qbittorrent=("-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++")       # ${multi_qbittorrent[@]}
+				local cmake_cxx_compiler="-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++"
+				multi_libtorrent=("${cmake_cxx_compiler}")        # ${multi_libtorrent[@]}
+				multi_double_conversion=("${cmake_cxx_compiler}") # ${multi_double_conversion[@]}
+				multi_qtbase=("${cmake_cxx_compiler}")            # ${multi_qtbase[@]}
+				multi_qttools=("${cmake_cxx_compiler}")           # ${multi_qttools[@]}
+				multi_qbittorrent=("${cmake_cxx_compiler}")       # ${multi_qbittorrent[@]}
 
 				if [[ ${qbt_use_host_deps} == "yes" ]]; then
-					multi_qtbase+=("-D QT_HOST_PATH=${qbt_host_deps_path}")
-					multi_qttools+=("-D QT_HOST_PATH=${qbt_host_deps_path}")
+					local qt_host_path="-D QT_HOST_PATH=${qbt_host_deps_path}"
+					multi_qtbase+=("${qt_host_path}")      # ${multi_qtbase[@]}
+					multi_qttools+=("${qt_host_path}")     # ${multi_qttools[@]}
+					multi_qbittorrent+=("${qt_host_path}") # ${multi_qbittorrent[@]}
 				fi
 			else
 				multi_libtorrent=("toolset=${qbt_cross_boost:-gcc}") # ${multi_libtorrent[@]}
