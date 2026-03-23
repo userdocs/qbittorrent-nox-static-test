@@ -705,6 +705,7 @@ _check_dependencies() {
 	local command_install_deps=()
 	local command_update_upgrade_os=()
 	local install_simulation=()
+	local filtered_params=()
 
 	_privilege_check() {
 		printf '\n%b\n' " ${unicode_blue_light_circle} ${text_bold}Checking: ${color_red_light}available privileges${color_end}"
@@ -768,7 +769,7 @@ _check_dependencies() {
 	_check_dependency_status() {
 		local silent="${1:-}"
 
-		local filtered_params=()
+		filtered_params=()
 		for pparam in "$@"; do
 			if [[ $pparam != "silent" ]]; then
 				filtered_params+=("$pparam")
