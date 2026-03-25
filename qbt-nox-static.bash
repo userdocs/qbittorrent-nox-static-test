@@ -522,11 +522,11 @@ _libtorrent_std_cons() {
 		return
 	fi
 
-	if [[ ${github_tag[libtorrent]} =~ ^v1\.2\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "1.2.19")" ]]; then
+	if [[ ${github_tag[libtorrent]} =~ ^v1\.2\. && "$(_semantic_version "${app_version[libtorrent]}")" -ge "$(_semantic_version "1.2.19")" ]]; then
 		printf "yes"
 		return
 	fi
-	if [[ ${github_tag[libtorrent]} =~ ^v2\.0\. && "$(_semantic_version "${github_tag[libtorrent]/v/}")" -ge "$(_semantic_version "2.0.10")" ]]; then
+	if [[ ${github_tag[libtorrent]} =~ ^v2\.0\. && "$(_semantic_version "${app_version[libtorrent]}")" -ge "$(_semantic_version "2.0.10")" ]]; then
 		printf "yes"
 		return
 	fi
@@ -548,7 +548,7 @@ _qbittorrent_std_cons() {
 		return
 	fi
 
-	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "4.6.0")" ]]; then
+	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${app_version[qbittorrent]}")" -ge "$(_semantic_version "4.6.0")" ]]; then
 		printf "yes"
 		return
 	fi
@@ -566,7 +566,7 @@ _qbittorrent_build_cons() {
 		return
 	fi
 
-	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${github_tag[qbittorrent]/release-/}")" -ge "$(_semantic_version "5.0.0")" ]]; then
+	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${app_version[qbittorrent]}")" -ge "$(_semantic_version "5.0.0")" ]]; then
 		printf "yes"
 		return
 	fi
@@ -1587,7 +1587,7 @@ _set_module_urls() {
 	source_archive_url[double_conversion]="https://github.com/google/double-conversion/archive/refs/tags/${github_tag[double_conversion]}.tar.gz"
 	source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
 	_boost_url # function to test and set the boost url and more
-	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${github_tag[libtorrent]#v}.tar.gz"
+	source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
 
 	read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
 	qt_version_short="${qt_version_short_array[0]}.${qt_version_short_array[1]}"
@@ -1605,7 +1605,7 @@ _set_module_urls() {
 	# Configure the qbt_workflow_archive_url associative array for all the applications this script uses and we call them as ${qbt_workflow_archive_url[app_name]}
 	##########################################################################################################################################################
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${github_tag[glibc]#glibc-}.tar.xz"
+		qbt_workflow_archive_url[glibc]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/glibc.${app_version[glibc]}.tar.xz"
 	fi
 
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
@@ -1619,7 +1619,7 @@ _set_module_urls() {
 	qbt_workflow_archive_url[double_conversion]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/double_conversion.tar.xz"
 	qbt_workflow_archive_url[openssl]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/openssl.tar.xz"
 	qbt_workflow_archive_url[boost]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/boost.tar.xz"
-	qbt_workflow_archive_url[libtorrent]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/libtorrent.${github_tag[libtorrent]/v/}.tar.xz"
+	qbt_workflow_archive_url[libtorrent]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/libtorrent.${app_version[libtorrent]}.tar.xz"
 	qbt_workflow_archive_url[qtbase]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qt${qbt_qt_version:0:1}base.tar.xz"
 	qbt_workflow_archive_url[qttools]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qt${qbt_qt_version:0:1}tools.tar.xz"
 	qbt_workflow_archive_url[qbittorrent]="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/qbittorrent.tar.xz"
@@ -1730,16 +1730,8 @@ _installation_modules() {
 #######################################################################################################################################################
 _apply_patches() {
 	[[ -n ${1} ]] && app_name="${1}"
-	# Start to define the default master branch we will use by transforming the app_version[libtorrent] variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0, RC_2_1 and so on.
-	default_jamfile="${app_version[libtorrent]//./_}"
-
-	# Remove everything after second underscore. Occasionally the tag will be short, like v2.0 or v2.1 so we need to make sure not remove the underscore if there is only one present.
-	local underscores="${default_jamfile//[^_]/}"
-	if [[ ${#underscores} -le 1 ]]; then
-		default_jamfile="RC_${default_jamfile}"
-	else
-		default_jamfile="RC_${default_jamfile%_*}"
-	fi
+	# Start to define the default master branch we will use by transforming the qbt_libtorrent_version variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0, RC_2_1 and so on.
+	default_jamfile="RC_${qbt_libtorrent_version//./_}"
 
 	if [[ ${app_name} == "bootstrap" ]]; then
 		_sort_modules
