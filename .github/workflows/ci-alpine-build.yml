@@ -48,8 +48,8 @@ jobs:
       set_workflow_files: ${{ inputs.workflow-files }}
       set_build_debug: ${{ inputs.debug }}
       set_qbt_mcm_url: "" # default is userdocs/qbt-musl-cross-make
-      set_qbt_with_qemu: "no" # default is yes
-      set_qbt_host_deps: "no" # default is no
+      set_qbt_with_qemu: "" # default is yes
+      set_qbt_host_deps: "" # default is no
       set_qbt_host_deps_repo: "" # default is userdocs/qbt-host-deps
       workspace: ${{ github.workspace }}
 
@@ -104,10 +104,10 @@ jobs:
           printf '%s\n' "LC_ALL=C.UTF-8" >> env.custom
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
-      # - name: Host - Bootstrap qemu
-      #   uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
-      #   with:
-      #     target_arch: ${{ matrix.qbt_cross_name }}
+      - name: Host - Bootstrap qemu
+        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        with:
+          target_arch: ${{ matrix.qbt_cross_name }}
 
       - name: Host - Bootstrap docker container
         uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
