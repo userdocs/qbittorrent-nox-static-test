@@ -3182,6 +3182,8 @@ while (("${#}")); do
 					app_version[libtorrent]="${app_version[libtorrent]//_/\.}"
 				elif [[ ${github_tag[libtorrent]} =~ ^v[0-9] ]]; then
 					app_version[libtorrent]="${github_tag[libtorrent]#v}"
+				else
+					app_version[libtorrent]="${github_tag[libtorrent]}"
 				fi
 				source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
 				if ! _curl "${source_archive_url[libtorrent]}" &> /dev/null; then
@@ -3195,7 +3197,11 @@ while (("${#}")); do
 				unset qbt_default_libtorrent_github_tag
 
 				read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
-				qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
+				if [[ -n ${lt_version_short_array[1]} ]]; then
+					qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
+				else
+					qbt_libtorrent_version="${lt_version_short_array[0]}"
+				fi
 				[[ ${github_tag[libtorrent]} =~ ^RC_ ]] && app_version[libtorrent]="RC_${app_version[libtorrent]//\./_}" # set back to RC_... so that release info has proper version context
 
 				_test_git_output "${github_tag[libtorrent]}" "libtorrent" "$2"
