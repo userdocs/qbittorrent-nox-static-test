@@ -687,7 +687,11 @@ _semantic_version() {
 _script_version() {
 	# Fetch remote script content once
 	local remote_content
-	remote_content="$(_curl -sL "${script_url}")"
+	remote_content="$(
+		_curl -sL "${script_url}"
+		printf x
+	)"
+	remote_content="${remote_content%x}"
 	if [[ -z ${remote_content} ]]; then
 		printf '\n%b\n' " ${unicode_yellow_circle} Could not fetch remote script for version/integrity check. Skipping."
 		return
