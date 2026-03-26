@@ -685,15 +685,46 @@ _semantic_version() {
 # Script Version check
 #######################################################################################################################################################
 _script_version() {
-	script_version_remote="$(_curl -sL "${script_url}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
+	# Fetch remote script content once
+	local remote_content
+	remote_content="$(_curl -sL "${script_url}")"
+	if [[ -z ${remote_content} ]]; then
+		printf '\n%b\n' " ${unicode_yellow_circle} Could not fetch remote script for version/integrity check. Skipping."
+		return
+	fi
+
+	local script_version_remote
+	script_version_remote="$(printf '%s' "${remote_content}" | sed -rn 's|^script_version="(.*)"$|\1|p')"
+
+	# SHA256 integrity check
+	local local_sha256 remote_sha256 is_modified=false
+	if command -v sha256sum &> /dev/null; then
+		local_sha256=$(sha256sum "${script_full_path}" 2> /dev/null | awk '{print $1}')
+		remote_sha256=$(printf '%s' "${remote_content}" | sha256sum 2> /dev/null | awk '{print $1}')
+		if [[ -n ${local_sha256} && -n ${remote_sha256} && ${local_sha256} != "${remote_sha256}" ]]; then
+			is_modified=true
+		fi
+	fi
 
 	if [[ "$(_semantic_version "${script_version}")" -lt "$(_semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${text_blink}${unicode_red_circle}${color_end} Script update available! Versions - ${color_yellow_light}local:${color_red_light}${script_version}${color_end} ${color_yellow_light}remote:${color_green_light}${script_version_remote}${color_end}"
-		printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} https://git.io/qbstatic${color_end}"
+		if [[ ${script_basename} == "qbittorrent-nox-static.sh" ]]; then
+			printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} ${script_url}${color_end}"
+		else
+			printf '\n%b\n' " ${unicode_green_circle} curl -sLo ${BASH_SOURCE[0]} usrdx.github.io/s/qbt.bash${color_end}"
+		fi
 	elif [[ "$(_semantic_version "${script_version}")" -gt "$(_semantic_version "${script_version_remote}")" ]]; then
 		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_red_light}${script_version}-dev${color_end}"
+		if [[ ${is_modified} == true ]]; then
+			printf '\n%b\n' " ${unicode_yellow_circle} Warning: Local development script has been modified.${color_end}"
+		fi
 	else
 		printf '\n%b\n' " ${unicode_green_circle} Script version: ${color_green_light}${script_version}${color_end}"
+		if [[ ${is_modified} == true ]]; then
+			printf '\n%b\n' " ${unicode_yellow_circle} Warning: Local script has been modified and differs from the remote version.${color_end}"
+			[[ -n ${local_sha256} ]] && printf '\n%b\n' "   ${text_dim}Local  SHA256: ${local_sha256}${color_end}"
+			[[ -n ${remote_sha256} ]] && printf '%b\n' "   ${text_dim}Remote SHA256: ${remote_sha256}${color_end}"
+		fi
 	fi
 }
 #######################################################################################################################################################
@@ -1507,7 +1538,7 @@ _set_build_directory() {
 #######################################################################################################################################################
 _set_module_urls() {
 	# Update check url for the _script_version function
-	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/master/qbt-nox-static.bash"
+	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/master/qbt-nox-static.sh"
 	##########################################################################################################################################################
 	# Configure the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
