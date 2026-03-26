@@ -703,8 +703,8 @@ _script_version() {
 	# SHA256 integrity check
 	local local_sha256 remote_sha256 is_modified=false
 	if command -v sha256sum &> /dev/null; then
-		local_sha256=$(sha256sum "${script_full_path}" 2> /dev/null | awk '{print $1}')
-		remote_sha256=$(printf '%s' "${remote_content}" | sha256sum 2> /dev/null | awk '{print $1}')
+		read -r local_sha256 _ < <(sha256sum "${script_full_path}" 2> /dev/null)
+		read -r remote_sha256 _ < <(printf '%s' "${remote_content}" | sha256sum)
 		if [[ -n ${local_sha256} && -n ${remote_sha256} && ${local_sha256} != "${remote_sha256}" ]]; then
 			is_modified=true
 		fi
