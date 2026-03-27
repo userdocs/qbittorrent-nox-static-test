@@ -74,6 +74,8 @@ No breaking changes. Some work towards Libtorrent RC_2_1 support but mostly bugs
 | 68  | Medium   | Qt tag filtering `sub("(.*)(-a\|-b\|-r)", "")` mangles pre-release tags instead of filtering them       | Fixed  |
 | 69  | Medium   | `qbt_dl_folder_path` collapses to install dir on corrupt archive (carried from v1)                      | Fixed  |
 | 70  | Medium   | fix qt apps multiarch command for qbt_host_deps                                                         | Fixed  |
+| 70  | Medium   | fix tag generation with libtorrent when using master branch                                             | Fixed  |
+| 71  | Medium   | script version function check will compare its sha256sum against the github hosted one                  | Added  |
 
 ### v2.2.2 - 30/08/2025
 
