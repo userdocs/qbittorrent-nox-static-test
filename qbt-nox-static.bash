@@ -502,7 +502,9 @@ _set_default_values() {
 # These use "Round Up" logic: find the first threshold where version <= threshold_version
 declare -A cxx_version_map=(
 	["libtorrent:1.1.99"]=14
-	["libtorrent:1.2.99"]=17
+	["libtorrent:1.2.18"]=17
+	["libtorrent:1.2.99"]=20
+	["libtorrent:2.0.9"]=17
 	["libtorrent:2.0.99"]=20
 	["libtorrent:999.999.999.999"]=23
 	["qbittorrent:4.5.99"]=17
