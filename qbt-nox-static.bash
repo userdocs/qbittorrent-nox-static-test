@@ -285,8 +285,8 @@ _set_default_values() {
 	# provide gcc flags for the build - this is not used by default but can be set to provide custom flags for the build.
 	qbt_optimise="${qbt_optimise:-no}"
 
-	# The default is 17 but can be manually defined via the env qbt_standard - this will be overridden by the _set_cxx_standard function in specific cases
-	qbt_standard="${qbt_standard:-20}" qbt_cxx_standard="c++${qbt_standard}"
+	# The baseline cxx standard is 17. This is dynamically resolved by _set_cxx_standard based on app versions
+	qbt_standard="${qbt_standard:-17}"
 
 	# Get the local users $PATH before we isolate the script by setting HOME to the install dir in the _set_build_directory function.
 	qbt_local_paths="$PATH"
@@ -402,8 +402,8 @@ _set_default_values() {
 		qbt_core_deps["gpg"]="false"
 		qbt_core_deps["linux-headers"]="false"
 		qbt_core_deps["pkgconf"]="false"
-		qbt_core_deps["py${qbt_python_version}-numpy"]="false"
-		qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
+		# qbt_core_deps["py${qbt_python_version}-numpy"]="false"
+		# qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
 		qbt_core_deps["ttf-freefont"]="false"
 		qbt_core_deps["xz"]="false"
 		# qbt_core_deps["musl-dbg"]="false"
@@ -437,7 +437,7 @@ _set_default_values() {
 		qbt_core_deps["ninja-build"]="false"
 		qbt_core_deps["openssl"]="false"
 		qbt_core_deps["pkg-config"]="false"
-		qbt_core_deps["python${qbt_python_version}-numpy"]="false"
+		# qbt_core_deps["python${qbt_python_version}-numpy"]="false"
 		qbt_core_deps["texinfo"]="false"
 		qbt_core_deps["unzip"]="false"
 		qbt_core_deps["xz-utils"]="false"
@@ -497,115 +497,117 @@ _set_default_values() {
 		fi
 	fi
 }
+
+# Version-to-standard thresholds: cxx_version_map["app:threshold_version"]=standard
+# These use "Round Up" logic: find the first threshold where version <= threshold_version
+declare -A cxx_version_map=(
+	["libtorrent:1.1.99"]=14
+	["libtorrent:1.2.99"]=17
+	["libtorrent:2.0.99"]=20
+	["libtorrent:999.999.999.999"]=23
+	["qbittorrent:4.5.99"]=17
+	["qbittorrent:5.1.99"]=20
+	["qbittorrent:999.999.999.999"]=23
+)
+
+# Qt version standard caps: cxx_qt_cap["qt_version"]=max_allowed_standard
+declare -A cxx_qt_cap=(
+	["5"]=17
+	["6"]=23
+)
+
+# OS compiler capability: cxx_os_cap["os_codename"]=max_supported_standard
+# Only listed OS versions support c++20 and above. Unlisted OS versions are capped at 17.
+declare -A cxx_os_cap=(
+	["alpine"]=23
+	["trixie"]=23
+	["noble"]=23
+)
 #######################################################################################################################################################
 # These functions set some build conditions dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
-_qt_std_cons() {
-	if [[ ${qbt_qt_version} == "6" ]]; then
-		printf "yes"
-		return
-	fi
-	printf "no"
+
+# Resolve the cxx standard requirement for a given app based on its branch or version
+_resolve_app_cxx_std() {
+	local app="$1"
+	local tag="${github_tag[$app]}"
+	local version="${app_version[$app]}"
+
+	# Determine the highest version parsed from either the tag or the version string
+	local v_tag v_app v_target
+	v_tag="$(_semantic_version "${tag}")"
+	v_app="$(_semantic_version "${version}")"
+	v_target="${v_tag}"
+	((v_app > v_tag)) && v_target="${v_app}"
+
+	# Check version thresholds using "Round Up" (Ceiling) logic
+	local threshold_key threshold_version v_threshold
+
+	# Iterate sorted keys for the specific app
+	while IFS=':' read -r _ threshold_version; do
+		threshold_key="${app}:${threshold_version}"
+		v_threshold="$(_semantic_version "${threshold_version}")"
+
+		if ((v_target <= v_threshold)); then
+			printf '%s' "${cxx_version_map[$threshold_key]}"
+			return
+		fi
+	done < <(printf '%s\n' "${!cxx_version_map[@]}" | grep "^${app}:" | sort -V)
+
+	printf '%s' "17"
 }
 
-_os_std_cons() {
-	if [[ ${os_version_codename} =~ ^(alpine|trixie|noble)$ ]]; then
-		printf "yes"
-		return
-	fi
-	printf "no"
-}
-
-_libtorrent_std_cons() {
-	if [[ ${github_tag[libtorrent]} =~ ^(RC_1_2|RC_2_0|RC_2_1)$ ]]; then
-		printf "yes"
-		return
-	fi
-
-	if [[ ${github_tag[libtorrent]} =~ ^v1\.2\. && "$(_semantic_version "${app_version[libtorrent]}")" -ge "$(_semantic_version "1.2.19")" ]]; then
-		printf "yes"
-		return
-	fi
-	if [[ ${github_tag[libtorrent]} =~ ^v2\.0\. && "$(_semantic_version "${app_version[libtorrent]}")" -ge "$(_semantic_version "2.0.10")" ]]; then
-		printf "yes"
-		return
-	fi
-	if [[ ${github_tag[libtorrent]} =~ ^v2\.1\. ]]; then
-		printf "yes"
-		return
-	fi
-	printf 'no'
-}
-
-_qbittorrent_std_cons() {
-	if [[ ${github_tag[qbittorrent]} == "master" ]]; then
-		printf "yes"
-		return
-	fi
-
-	if [[ ${github_tag[qbittorrent]} =~ ^v5_[0-9]+_x$ ]]; then
-		printf "yes"
-		return
-	fi
-
-	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${app_version[qbittorrent]}")" -ge "$(_semantic_version "4.6.0")" ]]; then
-		printf "yes"
-		return
-	fi
-	printf 'no'
-}
-
-_qbittorrent_build_cons() {
-	if [[ ${github_tag[qbittorrent]} == "master" ]]; then
-		printf "yes"
-		return
-	fi
-
-	if [[ ${github_tag[qbittorrent]} =~ ^v5_[0-9]+_x$ ]]; then
-		printf "yes"
-		return
-	fi
-
-	if [[ ${github_tag[qbittorrent]} =~ ^release- && "$(_semantic_version "${app_version[qbittorrent]}")" -ge "$(_semantic_version "5.0.0")" ]]; then
-		printf "yes"
-		return
-	fi
-	printf 'no'
-}
-
+## Determine the cxx standard by resolving requirements from libtorrent and qbittorrent
+# Flow: Max(Requirements) -> Apply System Caps (Min) -> Validation
 _set_cxx_standard() {
-	if [[ "$(_qt_std_cons)" == "yes" && "$(_os_std_cons)" == "yes" && "$(_libtorrent_std_cons)" == "yes" && "$(_qbittorrent_std_cons)" == "yes" ]]; then
-		qbt_standard="20" qbt_cxx_standard="c++${qbt_standard}"
-	else
-		qbt_standard="17" qbt_cxx_standard="c++${qbt_standard}"
-	fi
-}
+	local resolved_std=23
 
-_set_build_cons() {
-	local exit_script="no"
-	if [[ "$(_qbittorrent_build_cons)" == "yes" && ${qbt_qt_version} == "5" ]]; then
+	# Resolve each app's standard and take the HIGHEST requirement (Floor)
+	local app app_std qbt_app_std=17
+	for app in libtorrent qbittorrent; do
+		app_std="$(_resolve_app_cxx_std "${app}")"
+		((app_std < resolved_std)) && resolved_std="${app_std}"
+		[[ ${app} == "libtorrent" ]] && qbt_libtorrent_std="${app_std}"
+		[[ ${app} == "qbittorrent" ]] && qbt_app_std="${app_std}"
+	done
+
+	# Apply Qt version cap (Ceiling)
+	local qt_cap="${cxx_qt_cap[${qbt_qt_version}]:-23}"
+
+	# Apply OS compiler capability cap (Ceiling)
+	local os_cap="${cxx_os_cap[${os_version_codename}]:-23}"
+
+	# Validate: qBittorrent v5+ (qbt needs >= 20) requires Qt6
+	if ((qbt_app_std >= 20 && qt_cap <= 17)); then
 		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support ${color_red}Qt5${color_yellow}. Please use ${color_green}Qt6${color_yellow} or a qBittorrent ${color_green}v4${color_yellow} tag.${color_end}"
-		exit_script="yes"
-	elif [[ "$(_qbittorrent_build_cons)" == "yes" && "$(_os_std_cons)" == "no" ]]; then
-		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
-		exit_script="yes"
-	fi
-
-	if [[ ${exit_script} == "yes" ]]; then
 		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
-		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi # qbittorrent v5 transition - workflow specific
+		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
 		exit 1
 	fi
+
+	# Validate: qBittorrent v5+ (qbt needs >= 20) requires a modern OS compiler
+	if ((qbt_app_std >= 20 && os_cap < 20)); then
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
+		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
+		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
+		exit 1
+	fi
+
+	# Apply the caps to the resolved requirement (Taking the MINIMUM of floors and ceilings)
+	((resolved_std > qt_cap)) && resolved_std="${qt_cap}"
+	((resolved_std > os_cap)) && resolved_std="${os_cap}"
+
+	qbt_standard="${resolved_std}"
 }
 
 _libtorrent_v2_iconv_check() {
-	# iconv is only need for libtorrent v1 so we can ignore it for v2
-	if [[ ${qbt_libtorrent_version} =~ ^2\. || ${github_tag[libtorrent]} =~ ^(v2\.|RC_2_) ]]; then
-		qbt_modules_delete["iconv"]="true"
-	else
-		qbt_modules_delete["iconv"]="false"
+	# iconv is only needed for libtorrent v1.1/v1.2 - delete for everything else
+	qbt_modules_delete["iconv"]="true"
+	if [[ ${qbt_libtorrent_version} =~ ^1\.[12]$ || ${github_tag[libtorrent]} =~ ^(v1\.[12]\.|RC_1_[12]) ]]; then
+		unset 'qbt_modules_delete[iconv]'
 	fi
 }
+
 #######################################################################################################################################################
 # _print_env
 #######################################################################################################################################################
@@ -646,6 +648,12 @@ _semantic_version() {
 	local version_string="${1#v}" # Strip leading v
 	local base tag tag_num
 	local major=0 minor=0 patch=0 build=0 prerelease=999
+
+	# Handle explicitly "master", "main", or "latest" to evaluate to a maximum version
+	if [[ ${version_string,,} =~ ^(master|main|latest)$ ]]; then
+		printf "10%d%03d%03d%03d%03d" 999 999 999 999 999
+		return
+	fi
 
 	# Extract version base and pre-release tag
 	if [[ ${version_string} =~ ^([0-9\.]+)[-\.]?([a-zA-Z]+)[-\.]?([0-9]+)?(.*)$ ]]; then
@@ -1331,7 +1339,7 @@ _custom_flags() {
 
 	_custom_flags_set() {
 		CFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CXXFLAGS="${qbt_include_headers} ${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=c++${qbt_standard} -pthread ${qbt_static_flags} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="${qbt_include_headers} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 
 		# Only set linker flags for final executables, not for libraries
@@ -1347,7 +1355,7 @@ _custom_flags() {
 
 	_custom_flags_reset() {
 		CFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_optimise_march} ${qbt_cflags:-}"
-		CXXFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=${qbt_cxx_standard} ${qbt_optimise_march} ${qbt_cxxflags:-}"
+		CXXFLAGS="${qbt_optimization_flags} ${qbt_security_flags} ${qbt_warning_flags} -std=c++${qbt_standard} ${qbt_optimise_march} ${qbt_cxxflags:-}"
 		CPPFLAGS="${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 
 		# Export compilation flags for build tools
@@ -3696,7 +3704,6 @@ _error_tag
 # Functions part 3: Any functions that require that params in the above options while loop to have been shifted must come after this line
 #######################################################################################################################################################
 _set_cxx_standard
-_set_build_cons
 _debug "${@}"                # requires shifted params from options block 2
 _installation_modules "${@}" # requires shifted params from options block 2
 #######################################################################################################################################################
@@ -3874,8 +3881,18 @@ _libtorrent() {
 	export BOOST_INCLUDEDIR="${qbt_install_dir}/boost"
 	export BOOST_BUILD_PATH="${qbt_install_dir}/boost"
 
+	# Check the actual version of the cloned libtorrent so that we can determine RC_1_1, RC_1_2, RC_2_0 or RC_2_1 organically when a custom pr branch was used.
+	local libtorrent_version_hpp
+	libtorrent_version_hpp="$(sed -rn 's|.*LIBTORRENT_VERSION "([^"]+)".*|\1|p; s|.*version_str = "([^"]+)".*|\1|p' include/libtorrent/version.hpp | head -n1)"
+
 	if [[ ${qbt_build_tool} == 'cmake' ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
+
+		local cmake_webtorrent=()
+		if [[ ${libtorrent_version_hpp} =~ ^2\.1 ]]; then
+			cmake_webtorrent=("-D webtorrent=ON")
+		fi
+
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
@@ -3884,6 +3901,8 @@ _libtorrent() {
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D BUILD_SHARED_LIBS=OFF \
+			-D deprecated-functions=OFF \
+			"${cmake_webtorrent[@]}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -3893,8 +3912,7 @@ _libtorrent() {
 	else
 		local arm_libatomic=""
 		[[ ${qbt_cross_name} =~ ^(armel|armhf|armv7|powerpc|mips|mipsel)$ ]] && arm_libatomic="-l:libatomic.a"
-		# Check the actual version of the cloned libtorrent instead of using the tag so that we can determine RC_1_1, RC_1_2, RC_2_0 or RC_2_1 when a custom pr branch was used. This will always give an accurate result.
-		libtorrent_version_hpp="$(sed -rn 's|(.*)LIBTORRENT_VERSION "(.*)"|\2|p' include/libtorrent/version.hpp)"
+
 		if [[ ${libtorrent_version_hpp} =~ ^1\.1\. ]]; then
 			libtorrent_library_filename="libtorrent.a"
 		else
@@ -4056,7 +4074,7 @@ _qtbase() {
 			-I "${include_dir}" -L "${lib_dir}" \
 			QMAKE_LIBS_OPENSSL="-lssl -lcrypto ${arm_libatomic}" \
 			"${icu[@]}" -opensource -confirm-license -release \
-			-openssl-linked -static -c++std "${qbt_cxx_standard}" -qt-pcre \
+			-openssl-linked -static -c++std "c++${qbt_standard}" -qt-pcre \
 			-no-feature-glib -no-feature-opengl -no-feature-dbus -no-feature-gui -no-feature-widgets -no-feature-testlib -no-compile-examples \
 			-skip tests -nomake tests -skip examples -nomake examples |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -4074,7 +4092,6 @@ _qttools_host_deps() {
 	cmake -Wno-dev -Wno-deprecated -G Ninja -B build \
 		-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 		-D CMAKE_BUILD_TYPE="${qbt_cmake_build_type}" \
-		-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 		-D CMAKE_PREFIX_PATH="${qbt_host_deps_path}" \
 		-D BUILD_SHARED_LIBS=OFF \
 		-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -4092,7 +4109,6 @@ _qttools() {
 			"${multi_qttools[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
 			-D CMAKE_BUILD_TYPE="${qbt_cmake_build_type}" \
-			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir}" \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D CMAKE_SKIP_RPATH=on -D CMAKE_SKIP_INSTALL_RPATH=on \
@@ -4103,7 +4119,7 @@ _qttools() {
 		dot -Tpng -o "${qbt_install_dir}/completed/${app_name}-graph.png" "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot"
 	elif [[ ${qbt_qt_version} =~ ^5 ]]; then
 		"${qbt_install_dir}/bin/qmake" -set prefix "${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
-		"${qbt_install_dir}/bin/qmake" QMAKE_CXXFLAGS="-std=${qbt_cxx_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/bin/qmake" QMAKE_CFLAGS="-static -w" QMAKE_CXXFLAGS="-std=c++${qbt_standard} -static -w -fpermissive" QMAKE_LFLAGS="-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -4126,7 +4142,6 @@ _qbittorrent() {
 			-D CMAKE_BUILD_TYPE="${qbt_cmake_build_type}" \
 			-D QT6="${qbt_use_qt6}" \
 			-D STACKTRACE="${stacktrace:-ON}" \
-			-D CMAKE_CXX_STANDARD="${qbt_standard}" \
 			-D CMAKE_PREFIX_PATH="${qbt_install_dir};${qbt_install_dir}/boost" \
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
