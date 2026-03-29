@@ -566,8 +566,8 @@ _resolve_app_cxx_std() {
 _set_cxx_standard() {
 	local resolved_std=23
 
-	# Resolve each app's standard and take the HIGHEST requirement (Floor)
-	local app app_std qbt_app_std=17
+	# Resolve each app's standard and take the LOWEST capable standard to build both
+	local app app_std qbt_app_std=17 qbt_libtorrent_std=14
 	for app in libtorrent qbittorrent; do
 		app_std="$(_resolve_app_cxx_std "${app}")"
 		((app_std < resolved_std)) && resolved_std="${app_std}"
@@ -575,11 +575,19 @@ _set_cxx_standard() {
 		[[ ${app} == "qbittorrent" ]] && qbt_app_std="${app_std}"
 	done
 
+	# Validate: Prevent building incompatible ABIs like c++14 with c++17+
+	if (((qbt_libtorrent_std == 14 && qbt_app_std >= 17) || (qbt_app_std == 14 && qbt_libtorrent_std >= 17))); then
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}ABI Mismatch: libtorrent (c++${qbt_libtorrent_std}) and qBittorrent (c++${qbt_app_std}) cannot be built together as c++14 is incompatible with c++17+.${color_end}"
+		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
+		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
+		exit 1
+	fi
+
 	# Apply Qt version cap (Ceiling)
 	local qt_cap="${cxx_qt_cap[${qbt_qt_version}]:-23}"
 
 	# Apply OS compiler capability cap (Ceiling)
-	local os_cap="${cxx_os_cap[${os_version_codename}]:-23}"
+	local os_cap="${cxx_os_cap[${os_version_codename}]:-17}"
 
 	# Validate: qBittorrent v5+ (qbt needs >= 20) requires Qt6
 	if ((qbt_app_std >= 20 && qt_cap <= 17)); then
@@ -2060,7 +2068,11 @@ _apply_patches() {
 					if [[ -n ${repo_branch} ]]; then
 						local remote_jamfile="https://raw.githubusercontent.com/${patch_repo}/${repo_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 						if _curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null; then
-							[[ -s ${jamfile_dest} ]] && break || rm -f "${jamfile_dest}"
+							if [[ -s ${jamfile_dest} ]]; then
+								break
+							else
+								rm -f "${jamfile_dest}"
+							fi
 						fi
 					fi
 				done
@@ -3890,11 +3902,6 @@ _libtorrent() {
 	if [[ ${qbt_build_tool} == 'cmake' ]]; then
 		mkdir -p "${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}"
 
-		local cmake_webtorrent=()
-		if [[ ${libtorrent_version_hpp} =~ ^2\.1 ]]; then
-			cmake_webtorrent=("-D webtorrent=ON")
-		fi
-
 		cmake -Wno-dev -Wno-deprecated --graphviz="${qbt_install_dir}/graphs/${app_name}/${app_version["${app_name}"]}/dep-graph.dot" -G Ninja -B build \
 			"${multi_libtorrent[@]}" \
 			-D CMAKE_VERBOSE_MAKEFILE="${qbt_cmake_debug}" \
@@ -3904,7 +3911,6 @@ _libtorrent() {
 			-D Boost_NO_BOOST_CMAKE=TRUE \
 			-D BUILD_SHARED_LIBS=OFF \
 			-D deprecated-functions=OFF \
-			"${cmake_webtorrent[@]}" \
 			-D Iconv_LIBRARY="${lib_dir}/libiconv.a" \
 			-D CMAKE_INSTALL_PREFIX="${qbt_install_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		cmake --build build |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
@@ -3931,7 +3937,24 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" "${multi_libtorrent[@]}" -j"$(nproc)" "${lt_version_options[@]}" address-model="${bitness:-$(getconf LONG_BIT)}" "${qbt_libtorrent_debug}" optimization=speed cxxstd="${qbt_standard}" dht=on encryption=on crypto=openssl i2p=on extensions=on variant=release threading=multi link=static boost-link=static install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
+		"${qbt_install_dir}/boost/b2" -j"$(nproc)" \
+			"${multi_libtorrent[@]}" \
+			"${lt_version_options[@]}" \
+			address-model="${bitness:-$(getconf LONG_BIT)}" \
+			"${qbt_libtorrent_debug}" \
+			optimization=speed \
+			cxxstd="${qbt_standard}" \
+			dht=on \
+			encryption=on \
+			crypto=openssl \
+			i2p=on \
+			extensions=on \
+			deprecated-functions=off \
+			variant=release \
+			threading=multi \
+			link=static \
+			boost-link=static \
+			install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
