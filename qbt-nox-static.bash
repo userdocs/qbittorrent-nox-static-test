@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.2.3"
+script_version="2.2.4"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -2060,7 +2060,7 @@ _apply_patches() {
 					if [[ -n ${repo_branch} ]]; then
 						local remote_jamfile="https://raw.githubusercontent.com/${patch_repo}/${repo_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
 						if _curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null; then
-							[[ -s "${jamfile_dest}" ]] && break || rm -f "${jamfile_dest}"
+							[[ -s ${jamfile_dest} ]] && break || rm -f "${jamfile_dest}"
 						fi
 					fi
 				done
