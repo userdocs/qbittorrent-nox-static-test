@@ -1791,9 +1791,7 @@ _apply_patches() {
 		patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
 		patch_file="${patch_dir}/patch"
 
-		# Resolve the patches repo default branch once for use in remote downloads and Jamfile fallback
-		local qbt_patches_url_branch
-		qbt_patches_url_branch="$(_git_git ls-remote -q --symref "https://github.com/${qbt_patches_url}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
+		# Patches repo branches will be resolved per-repo later to support multiple URLs
 
 		# Helper function to check patch directory status
 		_check_patch_files() {
@@ -1829,35 +1827,29 @@ _apply_patches() {
 				has_content=true
 			fi
 
-			# Step 2: If URL file exists, download and append/merge to patch (only if not already present)
+			# Step 2: If URL file exists, process each URL line by line to download and merge to patch (only if not already present)
 			if [[ -f "${patch_dir}/url" && -s "${patch_dir}/url" ]]; then
 				local patch_url tmp_patch="${patch_dir}/url_download.tmp"
-				patch_url="$(< "${patch_dir}/url")"
+				while IFS= read -r patch_url || [[ -n ${patch_url} ]]; do
+					# Skip empty lines or comments
+					[[ -z ${patch_url} || ${patch_url} == \#* ]] && continue
 
-				# Check if this URL was already merged by looking for the comment marker
-				if [[ -f "${patch_dir}/patch" ]] && grep -Fq "# Merged from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null; then
-					# URL already processed, skip download
-					[[ -f "${patch_dir}/patch" && -s "${patch_dir}/patch" ]] && {
-						cat "${patch_dir}/patch" > "${temp_patch}"
-						has_content=true
-					}
-				elif [[ -f "${patch_dir}/patch" ]] && grep -Fq "# Downloaded from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null; then
-					# URL already processed, skip download
-					[[ -f "${patch_dir}/patch" && -s "${patch_dir}/patch" ]] && {
-						cat "${patch_dir}/patch" > "${temp_patch}"
-						has_content=true
-					}
-				else
-					# Download and merge URL content
-					if _curl "${patch_url}" -o "${tmp_patch}"; then
-						[[ ${has_content} == true ]] && printf '\n\n# Merged from URL: %s\n' "${patch_url}" >> "${temp_patch}" || printf '# Downloaded from URL: %s\n' "${patch_url}" > "${temp_patch}"
-						cat "${tmp_patch}" >> "${temp_patch}"
-						has_content=true
+					# Check if this URL was already merged by looking for the comment marker
+					if [[ -f "${patch_dir}/patch" ]] && { grep -Fq "# Merged from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null || grep -Fq "# Downloaded from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null; }; then
+						# URL already processed, skip download
+						continue
 					else
-						printf '%b\n' " ${unicode_yellow_circle} Failed to download from URL: ${patch_url}"
+						# Download and merge URL content
+						if _curl "${patch_url}" -o "${tmp_patch}"; then
+							[[ ${has_content} == true ]] && printf '\n\n# Merged from URL: %s\n' "${patch_url}" >> "${temp_patch}" || printf '# Downloaded from URL: %s\n' "${patch_url}" > "${temp_patch}"
+							cat "${tmp_patch}" >> "${temp_patch}"
+							has_content=true
+						else
+							printf '%b\n' " ${unicode_yellow_circle} Failed to download from URL: ${patch_url}"
+						fi
 					fi
-				fi
-				rm -f "${tmp_patch}"
+					rm -f "${tmp_patch}"
+				done < "${patch_dir}/url"
 			fi
 
 			# Step 3: Merge any *.patch or *.diff files last
@@ -1870,22 +1862,9 @@ _apply_patches() {
 				local patch_filename="${patch_src##*/}"
 
 				# Check if this patch file was already merged by looking for the comment marker
-				if [[ -f "${patch_dir}/patch" ]] && grep -Fq "# Merged from: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null; then
+				if [[ -f "${patch_dir}/patch" ]] && { grep -Fq "# Merged from: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null || grep -Fq "# From: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null; }; then
 					# Patch already processed, skip merge
-					[[ -f "${patch_dir}/patch" && -s "${patch_dir}/patch" ]] && {
-						[[ ${has_content} == false ]] && {
-							cat "${patch_dir}/patch" > "${temp_patch}"
-							has_content=true
-						}
-					}
-				elif [[ -f "${patch_dir}/patch" ]] && grep -Fq "# From: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null; then
-					# Patch already processed, skip merge
-					[[ -f "${patch_dir}/patch" && -s "${patch_dir}/patch" ]] && {
-						[[ ${has_content} == false ]] && {
-							cat "${patch_dir}/patch" > "${temp_patch}"
-							has_content=true
-						}
-					}
+					continue
 				else
 					# Merge the patch file
 					if [[ ${has_content} == true ]]; then
@@ -1916,14 +1895,7 @@ _apply_patches() {
 			fi
 			mkdir -p "${patch_dir}"
 
-			# Validate branch name for security (allow alphanumeric, dash, underscore, dot)
-			if [[ ! ${qbt_patches_url_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
-				printf '%b\n' " ${unicode_red_circle} Invalid branch name detected: ${qbt_patches_url_branch}"
-				return 1
-			fi
-			local remote_base="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch}/patches/${app_name}/${app_version[${app_name}]}"
-			local api_url="https://api.github.com/repos/${qbt_patches_url}/contents/patches/${app_name}/${app_version[${app_name}]}"
-			local downloaded=false
+			local downloaded_any=false
 
 			# Helper function to recursively download directory contents
 			_download_directory_contents() {
@@ -1973,29 +1945,46 @@ _apply_patches() {
 				fi
 			}
 
-			# Try GitHub API first, fallback to common filenames
-			if _curl "${api_url}" -o "${patch_dir}/listing.json" 2> /dev/null; then
-				_download_directory_contents "${api_url}" "${patch_dir}"
-				rm -f "${patch_dir}/listing.json"
-			else
-				# Fallback: try common files and source directory
-				for file in "patch" "url" "01.patch" "02.patch" "01.diff" "02.diff"; do
-					_curl --create-dirs "${remote_base}/${file}" -o "${patch_dir}/${file}" 2> /dev/null && downloaded=true
-				done
+			local patch_repo
+			for patch_repo in ${qbt_patches_url}; do
+				local repo_branch
+				repo_branch="$(_git_git ls-remote -q --symref "https://github.com/${patch_repo}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
 
-				# Try to download source directory contents
-				local source_api_url="${api_url}/source"
-				if _curl "${source_api_url}" -o "${patch_dir}/source_listing.json" 2> /dev/null; then
-					_download_directory_contents "${source_api_url}" "${patch_dir}/source"
-					rm -f "${patch_dir}/source_listing.json"
+				# Validate branch name for security (allow alphanumeric, dash, underscore, dot)
+				if [[ ! ${repo_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
+					printf '%b\n' " ${unicode_red_circle} Invalid branch name detected for ${patch_repo}: ${repo_branch}"
+					continue
 				fi
-			fi
+
+				local remote_base="https://raw.githubusercontent.com/${patch_repo}/${repo_branch}/patches/${app_name}/${app_version[${app_name}]}"
+				local api_url="https://api.github.com/repos/${patch_repo}/contents/patches/${app_name}/${app_version[${app_name}]}"
+				local downloaded=false
+
+				# Try GitHub API first, fallback to common filenames
+				if _curl "${api_url}" -o "${patch_dir}/listing.json" 2> /dev/null; then
+					_download_directory_contents "${api_url}" "${patch_dir}"
+					rm -f "${patch_dir}/listing.json"
+				else
+					# Fallback: try common files and source directory
+					for file in "patch" "url" "01.patch" "02.patch" "01.diff" "02.diff"; do
+						_curl --create-dirs "${remote_base}/${file}" -o "${patch_dir}/${file}" 2> /dev/null && downloaded=true
+					done
+
+					# Try to download source directory contents
+					local source_api_url="${api_url}/source"
+					if _curl "${source_api_url}" -o "${patch_dir}/source_listing.json" 2> /dev/null; then
+						_download_directory_contents "${source_api_url}" "${patch_dir}/source"
+						rm -f "${patch_dir}/source_listing.json"
+					fi
+				fi
+				[[ ${downloaded} == true ]] && downloaded_any=true
+			done
 
 			# Remove any 0-byte files that may have been created during downloads
 			find "${patch_dir}" -type f -size 0 -delete 2> /dev/null
 
 			# Return success if any files were downloaded
-			[[ ${downloaded} == true ]]
+			[[ ${downloaded_any} == true ]]
 		}
 
 		# Apply patches with smart fallback: source > local patches > remote patches
@@ -2063,9 +2052,18 @@ _apply_patches() {
 				_curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${jamfile_dest}"
 			elif [[ -f "${patch_dir}/Jamfile" ]]; then
 				cp -f "${patch_dir}/Jamfile" "${jamfile_dest}"
-			elif [[ -n ${qbt_patches_url_branch} ]]; then
-				local remote_jamfile="https://raw.githubusercontent.com/${qbt_patches_url}/${qbt_patches_url_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
-				_curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null
+			elif [[ -n ${qbt_patches_url} ]]; then
+				local patch_repo
+				for patch_repo in ${qbt_patches_url}; do
+					local repo_branch
+					repo_branch="$(_git_git ls-remote -q --symref "https://github.com/${patch_repo}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
+					if [[ -n ${repo_branch} ]]; then
+						local remote_jamfile="https://raw.githubusercontent.com/${patch_repo}/${repo_branch}/patches/${app_name}/${app_version[${app_name}]}/Jamfile"
+						if _curl "${remote_jamfile}" -o "${jamfile_dest}" 2> /dev/null; then
+							[[ -s "${jamfile_dest}" ]] && break || rm -f "${jamfile_dest}"
+						fi
+					fi
+				done
 			fi
 		fi
 
