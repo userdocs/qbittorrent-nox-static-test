@@ -587,7 +587,7 @@ _set_cxx_standard() {
 	local qt_cap="${cxx_qt_cap[${qbt_qt_version}]:-23}"
 
 	# Apply OS compiler capability cap (Ceiling)
-	local os_cap="${cxx_os_cap[${os_version_codename}]:-17}"
+	local os_cap="${cxx_os_cap[${os_version_codename}]:-23}"
 
 	# Validate: qBittorrent v5+ (qbt needs >= 20) requires Qt6
 	if ((qbt_app_std >= 20 && qt_cap <= 17)); then

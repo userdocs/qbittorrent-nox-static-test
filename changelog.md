@@ -17,6 +17,9 @@
 | 13  | High     | ABI Mismatch Check added to strictly prevent mixing `c++14` targeted projects with `c++17`              | Added   |
 | 14  | Medium   | `_set_cxx_standard` resolved lowest requirement instead of intersecting highest safe capable standard   | Fixed   |
 | 15  | Low      | `_download` Shellcheck `SC2015` warnings related to unsafe short-circuit evaluation logic               | Fixed   |
+| 16  | Low      | GitHub API JSON parsing in `_download_directory_contents` made robust against `null` types              | Fixed   |
+| 17  | Medium   | Manual `Jamfile` overrides correctly preserved during external patch directory synchronization          | Fixed   |
+| 18  | Medium   | Temporary patch files in `_process_local_patches` processed safely to avoid duplicate merge conflicts   | Fixed   |
 
 ### v2.2.3 - 21/03/2026
 
@@ -57,7 +60,7 @@ No breaking changes. Some work towards Libtorrent RC_2_1 support but mostly bugs
 | 31  | Low      | `sub_dir` global variable leaks between modules if bootstrap does not unset it                          | Fixed  |
 | 32  | Low      | `_boost` runs `sed -i` on `build.sh` without checking file exists or pattern matches                    | Fixed  |
 | 33  | Low      | `_cache_dirs_qbt_env` calls `exit 1` from inside download hot path — confusing failure context          | Fixed  |
-| 34  | Low      | `_download_directory_contents` grep-based JSON parsing fragile against API format changes               | Open   |
+| 34  | Low      | `_download_directory_contents` grep-based JSON parsing fragile against API format changes               | Fixed   |
 | 35  | Low      | `_fix_multiarch_static_links` ignores its argument, uses global `qbt_cross_host` directly               | Fixed  |
 | 36  | Low      | `_icu_host_deps` second `make` call uses `_tee` without `-a` — overwrites configure log                 | Fixed  |
 | 37  | Low      | `_installation_modules` regex over `${!qbt_modules_install[*]}` fragile with non-default IFS            | Open   |
