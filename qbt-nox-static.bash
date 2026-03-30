@@ -1807,7 +1807,7 @@ _apply_patches() {
 			[[ ! -d ${dir} ]] && { [[ ${mode} == "is_empty" ]] && return 0 || return 1; }
 
 			# Check for any valid patch files
-			for file in "${dir}/patch" "${dir}/url" "${dir}"/*.{patch,diff}; do
+			for file in "${dir}/patch" "${dir}/url" "${dir}/Jamfile" "${dir}"/*.{patch,diff}; do
 				if [[ -f ${file} && -s ${file} ]]; then
 					[[ ${mode} == "has_valid" ]] && return 0 || return 1
 				fi
@@ -1843,7 +1843,7 @@ _apply_patches() {
 					[[ -z ${patch_url} || ${patch_url} == \#* ]] && continue
 
 					# Check if this URL was already merged by looking for the comment marker
-					if [[ -f "${patch_dir}/patch" ]] && { grep -Fq "# Merged from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null || grep -Fq "# Downloaded from URL: ${patch_url}" "${patch_dir}/patch" 2> /dev/null; }; then
+					if grep -Fq "# Merged from URL: ${patch_url}" "${temp_patch}" 2> /dev/null || grep -Fq "# Downloaded from URL: ${patch_url}" "${temp_patch}" 2> /dev/null; then
 						# URL already processed, skip download
 						continue
 					else
@@ -1870,7 +1870,7 @@ _apply_patches() {
 				local patch_filename="${patch_src##*/}"
 
 				# Check if this patch file was already merged by looking for the comment marker
-				if [[ -f "${patch_dir}/patch" ]] && { grep -Fq "# Merged from: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null || grep -Fq "# From: ${patch_filename}" "${patch_dir}/patch" 2> /dev/null; }; then
+				if grep -Fq "# Merged from: ${patch_filename}" "${temp_patch}" 2> /dev/null || grep -Fq "# From: ${patch_filename}" "${temp_patch}" 2> /dev/null; then
 					# Patch already processed, skip merge
 					continue
 				else
@@ -1918,13 +1918,13 @@ _apply_patches() {
 					local name_matches type_matches url_matches
 					name_matches=$(grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
 					type_matches=$(grep -o '"type"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
-					url_matches=$(grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' "${temp_json}" 2> /dev/null)
+					url_matches=$(grep -oE '"download_url"[[:space:]]*:[[:space:]]*("[^"]*"|null)' "${temp_json}" 2> /dev/null)
 
 					# Convert to arrays
 					local names=() types=() urls=()
 					mapfile -t names < <(printf '%s\n' "${name_matches}" | sed 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
 					mapfile -t types < <(printf '%s\n' "${type_matches}" | sed 's/.*"type"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-					mapfile -t urls < <(printf '%s\n' "${url_matches}" | sed 's/.*"download_url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+					mapfile -t urls < <(printf '%s\n' "${url_matches}" | sed -E 's/.*"download_url"[[:space:]]*:[[:space:]]*("([^"]*)"|null).*/\2/')
 
 					# Validate array lengths match before processing
 					if [[ ${#names[@]} -ne ${#types[@]} ]] || [[ ${#names[@]} -ne ${#urls[@]} ]]; then
@@ -1974,7 +1974,7 @@ _apply_patches() {
 					rm -f "${patch_dir}/listing.json"
 				else
 					# Fallback: try common files and source directory
-					for file in "patch" "url" "01.patch" "02.patch" "01.diff" "02.diff"; do
+					for file in "patch" "url" "Jamfile" "01.patch" "02.patch" "01.diff" "02.diff"; do
 						_curl --create-dirs "${remote_base}/${file}" -o "${patch_dir}/${file}" 2> /dev/null && downloaded=true
 					done
 
