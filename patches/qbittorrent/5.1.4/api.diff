@@ -1,0 +1,36 @@
+diff --git a/src/base/http/connection.cpp b/src/base/http/connection.cpp
+index 55309a7..f5395dc 100644
+--- a/src/base/http/connection.cpp
++++ b/src/base/http/connection.cpp
+@@ -182,9 +182,9 @@ bool Connection::acceptsGzipEncoding(QString codings)
+ {
+     // [rfc7231] 5.3.4. Accept-Encoding
+ 
+-    const auto isCodingAvailable = [](const QList<QStringView> &list, const QStringView encoding) -> bool
++    const auto isCodingAvailable = [](const QStringList &list, const QStringView encoding) -> bool
+     {
+-        for (const QStringView &str : list)
++        for (const QString &str : list)
+         {
+             if (!str.startsWith(encoding))
+                 continue;
+@@ -194,7 +194,7 @@ bool Connection::acceptsGzipEncoding(QString codings)
+                 return true;
+ 
+             // [rfc7231] 5.3.1. Quality Values
+-            const QStringView substr = str.mid(encoding.size() + 3);  // ex. skip over "gzip;q="
++            const QStringView substr = QStringView(str).mid(encoding.size() + 3);  // ex. skip over "gzip;q="
+ 
+             bool ok = false;
+             const double qvalue = substr.toDouble(&ok);
+@@ -206,7 +206,9 @@ bool Connection::acceptsGzipEncoding(QString codings)
+         return false;
+     };
+ 
+-    const QList<QStringView> list = QStringView(codings.remove(u' ').remove(u'\t')).split(u',', Qt::SkipEmptyParts);
++    codings.remove(u' ');
++    codings.remove(u'\t');
++    const QStringList list = codings.split(u',', Qt::SkipEmptyParts);
+     if (list.isEmpty())
+         return false;
+ 
