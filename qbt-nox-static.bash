@@ -221,10 +221,7 @@ _set_default_values() {
 	# testing = easy way to switch to test qbt-musl-cross-make-test builds via an env in the workflow.
 	qbt_mcm_url="${qbt_mcm_url:-userdocs/qbt-musl-cross-make}"
 	# provide the github tag and it will use that to download instead of the latest release.
-	qbt_mcm_version="${qbt_mcm_version:-}"
-
-	# Native Alpine linux configuration. Does not work with crossbuilding.
-	qbt_use_lto="${qbt_use_lto:-yes}"
+	qbt_mcm_tag="${qbt_mcm_tag:-}"
 
 	# Default to this version of libtorrent is no tag or branch is specified. qbt_libtorrent_version=1.2 or 2.0 or 2.1 or -lt v1.2.18
 	qbt_libtorrent_version="${qbt_libtorrent_version:-2.0}"
@@ -290,9 +287,6 @@ _set_default_values() {
 	# provide gcc flags for the build - this is not used by default but can be set to provide custom flags for the build.
 	qbt_optimise="${qbt_optimise:-no}"
 
-	# Use mold as the linker - qbt_linker_mold=yes or -lm
-	qbt_linker_mold="${qbt_linker_mold:-no}"
-
 	# The baseline cxx standard is 17. This is dynamically resolved by _set_cxx_standard based on app versions
 	qbt_standard="${qbt_standard:-17}"
 
@@ -302,7 +296,14 @@ _set_default_values() {
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
 
-	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
+	# Native Alpine linux configuration. Does not apply when cross building using qbt-mcm
+	qbt_use_lto="${qbt_use_lto:-yes}"
+
+	# Use mold as the linker - available from qbt-mcm 2614
+	qbt_linker_mold="${qbt_linker_mold:-no}"
+
+	# Part 1: a series of # Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
+	# Part 2, the compiler options are located in the _custom_flags function.
 	if [[ ${qbt_build_debug} == "yes" ]]; then
 		qbt_optimise_strip="no"
 		qbt_cmake_debug='ON'
@@ -310,6 +311,7 @@ _set_default_values() {
 		qbt_qbittorrent_debug='--enable-debug'
 		qbt_cmake_build_type="Debug"
 		qbt_openssl_build_type="--debug"
+		qbt_use_lto="no"
 	else
 		qbt_cmake_debug='OFF'
 		qbt_cmake_build_type="Release"
@@ -654,7 +656,6 @@ _print_env() {
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_standard=\"${color_green_light}${qbt_standard}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_static_ish=\"${color_green_light}${qbt_static_ish}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_optimise=\"${color_green_light}${qbt_optimise}${color_yellow_light}\"${color_end}"
-	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_linker_mold=\"${color_green_light}${qbt_linker_mold}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_with_qemu=\"${color_green_light}${qbt_with_qemu}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_host_deps=\"${color_green_light}${qbt_host_deps}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_host_deps_repo=\"${color_green_light}${qbt_host_deps_repo}${color_yellow_light}\"${color_end}"
@@ -1223,7 +1224,7 @@ _debug() {
 # https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html#tldr-what-compiler-options-should-i-use
 _custom_flags() {
 
-	# Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
+	# Part 2: Dynamic tests to change settings based on the use of qmake,cmake,strip and debug
 	if [[ ${qbt_build_debug} == "yes" ]]; then
 		# Debug builds always get priority
 		qbt_strip_qmake='-nostrip'
@@ -1371,7 +1372,6 @@ _custom_flags() {
 		CPPFLAGS="${qbt_include_headers} ${qbt_preprocessor_flags} ${qbt_warning_flags} ${qbt_cppflags:-}"
 
 		# Only set linker flags for final executables, not for libraries
-		# -fuse-ld=mold is a linker-selection flag; only pass it in LDFLAGS, never in CFLAGS/CXXFLAGS
 		if [[ ${app_name} =~ ^(icu|boost|qtbase|qbittorrent)$ ]]; then
 			LDFLAGS="-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_mold_flag} ${qbt_ldflags:-}"
 		else
@@ -2823,10 +2823,10 @@ _multi_arch() {
 				if [[ ${QBT_MCM_DOCKER} != "YES" ]]; then
 					if [[ ${1} == "bootstrap" || ${qbt_cache_dir_options} == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 						printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross tool chain - ${color_cyan_light}https://github.com/${qbt_mcm_url}/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz${color_end}"
-						if [[ -z $qbt_mcm_version ]]; then
+						if [[ -z $qbt_mcm_tag ]]; then
 							_curl --create-dirs "https://github.com/${qbt_mcm_url}/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 						else
-							_curl --create-dirs "https://github.com/${qbt_mcm_url}/releases/download/${qbt_mcm_version}/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+							_curl --create-dirs "https://github.com/${qbt_mcm_url}/releases/download/${qbt_mcm_tag}/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz" -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
 						fi
 					fi
 
@@ -3110,10 +3110,6 @@ while (("${#}")); do
 				printf '\n%b\n\n' " ${unicode_red_light_circle} You cannot use the ${color_blue_light}-si${color_end} flag with cross compilation${color_end}"
 				exit 1
 			fi
-			;;
-		-lm | --linker-mold)
-			qbt_linker_mold="yes"
-			shift
 			;;
 		-sdu | --script-debug-urls)
 			script_debug_urls="yes"
@@ -3449,7 +3445,6 @@ while (("${#}")); do
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_standard=\"\"${color_end} ${text_dim}------------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}14 | 17 | 20 | 23 - c standard for gcc - OS dependent${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_static_ish=\"\"${color_end} ${text_dim}----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_optimise=\"\"${color_end} ${text_dim}------------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
-			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_linker_mold=\"\"${color_end} ${text_dim}---------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_host_deps=\"\"${color_end} ${text_dim}-----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_host_deps_repo=\"\"${color_end} ${text_dim}------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}userdocs/qbt-host-deps${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_legacy_mode=\"\"${color_end} ${text_dim}---------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
