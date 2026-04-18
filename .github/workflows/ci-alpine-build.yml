@@ -29,11 +29,11 @@ jobs:
         runs_on: ["ubuntu-24.04-arm"]
         os_id: ["alpine"]
         os_version_id: ["edge"]
-        qbt_cross_name:
-          ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
+        qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
         qbt_libtorrent_version: ["1.2", "2.0"]
         qbt_build_tool: [""]
-        # qbt_qt_tag: ["v6.10.3"]
+        qbt_qt_tag: ["v6.11.0"]
+        qbt_linker_mold: ["yes"]
         qbt_qbittorrent_tag: [""]
         include:
           - qbt_build_tool: ""
@@ -192,7 +192,6 @@ jobs:
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
           path: "${{ env.qbt_build_dir }}/completed/*.png"
-
       # - name: Host - Upload build dir on error or cancel
       #   if: ( cancelled() || failure() )
       #   uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
