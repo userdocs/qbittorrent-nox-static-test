@@ -188,6 +188,13 @@ _set_default_values() {
 	# Install relative to the script location.
 	qbt_install_dir="${qbt_working_dir}/${qbt_build_dir}"
 
+	# Toolchain directory - If using MCM Docker images, tools are in /usr/local
+	if [[ ${QBT_MCM_DOCKER} == "YES" ]]; then
+		qbt_tool_dir="/usr/local"
+	else
+		qbt_tool_dir="${qbt_install_dir}"
+	fi
+
 	# Used with printf. Use the qbt_install_dir variable but the ${HOME} path is replaced with a literal ~
 	qbt_install_dir_short="${qbt_install_dir/${HOME}/\~}"
 
@@ -299,12 +306,8 @@ _set_default_values() {
 	# The Alpine repository we use for package sources
 	CDN_URL="http://dl-cdn.alpinelinux.org/alpine/edge/main" # for alpine
 
-	# Native Alpine linux configuration. Does not apply when cross building using qbt-mcm
-	qbt_use_lto="${qbt_use_lto:-yes}"
-	qbt_lto_available="no"
-
+	# Determine if LTO can be used and is available
 	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} != "no" ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" || ${qbt_mcm_url} == "userdocs/musl-cross-make" ]]; then
-		qbt_lto_available="yes"
 		qbt_use_lto="yes"
 	else
 		qbt_use_lto="no"
@@ -559,11 +562,10 @@ declare -A cxx_version_cap=(
 # These functions set some build conditions dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 
-# Resolve the cxx standard capability (ceiling) for a given app based on its branch or version
-_resolve_app_cxx_cap() {
-	local app="$1"
-	local tag="${github_tag[$app]}"
-	local version="${app_version[$app]}"
+# Resolve the cxx standard value (floor or ceiling) for a given app
+_resolve_app_cxx_val() {
+	local app="$1" map_name="$2" default_val="$3"
+	local tag="${github_tag[$app]}" version="${app_version[$app]}"
 
 	local v_tag v_app v_target
 	v_tag="$(_semantic_version "${tag}")"
@@ -572,48 +574,19 @@ _resolve_app_cxx_cap() {
 	((v_app > v_tag)) && v_target="${v_app}"
 
 	local threshold_key threshold_version v_threshold
+	declare -n map_ref="${map_name}"
 
 	while IFS=':' read -r _ threshold_version; do
 		threshold_key="${app}:${threshold_version}"
 		v_threshold="$(_semantic_version "${threshold_version}")"
 
 		if ((v_target <= v_threshold)); then
-			printf '%s' "${cxx_version_cap[$threshold_key]}"
+			printf '%s' "${map_ref[$threshold_key]}"
 			return
 		fi
-	done < <(printf '%s\n' "${!cxx_version_cap[@]}" | grep "^${app}:" | sort -t: -k2,2 -V)
+	done < <(printf '%s\n' "${!map_ref[@]}" | grep "^${app}:" | sort -t: -k2,2 -V)
 
-	printf '%s' "23"
-}
-
-# Resolve the cxx standard requirement (floor) for a given app based on its branch or version
-_resolve_app_cxx_std() {
-	local app="$1"
-	local tag="${github_tag[$app]}"
-	local version="${app_version[$app]}"
-
-	# Determine the highest version parsed from either the tag or the version string
-	local v_tag v_app v_target
-	v_tag="$(_semantic_version "${tag}")"
-	v_app="$(_semantic_version "${version}")"
-	v_target="${v_tag}"
-	((v_app > v_tag)) && v_target="${v_app}"
-
-	# Check version thresholds using "Round Up" (Ceiling) logic
-	local threshold_key threshold_version v_threshold
-
-	# Iterate sorted keys for the specific app
-	while IFS=':' read -r _ threshold_version; do
-		threshold_key="${app}:${threshold_version}"
-		v_threshold="$(_semantic_version "${threshold_version}")"
-
-		if ((v_target <= v_threshold)); then
-			printf '%s' "${cxx_version_map[$threshold_key]}"
-			return
-		fi
-	done < <(printf '%s\n' "${!cxx_version_map[@]}" | grep "^${app}:" | sort -t: -k2,2 -V)
-
-	printf '%s' "17"
+	printf '%s' "${default_val}"
 }
 
 ## Determine the cxx standard by resolving requirements from libtorrent and qbittorrent
@@ -627,8 +600,8 @@ _set_cxx_standard() {
 
 	# Resolve each app's standard range [floor, ceiling]
 	for app in libtorrent qbittorrent; do
-		app_std="$(_resolve_app_cxx_std "${app}")"
-		app_cap="$(_resolve_app_cxx_cap "${app}")"
+		app_std="$(_resolve_app_cxx_val "${app}" "cxx_version_map" "17")"
+		app_cap="$(_resolve_app_cxx_val "${app}" "cxx_version_cap" "23")"
 
 		# Global floor is the MAX of all minimum requirements (lowest standard that satisfies all)
 		((app_std > global_floor)) && global_floor="${app_std}"
@@ -1356,14 +1329,18 @@ _custom_flags() {
 	export CHOST=""
 	export CC="gcc"
 	export AR="ar"
+	export NM="nm"
+	export RANLIB="ranlib"
 	export CXX="g++"
 
 	# Defaults - if qbt_cross_host is set then use qbt_cross_host
 	if [[ -n ${qbt_cross_host} ]]; then
 		export CHOST="${qbt_cross_host}"
-		export CC="${qbt_cross_host}-gcc"
-		export AR="${qbt_cross_host}-ar"
-		export CXX="${qbt_cross_host}-g++"
+		export CC="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc"
+		export AR="${qbt_tool_dir}/bin/${qbt_cross_host}-ar"
+		export NM="${qbt_tool_dir}/bin/${qbt_cross_host}-nm"
+		export RANLIB="${qbt_tool_dir}/bin/${qbt_cross_host}-ranlib"
+		export CXX="${qbt_tool_dir}/bin/${qbt_cross_host}-g++"
 	fi
 
 	# If cross compiling (qbt_cross_host is set) without qemu make sure the _host_deps modules use host gcc to build native build deps for icu/qtbase cross building
@@ -1371,6 +1348,8 @@ _custom_flags() {
 		export CHOST=""
 		export CC="/usr/bin/gcc"
 		export AR="/usr/bin/ar"
+		export NM="/usr/bin/nm"
+		export RANLIB="/usr/bin/ranlib"
 		export CXX="/usr/bin/g++"
 	fi
 
@@ -1390,10 +1369,21 @@ _custom_flags() {
 		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
-	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} == "yes" && ${qbt_lto_available} == "yes" ]]; then
+	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} == "yes" ]]; then
 		if [[ ! ${app_name} =~ ^(openssl)$ ]]; then
 			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
 			qbt_linker_flags+=" -flto -fuse-linker-plugin"
+
+			# Use GCC wrappers for LTO
+			if [[ -n ${qbt_cross_host} ]]; then
+				export AR="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ar"
+				export NM="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-nm"
+				export RANLIB="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ranlib"
+			else
+				export AR="gcc-ar"
+				export NM="gcc-nm"
+				export RANLIB="gcc-ranlib"
+			fi
 		fi
 	fi
 
@@ -2902,7 +2892,7 @@ _multi_arch() {
 
 					if [[ -f "${qbt_install_dir}/.active-toolchain-info" ]]; then
 						if [[ $(cat "${qbt_install_dir}/.active-toolchain-info") == "${qbt_cross_host}.tar.gz" ]]; then
-							if "${qbt_install_dir}/bin/${qbt_cross_host}-gcc" -v &> /dev/null; then
+							if "${qbt_tool_dir}/bin/${qbt_cross_host}-gcc" -v &> /dev/null; then
 								skip_toolchain_extract="yes"
 							fi
 						fi
@@ -2943,12 +2933,29 @@ _multi_arch() {
 			multi_qtbase=("-xplatform" "${qbt_cross_qtbase}")    # ${multi_qtbase[@]}
 
 			if [[ ${qbt_build_tool} == 'cmake' ]]; then
-				local cmake_cxx_compiler="-D CMAKE_CXX_COMPILER=${qbt_cross_host}-g++"
-				multi_libtorrent=("${cmake_cxx_compiler}")        # ${multi_libtorrent[@]}
-				multi_double_conversion=("${cmake_cxx_compiler}") # ${multi_double_conversion[@]}
-				multi_qtbase=("${cmake_cxx_compiler}")            # ${multi_qtbase[@]}
-				multi_qttools=("${cmake_cxx_compiler}")           # ${multi_qttools[@]}
-				multi_qbittorrent=("${cmake_cxx_compiler}")       # ${multi_qbittorrent[@]}
+				local ar_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-ar"
+				local nm_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-nm"
+				local ranlib_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-ranlib"
+
+				if [[ ${qbt_use_lto} == "yes" ]]; then
+					ar_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ar"
+					nm_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-nm"
+					ranlib_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ranlib"
+				fi
+
+				local cmake_c_compiler="-D CMAKE_C_COMPILER=${qbt_tool_dir}/bin/${qbt_cross_host}-gcc"
+				local cmake_cxx_compiler="-D CMAKE_CXX_COMPILER=${qbt_tool_dir}/bin/${qbt_cross_host}-g++"
+				local cmake_ar="-D CMAKE_AR=${ar_tool}"
+				local cmake_nm="-D CMAKE_NM=${nm_tool}"
+				local cmake_ranlib="-D CMAKE_RANLIB=${ranlib_tool}"
+
+				local cmake_toolchain=("${cmake_c_compiler}" "${cmake_cxx_compiler}" "${cmake_ar}" "${cmake_nm}" "${cmake_ranlib}")
+
+				multi_libtorrent=("${cmake_toolchain[@]}")        # ${multi_libtorrent[@]}
+				multi_double_conversion=("${cmake_toolchain[@]}") # ${multi_double_conversion[@]}
+				multi_qtbase=("${cmake_toolchain[@]}")            # ${multi_qtbase[@]}
+				multi_qttools=("${cmake_toolchain[@]}")           # ${multi_qttools[@]}
+				multi_qbittorrent=("${cmake_toolchain[@]}")       # ${multi_qbittorrent[@]}
 
 				if [[ ${qbt_use_host_deps} == "yes" ]]; then
 					local qt_host_path="-D QT_HOST_PATH=${qbt_host_deps_path}"
@@ -4136,10 +4143,10 @@ _qtbase() {
 		QMAKE_LINK_SHLIB        = ${qbt_cross_host}-g++
 
 		# modifications to linux.conf
-		QMAKE_AR                = ${qbt_cross_host}-ar cqs
-		QMAKE_OBJCOPY           = ${qbt_cross_host}-objcopy
-		QMAKE_NM                = ${qbt_cross_host}-nm -P
-		QMAKE_STRIP             = ${qbt_cross_host}-strip
+		QMAKE_AR                = ${AR} cqs
+		QMAKE_OBJCOPY           = ${qbt_tool_dir}/bin/${qbt_cross_host}-objcopy
+		QMAKE_NM                = ${NM} -P
+		QMAKE_STRIP             = ${qbt_tool_dir}/bin/${qbt_cross_host}-strip
 
 		QMAKE_CFLAGS            = ${CFLAGS}
 		QMAKE_CXXFLAGS          = ${CXXFLAGS} -w -fpermissive
