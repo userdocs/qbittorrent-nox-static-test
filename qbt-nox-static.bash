@@ -159,6 +159,9 @@ multi_arch_options["loongarch64"]="loongarch64"
 _set_default_values() {
 	# For debian based docker deploys to not get prompted to set the timezone.
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
+		export LANG="C.UTF-8"
+		export LANGUAGE="C.UTF-8"
+		export LC_ALL="C.UTF-8"
 		export DEBIAN_FRONTEND="noninteractive"
 		export TZ="Europe/London"
 	fi
@@ -298,6 +301,14 @@ _set_default_values() {
 
 	# Native Alpine linux configuration. Does not apply when cross building using qbt-mcm
 	qbt_use_lto="${qbt_use_lto:-yes}"
+	qbt_lto_available="no"
+
+	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} != "no" ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" || ${qbt_mcm_url} == "userdocs/musl-cross-make" ]]; then
+		qbt_lto_available="yes"
+		qbt_use_lto="yes"
+	else
+		qbt_use_lto="no"
+	fi
 
 	# Use mold as the linker - available from qbt-mcm 2614
 	qbt_linker_mold="${qbt_linker_mold:-no}"
@@ -412,12 +423,10 @@ _set_default_values() {
 		qbt_core_deps["gpg"]="false"
 		qbt_core_deps["linux-headers"]="false"
 		qbt_core_deps["pkgconf"]="false"
-		# qbt_core_deps["py${qbt_python_version}-numpy"]="false"
-		# qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
+		qbt_core_deps["py${qbt_python_version}-numpy"]="false"
+		qbt_core_deps["py${qbt_python_version}-numpy-dev"]="false"
 		qbt_core_deps["ttf-freefont"]="false"
 		qbt_core_deps["xz"]="false"
-		# qbt_core_deps["musl-dbg"]="false"
-		# qbt_core_deps["linux-headers"]="false"
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			qbt_core_deps["file"]="false"
@@ -511,16 +520,15 @@ _set_default_values() {
 # Version-to-standard thresholds: cxx_version_map["app:threshold_version"]=standard
 # These use "Round Up" logic: find the first threshold where version <= threshold_version
 declare -A cxx_version_map=(
-	["libtorrent:1.1.99"]=14
+	["libtorrent:1.1.999"]=14
 	["libtorrent:1.2.18"]=17
-	["libtorrent:1.2.99"]=20
+	["libtorrent:1.2.999"]=20
 	["libtorrent:2.0.9"]=17
-	["libtorrent:2.0.99"]=20
+	["libtorrent:2.0.999"]=17
 	["libtorrent:999.999.999.999"]=23
 	["qbittorrent:4.3.2"]=14
-	["qbittorrent:4.3.99"]=17
-	["qbittorrent:4.5.99"]=17
-	["qbittorrent:5.1.99"]=20
+	["qbittorrent:4.5.999"]=17
+	["qbittorrent:5.1.999"]=20
 	["qbittorrent:999.999.999.999"]=23
 )
 
@@ -530,18 +538,55 @@ declare -A cxx_qt_cap=(
 	["6"]=23
 )
 
-# OS compiler capability: cxx_os_cap["os_codename"]=max_supported_standard
-# Only listed OS versions support c++20 and above. Unlisted OS versions are capped at 17.
+# OS compiler capability: cxx_os_cap["os_codename"]=max_allowed_standard
+# All supported OS versions currently ship with GCC capable of c++23, so the default is 23.
+# Add entries here to restrict specific OS versions to a lower standard if needed.
 declare -A cxx_os_cap=(
 	["alpine"]=23
 	["trixie"]=23
 	["noble"]=23
 )
+
+# App-specific ceilings: cxx_version_cap["app:threshold_version"]=standard
+# This allows enforcing a hard ceiling for specific app versions (e.g. qbt 4.x supports up to c++17)
+declare -A cxx_version_cap=(
+	["libtorrent:999.999.999.999"]=23
+	["qbittorrent:4.999.999.999"]=17
+	["qbittorrent:999.999.999.999"]=23
+)
+
 #######################################################################################################################################################
 # These functions set some build conditions dynamically based on the libtorrent versions, qt version and qbittorrent combinations
 #######################################################################################################################################################
 
-# Resolve the cxx standard requirement for a given app based on its branch or version
+# Resolve the cxx standard capability (ceiling) for a given app based on its branch or version
+_resolve_app_cxx_cap() {
+	local app="$1"
+	local tag="${github_tag[$app]}"
+	local version="${app_version[$app]}"
+
+	local v_tag v_app v_target
+	v_tag="$(_semantic_version "${tag}")"
+	v_app="$(_semantic_version "${version}")"
+	v_target="${v_tag}"
+	((v_app > v_tag)) && v_target="${v_app}"
+
+	local threshold_key threshold_version v_threshold
+
+	while IFS=':' read -r _ threshold_version; do
+		threshold_key="${app}:${threshold_version}"
+		v_threshold="$(_semantic_version "${threshold_version}")"
+
+		if ((v_target <= v_threshold)); then
+			printf '%s' "${cxx_version_cap[$threshold_key]}"
+			return
+		fi
+	done < <(printf '%s\n' "${!cxx_version_cap[@]}" | grep "^${app}:" | sort -t: -k2,2 -V)
+
+	printf '%s' "23"
+}
+
+# Resolve the cxx standard requirement (floor) for a given app based on its branch or version
 _resolve_app_cxx_std() {
 	local app="$1"
 	local tag="${github_tag[$app]}"
@@ -566,7 +611,7 @@ _resolve_app_cxx_std() {
 			printf '%s' "${cxx_version_map[$threshold_key]}"
 			return
 		fi
-	done < <(printf '%s\n' "${!cxx_version_map[@]}" | grep "^${app}:" | sort -V)
+	done < <(printf '%s\n' "${!cxx_version_map[@]}" | grep "^${app}:" | sort -t: -k2,2 -V)
 
 	printf '%s' "17"
 }
@@ -574,52 +619,54 @@ _resolve_app_cxx_std() {
 ## Determine the cxx standard by resolving requirements from libtorrent and qbittorrent
 # Flow: Max(Requirements) -> Apply System Caps (Min) -> Validation
 _set_cxx_standard() {
-	local resolved_std=23
+	local app app_std app_cap qbt_req_std lt_req_std qbt_cap_std lt_cap_std
+	local qt_cap os_cap global_floor global_ceiling
 
-	# Resolve each app's standard and take the LOWEST capable standard to build both
-	local app app_std qbt_app_std=17 qbt_libtorrent_std=14
+	global_floor=0
+	global_ceiling=23
+
+	# Resolve each app's standard range [floor, ceiling]
 	for app in libtorrent qbittorrent; do
 		app_std="$(_resolve_app_cxx_std "${app}")"
-		((app_std < resolved_std)) && resolved_std="${app_std}"
-		[[ ${app} == "libtorrent" ]] && qbt_libtorrent_std="${app_std}"
-		[[ ${app} == "qbittorrent" ]] && qbt_app_std="${app_std}"
+		app_cap="$(_resolve_app_cxx_cap "${app}")"
+
+		# Global floor is the MAX of all minimum requirements (lowest standard that satisfies all)
+		((app_std > global_floor)) && global_floor="${app_std}"
+
+		# App ceiling is the MIN of all app capabilities (highest standard that won't break anything)
+		((app_cap < global_ceiling)) && global_ceiling="${app_cap}"
+
+		[[ ${app} == "libtorrent" ]] && lt_req_std="${app_std}" lt_cap_std="${app_cap}"
+		[[ ${app} == "qbittorrent" ]] && qbt_req_std="${app_std}" qbt_cap_std="${app_cap}"
 	done
 
-	# Validate: Prevent building incompatible ABIs like c++14 with c++17+
-	if (((qbt_libtorrent_std == 14 && qbt_app_std >= 17) || (qbt_app_std == 14 && qbt_libtorrent_std >= 17))); then
-		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}ABI Mismatch: libtorrent (c++${qbt_libtorrent_std}) and qBittorrent (c++${qbt_app_std}) cannot be built together as c++14 is incompatible with c++17+.${color_end}"
+	# Apply environment ceilings
+	qt_cap="${cxx_qt_cap[${qbt_qt_version}]:-23}"
+	os_cap="${cxx_os_cap[${os_version_codename}]:-23}"
+
+	((qt_cap < global_ceiling)) && global_ceiling="${qt_cap}"
+	((os_cap < global_ceiling)) && global_ceiling="${os_cap}"
+
+	# Error Trap: If the required Floor exceeds the allowed Ceiling
+	if ((global_floor > global_ceiling)); then
+		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}Incompatible C++ standards detected for the selected versions:${color_end}"
+
+		# Detailed error reporting
+		printf '   - %-12s : requirement %s , ceiling %s ( %s )\n' "libtorrent" "${lt_req_std}" "${lt_cap_std}" "${github_tag[libtorrent]}"
+		printf '   - %-12s : requirement %s , ceiling %s ( %s )\n' "qbittorrent" "${qbt_req_std}" "${qbt_cap_std}" "${github_tag[qbittorrent]}"
+		printf '   - %-12s : ceiling %s\n' "Qt${qbt_qt_version}" "${qt_cap}"
+		printf '   - %-12s : ceiling %s ( %s )\n' "OS" "${os_cap}" "${os_version_codename}"
+
+		printf '\n%b\n\n' " ${color_red}Error: The minimum requirement (${global_floor}) exceeds the maximum allowed compatibility (${global_ceiling}).${color_end}"
+
 		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
 		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
 		exit 1
 	fi
 
-	# Apply Qt version cap (Ceiling)
-	local qt_cap="${cxx_qt_cap[${qbt_qt_version}]:-23}"
-
-	# Apply OS compiler capability cap (Ceiling)
-	local os_cap="${cxx_os_cap[${os_version_codename}]:-23}"
-
-	# Validate: qBittorrent v5+ (qbt needs >= 20) requires Qt6
-	if ((qbt_app_std >= 20 && qt_cap <= 17)); then
-		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support ${color_red}Qt5${color_yellow}. Please use ${color_green}Qt6${color_yellow} or a qBittorrent ${color_green}v4${color_yellow} tag.${color_end}"
-		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
-		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
-		exit 1
-	fi
-
-	# Validate: qBittorrent v5+ (qbt needs >= 20) requires a modern OS compiler
-	if ((qbt_app_std >= 20 && os_cap < 20)); then
-		printf '\n%b\n\n' " ${text_blink}${unicode_red_light_circle}${color_end} ${color_yellow}qBittorrent ${color_magenta}${github_tag[qbittorrent]}${color_yellow} does not support less than ${color_red}c++20${color_yellow}. Please use an OS with a more modern compiler for v5${color_end}"
-		if [[ -n ${GITHUB_REPOSITORY} ]]; then touch disable-qt5; fi
-		if [[ -d ${release_info_dir} ]]; then touch "${release_info_dir}/disable-qt5"; fi
-		exit 1
-	fi
-
-	# Apply the caps to the resolved requirement (Taking the MINIMUM of floors and ceilings)
-	((resolved_std > qt_cap)) && resolved_std="${qt_cap}"
-	((resolved_std > os_cap)) && resolved_std="${os_cap}"
-
-	qbt_standard="${resolved_std}"
+	# Selection: Pick the Lowest standard that satisfies all requirements (The Global Floor)
+	# This ensures we don't "over-upgrade" if a lower standard is supported by all.
+	qbt_standard="${global_floor}"
 }
 
 _libtorrent_v2_iconv_check() {
@@ -668,6 +715,21 @@ _print_env() {
 #######################################################################################################################################################
 _semantic_version() {
 	local version_string="${1#v}" # Strip leading v
+
+	# Replace wildcard 'x' or 'X' with '999' so branches like v5_1_x evaluate higher than released tags like 5.1.4
+	version_string="${version_string//.x/.999}"
+	version_string="${version_string//_x/_999}"
+	version_string="${version_string//.X/.999}"
+	version_string="${version_string//_X/_999}"
+
+	# Elevate libtorrent branches like RC_1_2 to evaluate as 1.2.999
+	if [[ ${version_string} =~ ^RC_[0-9]+_[0-9]+$ ]]; then
+		version_string="${version_string}_999"
+	fi
+
+	# Strip RC_ prefix so the remainder is purely numeric segments
+	version_string="${version_string#RC_}"
+
 	local base tag tag_num
 	local major=0 minor=0 patch=0 build=0 prerelease=999
 
@@ -690,7 +752,7 @@ _semantic_version() {
 
 	# Convert base safely
 	local -a base_array
-	read -ra base_array < <(printf "%s" "${base//./ }" | sed 's/[^0-9 ]//g')
+	read -ra base_array < <(printf "%s" "${base}" | sed -e 's/[._-]/ /g' -e 's/[^0-9 ]//g')
 
 	major="$((10#${base_array[0]:-0}))"
 	minor="$((10#${base_array[1]:-0}))"
@@ -786,7 +848,7 @@ _check_dependencies() {
 		if sudo -n true &> /dev/null; then
 			printf '%b\n' " $unicode_green_circle ${color_red_light}sudo${color_end}"
 			qbt_privileges_required["sudo"]="true"
-			[[ ${qbt_privileges_required["root"]} != "true" ]] && command_privilege=("sudo")
+			[[ ${qbt_privileges_required["root"]} != "true" ]] && command_privilege=("sudo" "-E")
 		else
 			printf '%b\n' " $unicode_red_circle ${color_red_light}sudo${color_end}"
 		fi
@@ -1326,7 +1388,7 @@ _custom_flags() {
 		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
-	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} == "yes" ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" ]]; then
+	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} == "yes" && ${qbt_lto_available} == "yes" ]]; then
 		if [[ ! ${app_name} =~ ^(openssl)$ ]]; then
 			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
 			qbt_linker_flags+=" -flto -fuse-linker-plugin"
@@ -1335,7 +1397,7 @@ _custom_flags() {
 
 	# include headers
 	if [[ ${os_id} =~ ^(alpine)$ ]]; then
-		qbt_include_headers="-I/usr/include/fortify -I${include_dir}"
+		qbt_include_headers="-isystem /usr/include/fortify -I${include_dir}"
 	else
 		qbt_include_headers="-I${include_dir}"
 	fi
@@ -1608,7 +1670,13 @@ _set_module_urls() {
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
 		github_tag[glibc]="$(_git_git ls-remote -q -t --refs "${github_url[glibc]}" | awk '/glibc-/{sub("refs/tags/", "");sub("(.*)(cvs|fedora)(.*)", ""); if($2 ~ /^glibc-[0-9]+\.[0-9]+$/) print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 	fi
-	github_tag[zlib]="develop" # same for zlib and zlib-ng
+
+	if [[ ${qbt_zlib_type} == "zlib" ]]; then
+		github_tag[zlib]="$(git ls-remote -q -t --refs "https://github.com/madler/zlib.git" | awk '//{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^v[0-9]+[-.]?[0-9]+[-.]?[0-9][-.]?[0-9]*$/' | sort -rV | head -n1)" # same for zlib and zlib-ng
+	elif [[ ${qbt_zlib_type} == "zlib-ng" ]]; then
+		github_tag[zlib]="develop" # same for zlib and zlib-ng
+	fi
+
 	#github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",?|\2|p')"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
@@ -1627,7 +1695,7 @@ _set_module_urls() {
 	fi
 
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
-		app_version[zlib]="$(_curl "https://raw.githubusercontent.com/madler/zlib/${github_tag[zlib]}/zlib.h" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/-.*//g')"
+		app_version[zlib]="${github_tag[zlib]#v}"
 	elif [[ ${qbt_zlib_type} == "zlib-ng" ]]; then
 		app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
 	fi
@@ -1649,7 +1717,7 @@ _set_module_urls() {
 	fi
 
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
-		source_archive_url[zlib]="https://github.com/madler/zlib/archive/refs/heads/develop.tar.gz"
+		source_archive_url[zlib]="https://github.com/madler/zlib/releases/download/v${app_version[zlib]}/zlib-${app_version[zlib]}.tar.gz"
 	elif [[ ${qbt_zlib_type} == "zlib-ng" ]]; then
 		source_archive_url[zlib]="https://github.com/zlib-ng/zlib-ng/archive/refs/heads/develop.tar.gz"
 	fi
@@ -4091,7 +4159,7 @@ _qtbase() {
 			-D CMAKE_BUILD_TYPE="${qbt_cmake_build_type}" \
 			-D QT_FEATURE_optimize_full=on -D QT_FEATURE_static=on -D QT_FEATURE_shared=off \
 			-D QT_FEATURE_gui=off -D QT_FEATURE_openssl_linked=on -D QT_FEATURE_dbus=off \
-			-D QT_FEATURE_system_pcre2=off -D QT_FEATURE_widgets=off \
+			-D QT_FEATURE_system_zlib=on -D QT_FEATURE_system_pcre2=off -D QT_FEATURE_widgets=off \
 			-D FEATURE_androiddeployqt=OFF -D FEATURE_animation=OFF \
 			-D QT_FEATURE_testlib=off -D QT_BUILD_EXAMPLES=off -D QT_BUILD_TESTS=off \
 			-D QT_BUILD_EXAMPLES_BY_DEFAULT=OFF -D QT_BUILD_TESTS_BY_DEFAULT=OFF \
