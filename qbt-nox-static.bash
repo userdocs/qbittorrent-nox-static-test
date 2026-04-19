@@ -36,7 +36,7 @@ unset qbt_cflags qbt_cxxflags qbt_cppflags qbt_ldflags qbt_cflags_consumed qbt_c
 declare -gA multi_arch_options qbt_test_tools qbt_core_deps qbt_deps_delete
 declare -gA qbt_modules_delete skip_modules qbt_modules_install qbt_privileges_required
 declare -gA github_url github_tag app_version source_archive_url qbt_workflow_archive_url
-declare -gA qbt_workflow_override source_default qbt_activated_modules
+declare -gA qbt_workflow_override source_default qbt_activated_modules qbt_workflow_versions
 # Indexed arrays
 declare -ga qbt_modules_order qbt_modules_install_processed qbt_modules_selected_compare
 #################################################################################################################################################
@@ -522,6 +522,7 @@ _set_default_values() {
 
 # Version-to-standard thresholds: cxx_version_map["app:threshold_version"]=standard
 # These use "Round Up" logic: find the first threshold where version <= threshold_version
+# shellcheck disable=SC2034
 declare -A cxx_version_map=(
 	["libtorrent:1.1.999"]=14
 	["libtorrent:1.2.18"]=17
@@ -552,6 +553,7 @@ declare -A cxx_os_cap=(
 
 # App-specific ceilings: cxx_version_cap["app:threshold_version"]=standard
 # This allows enforcing a hard ceiling for specific app versions (e.g. qbt 4.x supports up to c++17)
+# shellcheck disable=SC2034
 declare -A cxx_version_cap=(
 	["libtorrent:999.999.999.999"]=23
 	["qbittorrent:4.999.999.999"]=17
@@ -1241,6 +1243,11 @@ _debug() {
 			printf '%b\n' " ${color_green_light}${qbt_workflow_archive_url_sorted}${color_end}: ${color_blue_light}${qbt_workflow_archive_url[${qbt_workflow_archive_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
 
+		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}qbt_workflow_versions${color_end}"
+		while IFS= read -r qbt_workflow_version_sorted; do
+			printf '%b\n' " ${color_green_light}${qbt_workflow_version_sorted}${color_end}: ${color_blue_light}${qbt_workflow_versions[${qbt_workflow_version_sorted}]}${color_end}"
+		done < <(printf '%s\n' "${!qbt_workflow_versions[@]}" | sort)
+
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_default${color_end}"
 		while IFS= read -r source_default_sorted; do
 			printf '%b\n' " ${color_green_light}${source_default_sorted}${color_end}: ${color_blue_light}${source_default[${source_default_sorted}]}${color_end}"
@@ -1634,6 +1641,35 @@ _set_build_directory() {
 _set_module_urls() {
 	# Update check url for the _script_version function
 	script_url="https://raw.githubusercontent.com/userdocs/qbittorrent-nox-static/master/qbt-nox-static.bash"
+
+	# download the dependency-version.json file from the qbt-workflow-files repository and parse all info
+	local qbt_workflow_json_url="https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json"
+	local qbt_workflow_json_content
+	qbt_workflow_json_content="$(_curl "${qbt_workflow_json_url}")"
+
+	if [[ -n ${qbt_workflow_json_content} ]]; then
+		if command -v jq > /dev/null 2>&1; then
+			while IFS='=' read -r key value; do
+				qbt_workflow_versions["${key}"]="${value}"
+			done < <(printf '%s' "${qbt_workflow_json_content}" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
+		else
+			while IFS=':' read -r key value; do
+				key="${key//[[:space:]\"]/}"
+				value="${value//[[:space:]\",]/}"
+				[[ -n ${key} && -n ${value} ]] && qbt_workflow_versions["${key}"]="${value}"
+			done < <(printf '%s' "${qbt_workflow_json_content}" | sed -rn 's|.*"([^"]+)": "([^"]+)".*|\1:\2|p')
+		fi
+	fi
+
+	# Manual mappings for complex keys or script-internal naming
+	local zlib_key="${qbt_zlib_type/-/_}"
+	local qt_key="qt${qbt_qt_version}"
+	local lt_key="libtorrent_${qbt_libtorrent_version//./_}"
+
+	qbt_workflow_versions["zlib"]="${qbt_workflow_versions[${zlib_key}]}"
+	qbt_workflow_versions["qtbase"]="${qbt_workflow_versions[${qt_key}]}"
+	qbt_workflow_versions["qttools"]="${qbt_workflow_versions[${qt_key}]}"
+	qbt_workflow_versions["libtorrent"]="${qbt_workflow_versions[${lt_key}]}"
 	##########################################################################################################################################################
 	# Configure the github_url associative array for all the applications this script uses and we call them as ${github_url[app_name]}
 	##########################################################################################################################################################
@@ -1670,7 +1706,8 @@ _set_module_urls() {
 	fi
 
 	#github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	github_tag[iconv]="v$(_curl "https://github.com/userdocs/qbt-workflow-files/releases/latest/download/dependency-version.json" | sed -rn 's|(.*)"iconv": "(.*)",?|\2|p')"
+	# shellcheck disable=SC2154
+	github_tag[iconv]="v${qbt_workflow_versions[iconv]}"
 	github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
 	github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
