@@ -1699,6 +1699,19 @@ _set_module_urls() {
 	# Configure the github_tag associative array for all the applications this script uses and we call them as ${github_tag[app_name]}
 	# When workflow files are active and no override is set, pin the tag from qbt_workflow_versions instead of querying git.
 	##########################################################################################################################################################
+	# Initialize override flags to "no" — users can set any to "yes" to force upstream git discovery for that dep.
+	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then qbt_workflow_override[glibc]="no"; fi
+	qbt_workflow_override[zlib]="no"
+	qbt_workflow_override[iconv]="no"
+	qbt_workflow_override[icu]="no"
+	qbt_workflow_override[double_conversion]="no"
+	qbt_workflow_override[openssl]="no"
+	qbt_workflow_override[boost]="no"
+	qbt_workflow_override[libtorrent]="no"
+	qbt_workflow_override[qtbase]="no"
+	qbt_workflow_override[qttools]="no"
+	qbt_workflow_override[qbittorrent]="no"
+
 	_wf_use() { [[ ${qbt_workflow_files} == "yes" && ${qbt_workflow_override[${1}]} == "no" && -n ${qbt_workflow_versions[${1}]} ]]; }
 
 	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
@@ -1711,15 +1724,15 @@ _set_module_urls() {
 		_wf_use zlib && github_tag[zlib]="${qbt_workflow_versions[zlib]}" || github_tag[zlib]="develop"
 	fi
 
-	_wf_use iconv           && github_tag[iconv]="v${qbt_workflow_versions[iconv]}"                                      || github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	_wf_use icu             && github_tag[icu]="release-${qbt_workflow_versions[icu]}"                                   || github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
-	_wf_use double_conversion && github_tag[double_conversion]="v${qbt_workflow_versions[double_conversion]}"            || github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	_wf_use openssl         && github_tag[openssl]="openssl-${qbt_workflow_versions[openssl]}"                          || github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
-	_wf_use boost           && github_tag[boost]="boost-${qbt_workflow_versions[boost]}"                                || github_tag[boost]="$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	_wf_use libtorrent      && github_tag[libtorrent]="v${qbt_workflow_versions[libtorrent]}"                           || github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
-	_wf_use qtbase          && github_tag[qtbase]="v${qbt_workflow_versions[qtbase]}"                                   || github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
-	_wf_use qttools         && github_tag[qttools]="v${qbt_workflow_versions[qttools]}"                                  || github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
-	_wf_use qbittorrent     && github_tag[qbittorrent]="release-${qbt_workflow_versions[qbittorrent]}"                  || github_tag[qbittorrent]="$(_git_git ls-remote -q -t --refs "${github_url[qbittorrent]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	_wf_use iconv && github_tag[iconv]="v${qbt_workflow_versions[iconv]}" || github_tag[iconv]="$(_git_git ls-remote -q -t --refs "${github_url[iconv]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	_wf_use icu && github_tag[icu]="release-${qbt_workflow_versions[icu]}" || github_tag[icu]="$(_git_git ls-remote -q -t --refs "${github_url[icu]}" | awk '/\/release-/{sub("refs/tags/", ""); sub("-[^0-9].*", ""); print $2}' | awk '!/^$/ && !/rc/ && /^release-[0-9]+[-.]?[0-9]+[-.]?[0-9]*$/' | sort -rV | head -n 1)"
+	_wf_use double_conversion && github_tag[double_conversion]="v${qbt_workflow_versions[double_conversion]}" || github_tag[double_conversion]="$(_git_git ls-remote -q -t --refs "${github_url[double_conversion]}" | awk '/v/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	_wf_use openssl && github_tag[openssl]="openssl-${qbt_workflow_versions[openssl]}" || github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+	_wf_use boost && github_tag[boost]="boost-${qbt_workflow_versions[boost]}" || github_tag[boost]="$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	_wf_use libtorrent && github_tag[libtorrent]="v${qbt_workflow_versions[libtorrent]}" || github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	_wf_use qtbase && github_tag[qtbase]="v${qbt_workflow_versions[qtbase]}" || github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
+	_wf_use qttools && github_tag[qttools]="v${qbt_workflow_versions[qttools]}" || github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
+	_wf_use qbittorrent && github_tag[qbittorrent]="release-${qbt_workflow_versions[qbittorrent]}" || github_tag[qbittorrent]="$(_git_git ls-remote -q -t --refs "${github_url[qbittorrent]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 
 	##########################################################################################################################################################
 	# Configure the app_version associative array for all the applications this script uses and we call them as ${app_version[app_name]}
