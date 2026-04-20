@@ -188,11 +188,17 @@ _set_default_values() {
 	# Install relative to the script location.
 	qbt_install_dir="${qbt_working_dir}/${qbt_build_dir}"
 
-	# Toolchain directory - If using MCM Docker images, tools are in /usr/local
-	if [[ ${QBT_MCM_DOCKER} == "YES" ]]; then
-		qbt_tool_dir="/usr/local"
+	# Cross toolchain bin directory - Debian/Ubuntu cross builds use /usr/bin (crossbuild-essential-*)
+	# Alpine/MCM builds use the downloaded toolchain in ${qbt_mcm_dir}/bin
+	if [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
+		qbt_cross_tool_dir="/usr/bin"
 	else
-		qbt_tool_dir="${qbt_install_dir}"
+		if [[ ${QBT_MCM_DOCKER} == "YES" ]]; then
+			qbt_mcm_dir="/usr/local"
+		else
+			qbt_mcm_dir="${qbt_install_dir}"
+		fi
+		qbt_cross_tool_dir="${qbt_mcm_dir}/bin"
 	fi
 
 	# Used with printf. Use the qbt_install_dir variable but the ${HOME} path is replaced with a literal ~
@@ -308,6 +314,8 @@ _set_default_values() {
 
 	# Determine if LTO can be used and is available
 	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} != "no" ]] && [[ -z ${qbt_cross_name} || ${qbt_cross_name} == "default" || ${qbt_mcm_url} == "userdocs/musl-cross-make" ]]; then
+		qbt_use_lto="yes"
+	elif [[ ${os_id} =~ ^(debian|ubuntu)$ && ${qbt_use_lto} != "no" ]]; then
 		qbt_use_lto="yes"
 	else
 		qbt_use_lto="no"
@@ -431,6 +439,10 @@ _set_default_values() {
 		qbt_core_deps["ttf-freefont"]="false"
 		qbt_core_deps["xz"]="false"
 
+		if [[ ${qbt_cross_name} == "default" && ${qbt_linker_mold} == "yes" ]]; then
+			qbt_core_deps["mold"]="false"
+		fi
+
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			qbt_core_deps["file"]="false"
 			qbt_core_deps["fortify-headers"]="false"
@@ -459,10 +471,14 @@ _set_default_values() {
 		qbt_core_deps["ninja-build"]="false"
 		qbt_core_deps["openssl"]="false"
 		qbt_core_deps["pkg-config"]="false"
-		# qbt_core_deps["python${qbt_python_version}-numpy"]="false"
+		qbt_core_deps["python${qbt_python_version}-numpy"]="false"
 		qbt_core_deps["texinfo"]="false"
 		qbt_core_deps["unzip"]="false"
 		qbt_core_deps["xz-utils"]="false"
+
+		if [[ ${qbt_linker_mold} == "yes" ]]; then
+			qbt_core_deps["mold"]="false"
+		fi
 
 		if [[ ${qbt_host_deps} == "yes" ]] || [[ ${qbt_with_qemu} == "yes" && ${qbt_cross_name} != "default" ]]; then
 			qbt_core_deps["libc6-dev"]="false"
@@ -1343,11 +1359,11 @@ _custom_flags() {
 	# Defaults - if qbt_cross_host is set then use qbt_cross_host
 	if [[ -n ${qbt_cross_host} ]]; then
 		export CHOST="${qbt_cross_host}"
-		export CC="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc"
-		export AR="${qbt_tool_dir}/bin/${qbt_cross_host}-ar"
-		export NM="${qbt_tool_dir}/bin/${qbt_cross_host}-nm"
-		export RANLIB="${qbt_tool_dir}/bin/${qbt_cross_host}-ranlib"
-		export CXX="${qbt_tool_dir}/bin/${qbt_cross_host}-g++"
+		export CC="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc"
+		export AR="${qbt_cross_tool_dir}/${qbt_cross_host}-ar"
+		export NM="${qbt_cross_tool_dir}/${qbt_cross_host}-nm"
+		export RANLIB="${qbt_cross_tool_dir}/${qbt_cross_host}-ranlib"
+		export CXX="${qbt_cross_tool_dir}/${qbt_cross_host}-g++"
 	fi
 
 	# If cross compiling (qbt_cross_host is set) without qemu make sure the _host_deps modules use host gcc to build native build deps for icu/qtbase cross building
@@ -1376,21 +1392,19 @@ _custom_flags() {
 		qbt_security_flags+=" -mbranch-protection=standard"
 	fi
 
-	if [[ ${os_id} =~ ^(alpine)$ && ${qbt_use_lto} == "yes" ]]; then
-		if [[ ! ${app_name} =~ ^(openssl)$ ]]; then
-			qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
-			qbt_linker_flags+=" -flto -fuse-linker-plugin"
+	if [[ ${qbt_use_lto} == "yes" && ! ${app_name} =~ ^(glibc|openssl)$ ]]; then
+		qbt_optimization_flags+=" -flto=auto -fno-fat-lto-objects"
+		qbt_linker_flags+=" -flto -fuse-linker-plugin"
 
-			# Use GCC wrappers for LTO
-			if [[ -n ${qbt_cross_host} ]]; then
-				export AR="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ar"
-				export NM="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-nm"
-				export RANLIB="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ranlib"
-			else
-				export AR="gcc-ar"
-				export NM="gcc-nm"
-				export RANLIB="gcc-ranlib"
-			fi
+		# Use GCC wrappers for LTO
+		if [[ -n ${qbt_cross_host} ]]; then
+			export AR="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-ar"
+			export NM="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-nm"
+			export RANLIB="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-ranlib"
+		else
+			export AR="gcc-ar"
+			export NM="gcc-nm"
+			export RANLIB="gcc-ranlib"
 		fi
 	fi
 
@@ -2931,7 +2945,7 @@ _multi_arch() {
 
 					if [[ -f "${qbt_install_dir}/.active-toolchain-info" ]]; then
 						if [[ $(cat "${qbt_install_dir}/.active-toolchain-info") == "${qbt_cross_host}.tar.gz" ]]; then
-							if "${qbt_tool_dir}/bin/${qbt_cross_host}-gcc" -v &> /dev/null; then
+							if "${qbt_mcm_dir}/bin/${qbt_cross_host}-gcc" -v &> /dev/null; then
 								skip_toolchain_extract="yes"
 							fi
 						fi
@@ -2972,18 +2986,18 @@ _multi_arch() {
 			multi_qtbase=("-xplatform" "${qbt_cross_qtbase}")    # ${multi_qtbase[@]}
 
 			if [[ ${qbt_build_tool} == 'cmake' ]]; then
-				local ar_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-ar"
-				local nm_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-nm"
-				local ranlib_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-ranlib"
+				local ar_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-ar"
+				local nm_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-nm"
+				local ranlib_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-ranlib"
 
 				if [[ ${qbt_use_lto} == "yes" ]]; then
-					ar_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ar"
-					nm_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-nm"
-					ranlib_tool="${qbt_tool_dir}/bin/${qbt_cross_host}-gcc-ranlib"
+					ar_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-ar"
+					nm_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-nm"
+					ranlib_tool="${qbt_cross_tool_dir}/${qbt_cross_host}-gcc-ranlib"
 				fi
 
-				local cmake_c_compiler="-D CMAKE_C_COMPILER=${qbt_tool_dir}/bin/${qbt_cross_host}-gcc"
-				local cmake_cxx_compiler="-D CMAKE_CXX_COMPILER=${qbt_tool_dir}/bin/${qbt_cross_host}-g++"
+				local cmake_c_compiler="-D CMAKE_C_COMPILER=${qbt_cross_tool_dir}/${qbt_cross_host}-gcc"
+				local cmake_cxx_compiler="-D CMAKE_CXX_COMPILER=${qbt_cross_tool_dir}/${qbt_cross_host}-g++"
 				local cmake_ar="-D CMAKE_AR=${ar_tool}"
 				local cmake_nm="-D CMAKE_NM=${nm_tool}"
 				local cmake_ranlib="-D CMAKE_RANLIB=${ranlib_tool}"
@@ -4183,9 +4197,9 @@ _qtbase() {
 
 		# modifications to linux.conf
 		QMAKE_AR                = ${AR} cqs
-		QMAKE_OBJCOPY           = ${qbt_tool_dir}/bin/${qbt_cross_host}-objcopy
+		QMAKE_OBJCOPY           = ${qbt_cross_tool_dir}/${qbt_cross_host}-objcopy
 		QMAKE_NM                = ${NM} -P
-		QMAKE_STRIP             = ${qbt_tool_dir}/bin/${qbt_cross_host}-strip
+		QMAKE_STRIP             = ${qbt_cross_tool_dir}/${qbt_cross_host}-strip
 
 		QMAKE_CFLAGS            = ${CFLAGS}
 		QMAKE_CXXFLAGS          = ${CXXFLAGS} -w -fpermissive
