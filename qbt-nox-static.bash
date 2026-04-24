@@ -19,7 +19,7 @@
 #################################################################################################################################################
 # Script version = Major minor patch
 #################################################################################################################################################
-script_version="2.2.4"
+script_version="2.2.5"
 #################################################################################################################################################
 # Set some script features - https://www.gnu.org/software/bash/manual/html_node/The-Set-Builtin.html
 #################################################################################################################################################
@@ -296,6 +296,10 @@ _set_default_values() {
 
 	# Env setting for the qbittorrent tag
 	qbt_qbittorrent_tag="${qbt_qbittorrent_tag:-}"
+
+	# Env setting for the openssl tag
+	qbt_openssl_tag="${qbt_openssl_tag:-}"
+	qbt_openssl_lts="${qbt_openssl_lts:-3.5}"
 
 	# We are only using python3 but it's easier to just change this if we need to for some reason.
 	qbt_python_version="3"
@@ -675,6 +679,7 @@ _print_env() {
 	printf '\n%b\n\n' " ${unicode_yellow_circle} Default env settings${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_zlib_type=\"${color_green_light}${qbt_zlib_type}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_skip_icu=\"${color_green_light}${qbt_skip_icu}${color_yellow_light}\"${color_end}"
+	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_openssl_tag=\"${color_green_light}${github_tag[openssl]}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_boost_tag=\"${color_green_light}${github_tag[boost]}${color_yellow_light}\"${color_end}"
 	printf '%b\n' " ${color_yellow_light}  qbt_libtorrent_version=\"${color_green_light}${qbt_libtorrent_version}${color_yellow_light}\"${color_end}"
 	[[ $qbt_advanced_view == "yes" ]] && printf '%b\n' " ${color_yellow_light}  qbt_libtorrent_tag=\"${color_green_light}${github_tag[libtorrent]}${color_yellow_light}\"${color_end}"
@@ -1744,6 +1749,7 @@ _set_module_urls() {
 	_wf_use openssl && github_tag[openssl]="openssl-${qbt_workflow_versions[openssl]}" || github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
 	_wf_use boost && github_tag[boost]="boost-${qbt_workflow_versions[boost]}" || github_tag[boost]="$(_git_git ls-remote -q -t --refs "${github_url[boost]}" | awk '{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta|-bgl)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	_wf_use libtorrent && github_tag[libtorrent]="v${qbt_workflow_versions[libtorrent]}" || github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", "");sub("(.*)(-[^0-9].*)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
+	[[ -z ${github_tag[libtorrent]} ]] && github_tag[libtorrent]="$(_git_git ls-remote -q -t --refs "${github_url[libtorrent]}" | awk '/'"v${qbt_libtorrent_version}"'/{sub("refs/tags/", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
 	_wf_use qtbase && github_tag[qtbase]="v${qbt_workflow_versions[qtbase]}" || github_tag[qtbase]="$(_git_git ls-remote -q -t --refs "${github_url[qtbase]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
 	_wf_use qttools && github_tag[qttools]="v${qbt_workflow_versions[qttools]}" || github_tag[qttools]="$(_git_git ls-remote -q -t --refs "${github_url[qttools]}" | awk '/'"v${qbt_qt_version}"'/ && !/-alpha|-beta|-rc/{sub("refs/tags/", ""); print $2}' | sort -rV | head -n 1)"
 	_wf_use qbittorrent && github_tag[qbittorrent]="release-${qbt_workflow_versions[qbittorrent]}" || github_tag[qbittorrent]="$(_git_git ls-remote -q -t --refs "${github_url[qbittorrent]}" | awk '{sub("refs/tags/", "");sub("(.*)(-[^0-9].*|rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n 1)"
@@ -3274,6 +3280,7 @@ _script_version         # see functions
 # Environment variables - settings positional parameters of flags
 #######################################################################################################################################################
 [[ -n ${qbt_patches_url} ]] && set -- -pr "${qbt_patches_url}" "${@}"
+[[ -n ${qbt_openssl_tag} ]] && set -- -ot "${qbt_openssl_tag}" "${@}"
 [[ -n ${qbt_boost_tag} ]] && set -- -bt "${qbt_boost_tag}" "${@}"
 [[ -n ${qbt_libtorrent_tag} ]] && set -- -lt "${qbt_libtorrent_tag}" "${@}"
 [[ -n ${qbt_qt_tag} ]] && set -- -qtt "${qbt_qt_tag}" "${@}"
@@ -3316,6 +3323,33 @@ while (("${#}")); do
 			_multi_arch bootstrap
 			_qbt_host_deps
 			shift
+			;;
+		-ot | --openssl-tag)
+			if [[ -n ${2} ]]; then
+				qbt_default_openssl_github_tag="${github_tag[openssl]}"
+				if [[ ${2} == "lts" ]]; then
+					github_tag[openssl]="$(_git_git ls-remote -q -t --refs "${github_url[openssl]}" | awk '/openssl-'"${qbt_openssl_lts//./\.}"'/{sub("refs/tags/", "");sub("(.*)(rc|alpha|beta)(.*)", ""); print $2 }' | awk '!/^$/' | sort -rV | head -n1)"
+				else
+					github_tag[openssl]="$(_git "${github_url[openssl]}" -t "${2}")"
+				fi
+				app_version[openssl]="${github_tag[openssl]#openssl-}"
+				source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
+				if ! _curl "${source_archive_url[openssl]}" &> /dev/null; then
+					source_default[openssl]="folder"
+				fi
+
+				# if qbt_default_openssl_github_tag is the same as the define tag, don't override.
+				if [[ ${qbt_default_openssl_github_tag} != "${github_tag[openssl]}" ]]; then
+					qbt_workflow_override[openssl]="yes"
+				fi
+				unset qbt_default_openssl_github_tag
+
+				_test_git_output "${github_tag[openssl]}" "openssl" "${2}"
+				shift 2
+			else
+				printf '\n%b\n\n' " ${unicode_red_circle} ${color_yellow_light}You must provide a tag for this switch:${color_end} ${color_blue_light}${1} TAG ${color_end}"
+				exit 1
+			fi
 			;;
 		-bt | --boost-tag)
 			if [[ -n ${2} ]]; then
@@ -3525,6 +3559,7 @@ while (("${#}")); do
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--master${color_end}                ${color_yellow}Help:${color_end} ${color_blue_light}-h-m${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-master${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--multi-arch${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-ma${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-multiarch${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--no-delete${color_end}             ${color_yellow}Help:${color_end} ${color_blue_light}-h-n${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-no-delete${color_end}"
+			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-ot${color_end}    ${text_dim}or${color_end} ${color_blue_light}--openssl-tag${color_end}           ${color_yellow}Help:${color_end} ${color_blue_light}-h-ot${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-openssl-tag${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--optimise${color_end}              ${color_yellow}Help:${color_end} ${color_blue_light}-h-o${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-optimise${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--proxy${color_end}                 ${color_yellow}Help:${color_end} ${color_blue_light}-h-p${color_end}     ${text_dim}or${color_end} ${color_blue_light}--help-proxy${color_end}"
 			printf '%b\n' " ${color_green}Use:${color_end} ${color_blue_light}-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--patch-repo${color_end}            ${color_yellow}Help:${color_end} ${color_blue_light}-h-pr${color_end}    ${text_dim}or${color_end} ${color_blue_light}--help-patch-repo${color_end}"
@@ -3556,6 +3591,7 @@ while (("${#}")); do
 
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_zlib_type=\"\"${color_end} ${text_dim}-----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}zlib | zlib-ng${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_skip_icu=\"\"${color_end} ${text_dim}----------------- ${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}yes | no${color_end}"
+			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_openssl_tag=\"\"${color_end} ${text_dim}---------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}Takes a valid git tag or branch${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_boost_tag=\"\"${color_end} ${text_dim}-----------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}Takes a valid git tag or branch${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_version=\"\"${color_end} ${text_dim}--------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}1.2 | 2.0 | 2.1${color_end}"
 			printf '%b\n' " ${text_dim}${color_magenta_light}export qbt_libtorrent_tag=\"\"${color_end} ${text_dim}------------${color_end} ${text_dim}${color_red_light}options${color_end} ${text_dim}Takes a valid git tag or branch${color_end}"
@@ -3747,6 +3783,18 @@ while (("${#}")); do
 			printf '\n%b\n' " ${unicode_blue_light_circle} Usage example: ${color_blue_light}-o \"-my -custom --flags\"${color_end}"
 			printf '\n%b\n' " Notes:"
 			printf '\n%b\n\n' "    ${color_cyan_light}-march=native${color_end} is always passed if this flag is used unless crosscompiling"
+			exit
+			;;
+		-h-ot | --help-openssl-tag)
+			if [[ ! ${github_tag[openssl]} =~ (error_tag|error_22) ]]; then
+				printf '\n%b\n' " ${unicode_cyan_light_circle} ${text_bold}${text_underlined}Here is the help description for this flag:${color_end}"
+				printf '\n%b\n' " Use a provided openssl tag when cloning from github."
+				printf '\n%b\n' " ${color_yellow}You can use this flag with this help command to see the value if called before the help option.${color_end}"
+				printf '\n%b\n' " ${color_green}${qbt_working_dir_short}/${script_basename}${color_end}${color_blue_light} -ot ${color_cyan_light}${github_tag[openssl]}${color_end} ${color_blue_light}-h-ot${color_end}"
+				printf '\n%b\n' " ${text_dim}This flag must be provided with arguments.${color_end}"
+				printf '\n%b\n' " ${color_blue_light}-ot${color_end} ${color_cyan_light}${github_tag[openssl]}${color_end}"
+			fi
+			printf '\n'
 			exit
 			;;
 		-h-p | --help-proxy)
