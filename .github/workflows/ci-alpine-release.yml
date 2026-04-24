@@ -52,6 +52,13 @@ jobs:
           pattern: libtorrent-v2.0-*-qbittorrent-nox
           merge-multiple: true
 
+      - name: Host - Download 2.1 qbittorrent-nox artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: "2.1"
+          pattern: libtorrent-v2.1-*-qbittorrent-nox
+          merge-multiple: true
+
       - name: Host - merge release-info
         env:
           lt_version: ${{ matrix.qbt_libtorrent_version }}
@@ -61,8 +68,8 @@ jobs:
           revision="$(jq -r .revision "${lt_version}"/*-dependency-version.json | sort -nr | head -n1)"
           boost="$(jq -r .boost "${lt_version}"/*-dependency-version.json | head -n1)"
 
-          # this need to check both 1.2 and 2.0 folders to merge the libtorrent versions in the dependency-version.json
-          for dependency_version_json in {1.2,2.0}/*-dependency-version.json; do
+          # this need to check both 1.2 and 2.0 and 2.1 folders to merge the libtorrent versions in the dependency-version.json
+          for dependency_version_json in {1.2,2.0,2.1}/*-dependency-version.json; do
             if [[ -f ${dependency_version_json} ]]; then
               sed -r 's/"boost": (.*)/BOOST_PLACEHOLDER/g' -i "${dependency_version_json}"
               sed -r 's/"revision": (.*)/REVISION_PLACEHOLDER/g' -i "${dependency_version_json}"
