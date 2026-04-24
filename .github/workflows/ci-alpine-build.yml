@@ -22,11 +22,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
-        # runs_on: ["ubuntu-24.04-arm"]
+        runs_on: ["ubuntu-24.04-arm"]
         os_id: ["alpine"]
         os_version_id: ["edge"]
         qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
@@ -35,7 +35,6 @@ jobs:
         qbt_qt_tag: ["v6.11.0"]
         qbt_openssl_tag: ["openssl-3.5.6"]
         qbt_linker_mold: ["yes"]
-        qbt_qbittorrent_tag: [""]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
