@@ -39,6 +39,7 @@ jobs:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
           - qbt_libtorrent_version: "2.1"
+            qbt_libtorrent_tag: "v2.1.0-rc1"
             qbt_qbittorrent_tag: "master"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
