@@ -16,12 +16,12 @@
 - **Reliability**: Explicit error checks; avoid global `set -e`.
 - **Formatting**: Google Shell Style Guide.
 
-## Repository Knowledge (`qbittorrent-nox-static`)
+## Repository Knowledge (`[REPO]`)
 
 ### Toolchain & Linking
 - **Flags**: Use both `-static` and `--static`.
 - **LTO & Linker**:
-  - `userdocs/musl-cross-make` is designed for LTO (`-flto`) and `mold`.
+  - `[OWNER]/musl-cross-make` is designed for LTO (`-flto`) and `mold`.
   - **Build Script**: Use `qbt_linker_mold=yes`.
   - **Raw Toolchain**: Use `-fuse-ld=mold`.
 - **LDFLAGS**: Apply linker options only during the final link phase.
