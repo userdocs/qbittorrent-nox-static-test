@@ -28,9 +28,9 @@ jobs:
       - id: matrix
         run: |
           versions='[]'
-          [[ '${{ inputs.libtorrent_1_2 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["1.2"]')
-          [[ '${{ inputs.libtorrent_2_0 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["2.0"]')
-          [[ '${{ inputs.libtorrent_2_1 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["2.1"]')
+          [[ '${{ inputs.libtorrent_1_2 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["1.2"]')
+          [[ '${{ inputs.libtorrent_2_0 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.0"]')
+          [[ '${{ inputs.libtorrent_2_1 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.1"]')
           printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
 
   release:
