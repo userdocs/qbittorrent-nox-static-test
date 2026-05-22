@@ -72,12 +72,10 @@ on:
       openssl_tag:
         description: "OpenSSL tag"
         required: false
-        default: "openssl-3.6.2"
         type: string
       boost_tag:
         description: "Boost tag"
         required: false
-        default: "boost-1.91.0-1"
         type: string
       qt_version:
         description: "Qt version"
@@ -87,12 +85,10 @@ on:
       qt_tag:
         description: "Qt tag"
         required: false
-        default: "v6.11.1"
         type: string
       qbittorrent_tag:
         description: "qBittorrent tag"
         required: false
-        default: "release-5.2.0"
         type: string
       skip_rerun:
         description: "Skip rerun?"
