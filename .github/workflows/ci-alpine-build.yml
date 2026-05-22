@@ -37,17 +37,14 @@ on:
       libtorrent_1_2_tag:
         description: "libtorrent 1.2 tag"
         required: false
-        default: "RC_1_2"
         type: string
       libtorrent_2_0_tag:
         description: "libtorrent 2.0 tag"
         required: false
-        default: "RC_2_0"
         type: string
       libtorrent_2_1_tag:
         description: "libtorrent 2.1 tag"
         required: false
-        default: "RC_2_1"
         type: string
 
 jobs:
