@@ -2,25 +2,33 @@ name: ci - alpine-release
 
 on:
   workflow_call:
+    inputs:
+      libtorrent_versions:
+        description: "Libtorrent versions (comma-separated, e.g. 1.2,2.0,2.1)"
+        required: true
+        default: "1.2,2.0,2.1"
+        type: string
 
 jobs:
+  setup:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
+    steps:
+      - id: matrix
+        run: |
+          versions=$(printf '%s' '${{ inputs.libtorrent_versions }}' | jq -Rc 'split(",")')
+          printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: [setup]
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
-        qbt_libtorrent_version: ["1.2", "2.0", "2.1"]
-        include:
-          - qbt_libtorrent_version: "1.2"
-            preview_release: true
-
-          - qbt_libtorrent_version: "2.0"
-            preview_release: false
-
-          - qbt_libtorrent_version: "2.1"
-            preview_release: true
+        qbt_libtorrent_version: ${{ fromJSON(needs.setup.outputs.versions) }}
 
     name: "Publish release libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
@@ -111,7 +119,7 @@ jobs:
             gh release edit "${release_tag}" \
               --title "${release_title}" \
               --notes-file release.md \
-              ${{ matrix.preview_release == true && '--prerelease' || '--latest' }}
+              ${{ matrix.qbt_libtorrent_version == '2.0' && '--latest' || '--prerelease' }}
             gh release upload "${release_tag}" \
               --clobber \
               ${{ matrix.qbt_libtorrent_version }}/*-qbittorrent-nox dependency-version.json
@@ -119,6 +127,6 @@ jobs:
             gh release create "${release_tag}" \
               --title "${release_title}" \
               --notes-file release.md \
-              ${{ matrix.preview_release == true && '--prerelease' || '--latest' }} \
+              ${{ matrix.qbt_libtorrent_version == '2.0' && '--latest' || '--prerelease' }} \
               ${{ matrix.qbt_libtorrent_version }}/*-qbittorrent-nox dependency-version.json
           fi

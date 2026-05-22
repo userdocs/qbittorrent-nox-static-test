@@ -19,9 +19,24 @@ on:
         description: "script name"
         required: true
         type: string
+      libtorrent_versions:
+        description: "Libtorrent versions (comma-separated, e.g. 1.2,2.0,2.1)"
+        required: true
+        default: "1.2,2.0,2.1"
+        type: string
 
 jobs:
+  setup:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
+    steps:
+      - id: matrix
+        run: |
+          versions=$(printf '%s' '${{ inputs.libtorrent_versions }}' | jq -Rc 'split(",")')
+          printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
   build:
+    needs: [setup]
     runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
@@ -30,7 +45,7 @@ jobs:
         os_id: ["alpine"]
         os_version_id: ["edge"]
         qbt_cross_name: ["armhf", "armv7", "aarch64", "riscv64", "x86_64", "x86"]
-        qbt_libtorrent_version: ["1.2", "2.0", "2.1"]
+        qbt_libtorrent_version: ${{ fromJSON(needs.setup.outputs.versions) }}
         qbt_build_tool: [""]
         qbt_linker_mold: ["yes"]
         # qbt_qbittorrent_tag: ["master"]
