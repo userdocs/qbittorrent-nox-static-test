@@ -54,6 +54,21 @@ on:
         required: true
         default: true
         type: boolean
+      libtorrent_1_2_tag:
+        description: "libtorrent 1.2 tag"
+        required: false
+        default: ""
+        type: string
+      libtorrent_2_0_tag:
+        description: "libtorrent 2.0 tag"
+        required: false
+        default: "RC_2_0"
+        type: string
+      libtorrent_2_1_tag:
+        description: "libtorrent 2.1 tag"
+        required: false
+        default: "v2.1.0-rc1"
+        type: string
       skip_rerun:
         description: "Skip rerun?"
         required: true

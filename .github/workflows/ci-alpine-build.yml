@@ -34,6 +34,21 @@ on:
         required: true
         default: true
         type: boolean
+      libtorrent_1_2_tag:
+        description: "libtorrent 1.2 tag"
+        required: false
+        default: ""
+        type: string
+      libtorrent_2_0_tag:
+        description: "libtorrent 2.0 tag"
+        required: false
+        default: "RC_2_0"
+        type: string
+      libtorrent_2_1_tag:
+        description: "libtorrent 2.1 tag"
+        required: false
+        default: "v2.1.0-rc1"
+        type: string
 
 jobs:
   setup:
@@ -65,10 +80,6 @@ jobs:
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
-          - qbt_libtorrent_version: "2.1"
-            qbt_libtorrent_tag: "v2.1.0-rc1"
-          - qbt_libtorrent_version: "2.0"
-            qbt_libtorrent_tag: "RC_2_0"
 
     name: "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}libtorrent-v${{ matrix.qbt_libtorrent_version }}"
 
@@ -107,7 +118,7 @@ jobs:
           printf '%s\n' "qbt_skip_icu=${set_skip_icu}" >> env.custom
           printf '%s\n' "qbt_boost_tag=${{ matrix.qbt_boost_tag }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_version=${{ matrix.qbt_libtorrent_version }}" >> env.custom
-          printf '%s\n' "qbt_libtorrent_tag=${{ matrix.qbt_libtorrent_tag }}" >> env.custom
+          printf '%s\n' "qbt_libtorrent_tag=${{ matrix.qbt_libtorrent_version == '2.1' && inputs.libtorrent_2_1_tag || matrix.qbt_libtorrent_version == '2.0' && inputs.libtorrent_2_0_tag || inputs.libtorrent_1_2_tag }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=" >> env.custom
           printf '%s\n' "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
           printf '%s\n' "qbt_qt_tag=${{ matrix.qbt_qt_tag }}" >> env.custom
