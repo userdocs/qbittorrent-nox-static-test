@@ -33,7 +33,7 @@ jobs:
         qbt_libtorrent_version: ["1.2", "2.0", "2.1"]
         qbt_build_tool: [""]
         qbt_linker_mold: ["yes"]
-        qbt_qbittorrent_tag: ["master"]
+        # qbt_qbittorrent_tag: ["master"]
         include:
           - qbt_build_tool: ""
             qbt_qt_version_name: ""
