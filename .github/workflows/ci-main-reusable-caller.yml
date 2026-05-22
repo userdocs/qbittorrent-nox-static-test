@@ -39,11 +39,21 @@ on:
         required: true
         default: true
         type: boolean
-      libtorrent_versions:
-        description: "Libtorrent versions (comma-separated, e.g. 1.2,2.0,2.1)"
+      libtorrent_1_2:
+        description: "Build libtorrent 1.2"
         required: true
-        default: "1.2,2.0,2.1"
-        type: string
+        default: true
+        type: boolean
+      libtorrent_2_0:
+        description: "Build libtorrent 2.0"
+        required: true
+        default: true
+        type: boolean
+      libtorrent_2_1:
+        description: "Build libtorrent 2.1"
+        required: true
+        default: true
+        type: boolean
       skip_rerun:
         description: "Skip rerun?"
         required: true
@@ -90,7 +100,9 @@ jobs:
       icu: ${{ github.event.inputs.icu == 'true' && 'no' || 'yes' }}
       debug: ${{ github.event.inputs.debug == 'true' && 'yes' || 'no' }}
       script_name: ${{ github.event.inputs.script_name }}
-      libtorrent_versions: ${{ github.event.inputs.libtorrent_versions }}
+      libtorrent_1_2: ${{ github.event.inputs.libtorrent_1_2 == 'true' }}
+      libtorrent_2_0: ${{ github.event.inputs.libtorrent_2_0 == 'true' }}
+      libtorrent_2_1: ${{ github.event.inputs.libtorrent_2_1 == 'true' }}
 
   ci-alpine-release:
     needs: [ci-alpine-build]
@@ -102,7 +114,9 @@ jobs:
       contents: write
     uses: ./.github/workflows/ci-alpine-release.yml
     with:
-      libtorrent_versions: ${{ github.event.inputs.libtorrent_versions }}
+      libtorrent_1_2: ${{ github.event.inputs.libtorrent_1_2 == 'true' }}
+      libtorrent_2_0: ${{ github.event.inputs.libtorrent_2_0 == 'true' }}
+      libtorrent_2_1: ${{ github.event.inputs.libtorrent_2_1 == 'true' }}
 
   ci-auto-rerun-failed-jobs:
     if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'

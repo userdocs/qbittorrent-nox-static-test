@@ -3,11 +3,21 @@ name: ci - alpine-release
 on:
   workflow_call:
     inputs:
-      libtorrent_versions:
-        description: "Libtorrent versions (comma-separated, e.g. 1.2,2.0,2.1)"
+      libtorrent_1_2:
+        description: "Build libtorrent 1.2"
         required: true
-        default: "1.2,2.0,2.1"
-        type: string
+        default: true
+        type: boolean
+      libtorrent_2_0:
+        description: "Build libtorrent 2.0"
+        required: true
+        default: true
+        type: boolean
+      libtorrent_2_1:
+        description: "Build libtorrent 2.1"
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   setup:
@@ -17,7 +27,10 @@ jobs:
     steps:
       - id: matrix
         run: |
-          versions=$(printf '%s' '${{ inputs.libtorrent_versions }}' | jq -Rc 'split(",")')
+          versions='[]'
+          [[ '${{ inputs.libtorrent_1_2 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["1.2"]')
+          [[ '${{ inputs.libtorrent_2_0 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["2.0"]')
+          [[ '${{ inputs.libtorrent_2_1 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq '. + ["2.1"]')
           printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
 
   release:
