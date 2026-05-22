@@ -45,9 +45,8 @@ on:
         default: true
         type: boolean
       libtorrent_1_2_tag:
-        description: "libtorrent 1.2 tag"
+        description: "libtorrent 1.2 tag | RC_1_2"
         required: false
-        default: "RC_1_2"
         type: string
       libtorrent_2_0:
         description: "Build libtorrent 2.0"
@@ -55,9 +54,8 @@ on:
         default: true
         type: boolean
       libtorrent_2_0_tag:
-        description: "libtorrent 2.0 tag"
+        description: "libtorrent 2.0 tag | RC_2_0"
         required: false
-        default: "RC_2_0"
         type: string
       libtorrent_2_1:
         description: "Build libtorrent 2.1"
@@ -65,29 +63,27 @@ on:
         default: true
         type: boolean
       libtorrent_2_1_tag:
-        description: "libtorrent 2.1 tag"
+        description: "libtorrent 2.1 tag | RC_2_1"
         required: false
-        default: "RC_2_1"
         type: string
       openssl_tag:
-        description: "OpenSSL tag"
+        description: "OpenSSL tag | openssl-3.6.2"
         required: false
         type: string
       boost_tag:
-        description: "Boost tag"
+        description: "Boost tag | boost-1.91.0-1"
         required: false
         type: string
       qt_version:
-        description: "Qt version"
+        description: "Qt version | 6"
         required: false
-        default: "6"
         type: string
       qt_tag:
-        description: "Qt tag"
+        description: "Qt tag | v6.11.1"
         required: false
         type: string
       qbittorrent_tag:
-        description: "qBittorrent tag"
+        description: "qBittorrent tag | release-5.2.0"
         required: false
         type: string
       skip_rerun:
