@@ -46,6 +46,26 @@ on:
         description: "libtorrent 2.1 tag"
         required: false
         type: string
+      openssl_tag:
+        description: "OpenSSL tag"
+        required: false
+        type: string
+      boost_tag:
+        description: "Boost tag"
+        required: false
+        type: string
+      qt_version:
+        description: "Qt version"
+        required: false
+        type: string
+      qt_tag:
+        description: "Qt tag"
+        required: false
+        type: string
+      qbittorrent_tag:
+        description: "qBittorrent tag"
+        required: false
+        type: string
 
 jobs:
   setup:
@@ -113,13 +133,14 @@ jobs:
           printf '%s\n' "qbt_revision_url=${{ github.repository }}" > env.custom
           printf '%s\n' "qbt_zlib_type=zlib" >> env.custom
           printf '%s\n' "qbt_skip_icu=${set_skip_icu}" >> env.custom
-          printf '%s\n' "qbt_boost_tag=${{ matrix.qbt_boost_tag }}" >> env.custom
+          printf '%s\n' "qbt_openssl_tag=${{ inputs.openssl_tag }}" >> env.custom
+          printf '%s\n' "qbt_boost_tag=${{ inputs.boost_tag }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_version=${{ matrix.qbt_libtorrent_version }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_tag=${{ matrix.qbt_libtorrent_version == '2.1' && inputs.libtorrent_2_1_tag || matrix.qbt_libtorrent_version == '2.0' && inputs.libtorrent_2_0_tag || inputs.libtorrent_1_2_tag }}" >> env.custom
           printf '%s\n' "qbt_libtorrent_master_jamfile=" >> env.custom
-          printf '%s\n' "qbt_qt_version=${{ matrix.qbt_qt_version }}" >> env.custom
-          printf '%s\n' "qbt_qt_tag=${{ matrix.qbt_qt_tag }}" >> env.custom
-          printf '%s\n' "qbt_qbittorrent_tag=${{ matrix.qbt_qbittorrent_tag }}" >> env.custom
+          printf '%s\n' "qbt_qt_version=${{ inputs.qt_version }}" >> env.custom
+          printf '%s\n' "qbt_qt_tag=${{ inputs.qt_tag }}" >> env.custom
+          printf '%s\n' "qbt_qbittorrent_tag=${{ inputs.qbittorrent_tag }}" >> env.custom
           printf '%s\n' "qbt_build_dir=${qbt_build_dir}" >> env.custom
           printf '%s\n' "qbt_build_tool=${{ matrix.qbt_build_tool }}" >> env.custom
           printf '%s\n' "qbt_cross_name=${{ matrix.qbt_cross_name }}" >> env.custom

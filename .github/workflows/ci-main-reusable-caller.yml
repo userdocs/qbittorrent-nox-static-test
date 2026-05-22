@@ -69,6 +69,31 @@ on:
         required: false
         default: "RC_2_1"
         type: string
+      openssl_tag:
+        description: "OpenSSL tag"
+        required: false
+        default: "openssl-3.6.2"
+        type: string
+      boost_tag:
+        description: "Boost tag"
+        required: false
+        default: "boost-1.91.0-1"
+        type: string
+      qt_version:
+        description: "Qt version"
+        required: false
+        default: "6"
+        type: string
+      qt_tag:
+        description: "Qt tag"
+        required: false
+        default: "v6.11.1"
+        type: string
+      qbittorrent_tag:
+        description: "qBittorrent tag"
+        required: false
+        default: "release-5.2.0"
+        type: string
       skip_rerun:
         description: "Skip rerun?"
         required: true
@@ -118,6 +143,14 @@ jobs:
       libtorrent_1_2: ${{ github.event.inputs.libtorrent_1_2 == 'true' }}
       libtorrent_2_0: ${{ github.event.inputs.libtorrent_2_0 == 'true' }}
       libtorrent_2_1: ${{ github.event.inputs.libtorrent_2_1 == 'true' }}
+      libtorrent_1_2_tag: ${{ github.event.inputs.libtorrent_1_2_tag }}
+      libtorrent_2_0_tag: ${{ github.event.inputs.libtorrent_2_0_tag }}
+      libtorrent_2_1_tag: ${{ github.event.inputs.libtorrent_2_1_tag }}
+      openssl_tag: ${{ github.event.inputs.openssl_tag }}
+      boost_tag: ${{ github.event.inputs.boost_tag }}
+      qt_version: ${{ github.event.inputs.qt_version }}
+      qt_tag: ${{ github.event.inputs.qt_tag }}
+      qbittorrent_tag: ${{ github.event.inputs.qbittorrent_tag }}
 
   ci-alpine-release:
     needs: [ci-alpine-build]
