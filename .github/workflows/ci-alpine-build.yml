@@ -122,7 +122,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -190,7 +190,7 @@ jobs:
           target_arch: ${{ matrix.qbt_cross_name }}
 
       - name: Host - Bootstrap docker container
-        uses: userdocs/actions/qbt_docker@main # v1.0.7
+        uses: userdocs/actions/qbt_docker@805f467e9075f3adb783b7bf0d9311ef76bd78c7 # main
         with:
           os_id: ${{ matrix.os_id }}
           os_version_id: ${{ matrix.os_version_id }}
@@ -248,7 +248,7 @@ jobs:
         run: docker exec -w ${wd}/${qbt_build_dir}/completed "${container_name}" mv -f qbittorrent-nox "${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
       - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
           subject-path: "${{ env.qbt_build_dir }}/completed/${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox"
 
