@@ -38,12 +38,24 @@ on:
         description: "libtorrent 1.2 tag"
         required: false
         type: string
+      libtorrent_1_2_qbittorrent_tag:
+        description: "qBittorrent tag for libtorrent 1.2"
+        required: false
+        type: string
       libtorrent_2_0_tag:
         description: "libtorrent 2.0 tag"
         required: false
         type: string
+      libtorrent_2_0_qbittorrent_tag:
+        description: "qBittorrent tag for libtorrent 2.0"
+        required: false
+        type: string
       libtorrent_2_1_tag:
         description: "libtorrent 2.1 tag"
+        required: false
+        type: string
+      libtorrent_2_1_qbittorrent_tag:
+        description: "qBittorrent tag for libtorrent 2.1"
         required: false
         type: string
       openssl_tag:
@@ -60,10 +72,6 @@ on:
         type: string
       qt_tag:
         description: "Qt tag"
-        required: false
-        type: string
-      qbittorrent_tag:
-        description: "qBittorrent tag"
         required: false
         type: string
 
@@ -136,7 +144,7 @@ jobs:
           INPUT_LT_TAG: ${{ matrix.qbt_libtorrent_version == '2.1' && inputs.libtorrent_2_1_tag || matrix.qbt_libtorrent_version == '2.0' && inputs.libtorrent_2_0_tag || inputs.libtorrent_1_2_tag }}
           INPUT_QT_VERSION: ${{ inputs.qt_version }}
           INPUT_QT_TAG: ${{ inputs.qt_tag }}
-          INPUT_QBT_TAG: ${{ inputs.qbittorrent_tag }}
+          INPUT_QBT_TAG: ${{ matrix.qbt_libtorrent_version == '2.1' && inputs.libtorrent_2_1_qbittorrent_tag || matrix.qbt_libtorrent_version == '2.0' && inputs.libtorrent_2_0_qbittorrent_tag || inputs.libtorrent_1_2_qbittorrent_tag }}
           MATRIX_BUILD_TOOL: ${{ matrix.qbt_build_tool }}
           MATRIX_CROSS_NAME: ${{ matrix.qbt_cross_name }}
           MATRIX_LT_MOLD: ${{ matrix.qbt_linker_mold }}
