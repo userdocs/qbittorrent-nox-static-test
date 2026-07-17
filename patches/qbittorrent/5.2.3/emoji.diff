@@ -1,0 +1,73 @@
+diff --git a/src/base/tagset.cpp b/src/base/tagset.cpp
+index 2691ba6..6f1aa25 100644
+--- a/src/base/tagset.cpp
++++ b/src/base/tagset.cpp
+@@ -31,8 +31,12 @@
+
+ bool TagLessThan::operator()(const Tag &left, const Tag &right) const
+ {
+-    const int result = m_compare(left.toString(), right.toString());
+-    if (result != 0)
++    const QString leftStr = left.toString();
++    const QString rightStr = right.toString();
++    if (const int result = m_compare(leftStr, rightStr); result != 0)
+         return (result < 0);
+-    return (m_subCompare(left.toString(), right.toString()) < 0);
++    if (const int result = m_subCompare(leftStr, rightStr); result != 0)
++        return (result < 0);
++    // Binary fallback guarantees a total order regardless of locale backend
++    return (QString::compare(leftStr, rightStr) < 0);
+ }
+
+diff --git a/src/base/utils/compare.cpp b/src/base/utils/compare.cpp
+index 9c8a4e0..09bd988 100644
+--- a/src/base/utils/compare.cpp
++++ b/src/base/utils/compare.cpp
+@@ -96,7 +96,28 @@ int Utils::Compare::naturalCompare(const QString &left, const QString &right, co
+         }
+         else
+         {
+-            return QString::localeAwareCompare(leftChar, rightChar);
++            // Compare whole code points. Lone surrogates make distinct non-BMP
++            // characters compare equal on non-ICU builds, breaking the strict
++            // weak ordering that TagSet (std::set) requires.
++            const auto codePointAt = [](const QString &str, const int pos) -> QString
++            {
++                if (str[pos].isHighSurrogate() && ((pos + 1) < str.size()) && str[pos + 1].isLowSurrogate())
++                    return str.mid(pos, 2);
++                if (str[pos].isLowSurrogate() && (pos > 0) && str[pos - 1].isHighSurrogate())
++                    return str.mid(pos - 1, 2);
++                return str.mid(pos, 1);
++            };
++            QString leftCodePoint = codePointAt(left, posL);
++            QString rightCodePoint = codePointAt(right, posR);
++            if (caseSensitivity == Qt::CaseInsensitive)
++            {
++                leftCodePoint = leftCodePoint.toCaseFolded();
++                rightCodePoint = rightCodePoint.toCaseFolded();
++            }
++            if (const int result = QString::localeAwareCompare(leftCodePoint, rightCodePoint); result != 0)
++                return result;
++            // Guarantee a total order under any locale backend
++            return QString::compare(leftCodePoint, rightCodePoint);
+         }
+     }
+ }
+
+diff --git a/test/testutilscompare.cpp b/test/testutilscompare.cpp
+index 65edde9..825a905 100644
+--- a/test/testutilscompare.cpp
++++ b/test/testutilscompare.cpp
+@@ -71,6 +71,12 @@ namespace
+         {u"😀"_s, u"😁"_s, CompareResult::Less, CompareResult::Less},
+         {u"😁"_s, u"😀"_s, CompareResult::Greater, CompareResult::Greater},
+
++        // Non-BMP characters must be compared as whole code points, not lone surrogates
++        {u"🌟"_s, u"💎"_s, CompareResult::Less, CompareResult::Less},
++        {u"💎"_s, u"🌟"_s, CompareResult::Greater, CompareResult::Greater},
++        {u"🌟 a"_s, u"💎 a"_s, CompareResult::Less, CompareResult::Less},
++        {u"★"_s, u"🌟"_s, CompareResult::Less, CompareResult::Less},
++
+         {u"a1"_s, u"a1"_s, CompareResult::Equal, CompareResult::Equal},
+         {u"A1"_s, u"a1"_s, CompareResult::Equal, CompareResult::Greater},
+         {u"a1"_s, u"A1"_s, CompareResult::Equal, CompareResult::Less},
