@@ -190,7 +190,7 @@ jobs:
           target_arch: ${{ matrix.qbt_cross_name }}
 
       - name: Host - Bootstrap docker container
-        uses: userdocs/actions/qbt_docker@2bfec55aaef81fc94fc2c0c2839f62920673adbb # main
+        uses: userdocs/actions/qbt_docker@74a803d21d0040ba5cc83cfdcc677135d830771c # main
         with:
           os_id: ${{ matrix.os_id }}
           os_version_id: ${{ matrix.os_version_id }}
