@@ -185,12 +185,12 @@ jobs:
           printf '%s\n\n' "DEBIAN_FRONTEND=noninteractive" >> env.custom
 
       - name: Host - Bootstrap qemu
-        uses: userdocs/actions/qemu@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        uses: userdocs/actions/qemu@8cf6141527f0fd7b8403fb329907edf8dc2ad75f # v1.0.8
         with:
           target_arch: ${{ matrix.qbt_cross_name }}
 
       - name: Host - Bootstrap docker container
-        uses: userdocs/actions/qbt_docker@74a803d21d0040ba5cc83cfdcc677135d830771c # main
+        uses: userdocs/actions/qbt_docker@3d369ea9454f5e1a0caa12babd742a86502484dd # main
         with:
           os_id: ${{ matrix.os_id }}
           os_version_id: ${{ matrix.os_version_id }}
