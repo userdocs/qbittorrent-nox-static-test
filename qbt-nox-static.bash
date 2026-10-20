@@ -240,7 +240,7 @@ _set_default_values() {
 	qbt_mcm_tag="${qbt_mcm_tag:-}"
 
 	# Default to this version of libtorrent is no tag or branch is specified. qbt_libtorrent_version=1.2 or 2.0 or 2.1 or -lt v1.2.18
-	qbt_libtorrent_version="${qbt_libtorrent_version:-2.0}"
+	qbt_libtorrent_version="${qbt_libtorrent_version:-2.1}"
 
 	# Use release Jamfile unless we need a specific fix from the relevant RC branch.
 	# Using this can also break builds when non backported changes are present which will require a custom jamfile

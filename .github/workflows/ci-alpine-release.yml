@@ -132,7 +132,7 @@ jobs:
         env:
           GH_TOKEN: "${{ github.TOKEN }}"
           LT_VERSION: ${{ matrix.qbt_libtorrent_version }}
-          RELEASE_FLAGS: ${{ matrix.qbt_libtorrent_version == '2.0' && '--latest' || '--prerelease' }}
+          RELEASE_FLAGS: ${{ matrix.qbt_libtorrent_version == '2.1' && '--latest' || '--prerelease' }}
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/${release_tag}" >/dev/null 2>&1; then
             gh release edit "${release_tag}" \
