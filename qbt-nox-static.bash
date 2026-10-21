@@ -1705,7 +1705,7 @@ _set_module_urls() {
 		github_url[zlib]="https://github.com/zlib-ng/zlib-ng.git"
 	fi
 
-	github_url[iconv]="https://git.savannah.gnu.org/git/libiconv.git"
+	github_url[iconv]="https://https.git.savannah.gnu.org/git/libiconv.git"
 	github_url[icu]="https://github.com/unicode-org/icu.git"
 	github_url[double_conversion]="https://github.com/google/double-conversion.git"
 	github_url[openssl]="https://github.com/openssl/openssl.git"
