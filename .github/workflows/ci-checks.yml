@@ -19,6 +19,7 @@ jobs:
           persist-credentials: false
 
       - name: Run the sh-checker
+        id: sh-checker
         uses: luizm/action-sh-checker@883217215b11c1fabbf00eb1a9a041f62d74c744 # v0.10.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -27,6 +28,18 @@ jobs:
         with:
           sh_checker_comment: true
           sh_checker_exclude: ""
+
+      - name: Write summary
+        if: always()
+        env:
+          STEP_OUTCOME: ${{ steps.sh-checker.outcome }}
+        run: |
+          {
+            printf '### Shell Checker (`shellcheck` + `shfmt`)\n\n'
+            printf '| Check | Result | Options |\n'
+            printf '| :--- | :---: | :--- |\n'
+            printf '| `sh-checker` | `%s` | `SHELLCHECK_OPTS="-e SC2034,SC1091"`, `SHFMT_OPTS="-ci -sr -i 0"` |\n' "${STEP_OUTCOME}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   zizmor-checker:
     runs-on: ubuntu-26.04-arm
@@ -39,7 +52,20 @@ jobs:
           persist-credentials: false
 
       - name: Run zizmor 🌈
-        uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        id: zizmor
+        uses: zizmorcore/zizmor-action@1b4550e929643b8b26a62303c6bd64814271a4f1 # v0.9.2
+
+      - name: Write summary
+        if: always()
+        env:
+          STEP_OUTCOME: ${{ steps.zizmor.outcome }}
+        run: |
+          {
+            printf '### Zizmor Security Audit\n\n'
+            printf '| Check | Result |\n'
+            printf '| :--- | :---: |\n'
+            printf '| `zizmor` | `%s` |\n' "${STEP_OUTCOME}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   editorconfig-checker:
     runs-on: ubuntu-26.04-arm
@@ -64,7 +90,24 @@ jobs:
               ;;
           esac
 
-          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/editorconfig-checker-linux-${arch}.tar.gz" | tar xzf - --strip-components=1
-          ./ec-linux-${arch} --exclude '^(docs/.*|patches/.*)$' | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
-          exit_code=("${PIPESTATUS[0]}")
+          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/editorconfig-checker-linux-${arch}.tar.gz" | tar xzf -
+          ec_log="$(mktemp)"
+          trap 'rm -f -- "${ec_log}"' EXIT
+          set +e
+          ./editorconfig-checker --exclude '^(docs/.*|patches/.*)$' | sed 's/\x1b\[[0-9;]*m//g' | tee "${ec_log}"
+          exit_code="${PIPESTATUS[0]}"
+          set -e
+          {
+            printf '### EditorConfig Checker\n\n'
+            printf '| Check | Exit Code |\n'
+            printf '| :--- | :---: |\n'
+            printf '| `editorconfig-checker` | `%s` |\n\n' "${exit_code}"
+            if [[ -s "${ec_log}" ]]; then
+              printf '```text\n'
+              cat "${ec_log}"
+              printf '```\n'
+            else
+              printf 'No formatting issues found.\n'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
           # exit "${exit_code}"

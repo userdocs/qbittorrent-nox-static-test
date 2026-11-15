@@ -80,17 +80,33 @@ jobs:
 
       - name: Run alpine apk --print-arch
         if: matrix.container_image == 'alpine:edge'
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+          MATRIX_IMAGE: ${{ matrix.container_image }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
         run: |
-          printf '\n%b\n' "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          docker exec ${container_name} apk --print-arch | tee -a $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          {
+            printf '### `qi.bash` Test — %s (%s)\n\n' "${MATRIX_IMAGE}" "${MATRIX_ARCH}"
+            printf '| Image | Arch | Platform | Reported Arch |\n'
+            printf '| :--- | :---: | :---: | :---: |\n'
+            reported_arch="$(docker exec "${container_name}" apk --print-arch)"
+            printf '| `%s` | `%s` | `%s` | `%s` |\n\n' "${MATRIX_IMAGE}" "${MATRIX_ARCH}" "${MATRIX_PLATFORM}" "${reported_arch}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Run debian dpkg --print-architecture
         if: matrix.container_image == 'debian:latest' || matrix.container_image == 'ubuntu:latest'
+        env:
+          MATRIX_ARCH: ${{ matrix.arch }}
+          MATRIX_IMAGE: ${{ matrix.container_image }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
         run: |
-          printf '\n%b\n' "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          docker exec ${container_name} dpkg --print-architecture | tee -a $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          {
+            printf '### `qi.bash` Test — %s (%s)\n\n' "${MATRIX_IMAGE}" "${MATRIX_ARCH}"
+            printf '| Image | Arch | Platform | Reported Arch |\n'
+            printf '| :--- | :---: | :---: | :---: |\n'
+            reported_arch="$(docker exec "${container_name}" dpkg --print-architecture)"
+            printf '| `%s` | `%s` | `%s` | `%s` |\n\n' "${MATRIX_IMAGE}" "${MATRIX_ARCH}" "${MATRIX_PLATFORM}" "${reported_arch}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Run apt-get update
         if: matrix.container_image == 'debian:latest' || matrix.container_image == 'ubuntu:latest'
@@ -98,8 +114,18 @@ jobs:
           docker exec ${container_name} apt-get update
           docker exec ${container_name} apt-get install -y wget
 
-      - run: |
+      - name: Run qi.bash
+        run: |
           chmod +x qi.bash
-          printf '\n%b\n' "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          docker exec ${container_name} bash -l qi.bash | sed 's/\x1b\[[0-9;]*m//g' | tee -a $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          qi_log="$(mktemp)"
+          trap 'rm -f -- "${qi_log}"' EXIT
+          set +e
+          docker exec "${container_name}" bash -l qi.bash | sed 's/\x1b\[[0-9;]*m//g' | tee "${qi_log}"
+          qi_rc="${PIPESTATUS[0]}"
+          set -e
+          {
+            printf '#### `qi.bash` Output (exit `%s`)\n\n```text\n' "${qi_rc}"
+            cat "${qi_log}"
+            printf '```\n'
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit "${qi_rc}"

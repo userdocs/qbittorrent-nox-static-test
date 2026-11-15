@@ -88,6 +88,12 @@ jobs:
           [[ '${{ inputs.libtorrent_2_0 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.0"]')
           [[ '${{ inputs.libtorrent_2_1 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.1"]')
           printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
+          {
+            printf '### Alpine Build Matrix\n\n'
+            printf '| Libtorrent Versions |\n'
+            printf '| :--- |\n'
+            printf '| `%s` |\n' "${versions}"
+          } >> "${GITHUB_STEP_SUMMARY}"
   build:
     needs: [setup]
     runs-on: ${{ matrix.runs_on }}
@@ -271,6 +277,52 @@ jobs:
         with:
           name: "${{ matrix.qbt_cross_name }}-libtorrent-v${{ matrix.qbt_libtorrent_version }}-graphs"
           path: "${{ env.qbt_build_dir }}/completed/*.png"
+
+      - name: Host - Write build summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          CROSS_NAME: ${{ matrix.qbt_cross_name }}
+          OS_ID: ${{ matrix.os_id }}
+          OS_VERSION_ID: ${{ matrix.os_version_id }}
+          LT_VERSION: ${{ matrix.qbt_libtorrent_version }}
+          LINKER_MOLD: ${{ matrix.qbt_linker_mold }}
+          ASSET_NAME: ${{ matrix.qbt_cross_name }}-${{ matrix.qbt_qt_version_name }}qbittorrent-nox
+        run: |
+          shopt -s nullglob
+          {
+            printf '### Alpine Build — `%s` (libtorrent `v%s`)\n\n' "${CROSS_NAME}" "${LT_VERSION}"
+            printf '| Field | Value |\n'
+            printf '| :--- | :--- |\n'
+            printf '| Status | `%s` |\n' "${JOB_STATUS}"
+            printf '| Script | `%s` |\n' "${script_name}"
+            printf '| OS | `%s:%s` |\n' "${OS_ID}" "${OS_VERSION_ID}"
+            printf '| Target Arch | `%s` |\n' "${CROSS_NAME}"
+            printf '| Libtorrent | `v%s` |\n' "${LT_VERSION}"
+            printf '| Skip ICU | `%s` |\n' "${set_skip_icu}"
+            printf '| Debug | `%s` |\n' "${set_build_debug}"
+            printf '| Workflow Files | `%s` |\n' "${set_workflow_files}"
+            printf '| Mold Linker | `%s` |\n' "${LINKER_MOLD}"
+
+            asset_path="${qbt_build_dir}/completed/${ASSET_NAME}"
+            [[ -f "${asset_path}" ]] || asset_path="${qbt_build_dir}/completed/qbittorrent-nox"
+            if [[ -f "${asset_path}" ]]; then
+              asset_size="$(du -h "${asset_path}" | awk '{print $1}')"
+              read -r asset_sha256 _ < <(sha256sum "${asset_path}")
+              printf '| Binary | `%s` (`%s`) |\n' "${asset_path##*/}" "${asset_size}"
+              printf '| SHA256 | `%s` |\n' "${asset_sha256}"
+            fi
+            printf '\n'
+
+            dep_files=("${qbt_build_dir}/completed"/*-dependency-version.json "${qbt_build_dir}/release_info"/*-dependency-version.json)
+            if ((${#dep_files[@]})) && command -v jq > /dev/null 2>&1; then
+              printf '#### Component Versions\n\n'
+              printf '| Component | Version |\n'
+              printf '| :--- | :--- |\n'
+              jq -r 'to_entries | .[] | "| `\(.key)` | `\(.value)` |"' "${dep_files[0]}"
+              printf '\n'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
       # - name: Host - Upload build dir on error or cancel
       #   if: ( cancelled() || failure() )
       #   uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
