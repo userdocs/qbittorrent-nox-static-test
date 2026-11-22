@@ -1,0 +1,87 @@
+name: ci - unit tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run unit tests
+        run: |
+          missing_pkgs=()
+          for pkg in git jq patch; do
+            command -v "${pkg}" > /dev/null 2>&1 || missing_pkgs+=("${pkg}")
+          done
+          if ((${#missing_pkgs[@]})); then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends "${missing_pkgs[@]}"
+          fi
+
+          test_log="$(mktemp)"
+          trap 'rm -f -- "${test_log}"' EXIT
+
+          set +e
+          bash tests/unit_tests.bash 2>&1 | tee "${test_log}"
+          test_rc="${PIPESTATUS[0]}"
+          set -e
+
+          passed_count="$(grep -c '^  \[PASS\] ' "${test_log}" || true)"
+          failed_count="$(grep -c '^  \[FAIL\] ' "${test_log}" || true)"
+          total_count="$((passed_count + failed_count))"
+
+          {
+            if [[ ${test_rc} -eq 0 ]]; then
+              printf '### Unit Tests — Passed\n\n'
+            else
+              printf '### Unit Tests — Failed\n\n'
+            fi
+
+            printf '| Passed | Failed | Total | Exit Code |\n'
+            printf '| :---: | :---: | :---: | :---: |\n'
+            printf '| %s | %s | %s | `%s` |\n\n' "${passed_count}" "${failed_count}" "${total_count}" "${test_rc}"
+
+            printf '| Section | Passed | Failed |\n'
+            printf '| :--- | :---: | :---: |\n'
+            awk '
+              /^=== .* ===$/ {
+                if (section != "") printf "| %s | %d | %d |\n", section, p, f
+                section = $0
+                gsub(/^=== | ===$/, "", section)
+                p = 0; f = 0
+                next
+              }
+              /^  \[PASS\] / { p++; next }
+              /^  \[FAIL\] / { f++; next }
+              END {
+                if (section != "") printf "| %s | %d | %d |\n", section, p, f
+              }
+            ' "${test_log}"
+            printf '\n'
+
+            if ((failed_count > 0)); then
+              printf '#### Failures\n\n```text\n'
+              grep '^  \[FAIL\] ' "${test_log}" || true
+              printf '```\n\n'
+            fi
+
+            printf '<details>\n<summary>Full unit test output</summary>\n\n```text\n'
+            cat "${test_log}"
+            printf '```\n\n</details>\n'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          exit "${test_rc}"

@@ -1324,36 +1324,43 @@ _debug() {
 		local qbt_workflow_archive_url_sorted qbt_workflow_version_sorted source_default_sorted
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_url${color_end}"
 		while IFS= read -r github_url_sorted; do
+			[[ -n ${github_url_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${github_url_sorted}${color_end}: ${color_blue_light}${github_url[${github_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!github_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}github_tag${color_end}"
 		while IFS= read -r github_tag_sorted; do
+			[[ -n ${github_tag_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${github_tag_sorted}${color_end}: ${color_blue_light}${github_tag[${github_tag_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!github_tag[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}app_version${color_end}"
 		while IFS= read -r app_version_sorted; do
+			[[ -n ${app_version_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${app_version_sorted}${color_end}: ${color_blue_light}${app_version[${app_version_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!app_version[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_archive_url${color_end}"
 		while IFS= read -r source_archive_url_sorted; do
+			[[ -n ${source_archive_url_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${source_archive_url_sorted}${color_end}: ${color_blue_light}${source_archive_url[${source_archive_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!source_archive_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}qbt_workflow_archive_url${color_end}"
 		while IFS= read -r qbt_workflow_archive_url_sorted; do
+			[[ -n ${qbt_workflow_archive_url_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${qbt_workflow_archive_url_sorted}${color_end}: ${color_blue_light}${qbt_workflow_archive_url[${qbt_workflow_archive_url_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!qbt_workflow_archive_url[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}qbt_workflow_versions${color_end}"
 		while IFS= read -r qbt_workflow_version_sorted; do
+			[[ -n ${qbt_workflow_version_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${qbt_workflow_version_sorted}${color_end}: ${color_blue_light}${qbt_workflow_versions[${qbt_workflow_version_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!qbt_workflow_versions[@]}" | sort)
 
 		printf '\n%b\n\n' " ${unicode_magenta_circle} ${color_yellow_light}source_default${color_end}"
 		while IFS= read -r source_default_sorted; do
+			[[ -n ${source_default_sorted} ]] || continue
 			printf '%b\n' " ${color_green_light}${source_default_sorted}${color_end}: ${color_blue_light}${source_default[${source_default_sorted}]}${color_end}"
 		done < <(printf '%s\n' "${!source_default[@]}" | sort)
 

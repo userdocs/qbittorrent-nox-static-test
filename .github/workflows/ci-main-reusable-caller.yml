@@ -187,10 +187,64 @@ jobs:
         with:
           persist-credentials: false
       - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
-        run: >
-          gh workflow run ci-auto-rerun-failed-jobs-action.yml
-          --repo "${github_repo:-$GITHUB_REPOSITORY}"
-          -f github_repo=${GITHUB_REPOSITORY}
-          -f run_id=${GITHUB_RUN_ID}
-          -f attempts=${GITHUB_RUN_ATTEMPT}
-          -f retries=${retries}
+        run: |
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml \
+            --repo "${github_repo:-$GITHUB_REPOSITORY}" \
+            -f "github_repo=${GITHUB_REPOSITORY}" \
+            -f "run_id=${GITHUB_RUN_ID}" \
+            -f "attempts=${GITHUB_RUN_ATTEMPT}" \
+            -f "retries=${retries}"
+          {
+            printf '### Auto Rerun Triggered\n\n'
+            printf '| Target Workflow | Repository | Run ID | Attempt | Retries |\n'
+            printf '| :--- | :--- | :---: | :---: | :---: |\n'
+            printf '| `ci-auto-rerun-failed-jobs-action.yml` | `%s` | `%s` | `%s` | `%s` |\n' "${github_repo:-$GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}" "${GITHUB_RUN_ATTEMPT}" "${retries}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  summary:
+    name: Workflow summary
+    needs: [ci-debian-build, ci-alpine-build, ci-alpine-release, ci-auto-rerun-failed-jobs]
+    if: always()
+    runs-on: ubuntu-26.04-arm
+    permissions: {}
+    steps:
+      - name: Write workflow summary
+        env:
+          INPUT_SCRIPT: ${{ github.event.inputs.script_name }}
+          INPUT_DEBIAN: ${{ github.event.inputs.debian-build }}
+          INPUT_ALPINE: ${{ github.event.inputs.alpine-build }}
+          INPUT_WORKFLOW_FILES: ${{ github.event.inputs.workflow-files }}
+          INPUT_ICU: ${{ github.event.inputs.icu }}
+          INPUT_DEBUG: ${{ github.event.inputs.debug }}
+          INPUT_RELEASE: ${{ github.event.inputs.release }}
+          INPUT_LT_1_2: ${{ github.event.inputs.libtorrent_1_2 }}
+          INPUT_LT_2_0: ${{ github.event.inputs.libtorrent_2_0 }}
+          INPUT_LT_2_1: ${{ github.event.inputs.libtorrent_2_1 }}
+          RES_DEBIAN: ${{ needs.ci-debian-build.result }}
+          RES_ALPINE: ${{ needs.ci-alpine-build.result }}
+          RES_RELEASE: ${{ needs.ci-alpine-release.result }}
+          RES_RERUN: ${{ needs.ci-auto-rerun-failed-jobs.result }}
+        run: |
+          {
+            printf '### Main Workflow Summary\n\n'
+            printf '| Job | Result |\n'
+            printf '| :--- | :---: |\n'
+            printf '| `ci-debian-build` | `%s` |\n' "${RES_DEBIAN}"
+            printf '| `ci-alpine-build` | `%s` |\n' "${RES_ALPINE}"
+            printf '| `ci-alpine-release` | `%s` |\n' "${RES_RELEASE}"
+            printf '| `ci-auto-rerun-failed-jobs` | `%s` |\n\n' "${RES_RERUN}"
+
+            printf '#### Dispatch Inputs\n\n'
+            printf '| Input | Value |\n'
+            printf '| :--- | :--- |\n'
+            printf '| `script_name` | `%s` |\n' "${INPUT_SCRIPT}"
+            printf '| `debian-build` | `%s` |\n' "${INPUT_DEBIAN}"
+            printf '| `alpine-build` | `%s` |\n' "${INPUT_ALPINE}"
+            printf '| `release` | `%s` |\n' "${INPUT_RELEASE}"
+            printf '| `workflow-files` | `%s` |\n' "${INPUT_WORKFLOW_FILES}"
+            printf '| `icu` | `%s` |\n' "${INPUT_ICU}"
+            printf '| `debug` | `%s` |\n' "${INPUT_DEBUG}"
+            printf '| `libtorrent_1_2` | `%s` |\n' "${INPUT_LT_1_2}"
+            printf '| `libtorrent_2_0` | `%s` |\n' "${INPUT_LT_2_0}"
+            printf '| `libtorrent_2_1` | `%s` |\n' "${INPUT_LT_2_1}"
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -60,7 +60,8 @@
 | 56  | Low      | Fixed `--help-staticish` vs `--help-static-ish` and `--help-multiarch` vs `--help-multi-arch` flag mismatches, invalid `-bs-ma default` help examples, and missing env vars in `-h`                                                                                      | Fixed   |
 | 57  | Low      | Fixed spelling, grammar, and typo errors (`--with-arch=mips32` in release info, comments, help text, and toolchain messages)                                                                                                                                             | Fixed   |
 | 58  | Low      | Removed duplicate/unmatched ANSI color escape sequences in `printf` statements and standardized comment section divider widths                                                                                                                                           | Fixed   |
-| 59  | Info     | Added comprehensive offline unit test suite (`tests/unit_tests.bash`) covering versioning, C++ standards, flags, CLI parsing, security validations, patching, caching, installation, and release info generation                                                           | Added   |
+| 59  | Low      | `_debug` (`-sdu`) raised `bad array subscript` errors on empty associative arrays (e.g. `qbt_workflow_versions` when `-wf` is not set); guarded all sorted-key loops against empty keys                                                                                  | Fixed   |
+| 60  | Info     | Added comprehensive offline unit test suite (`tests/unit_tests.bash`, 828 tests across 18 sections with zero module compilation), `.github/workflows/ci-unit-tests.yml`, and `$GITHUB_STEP_SUMMARY` Markdown outputs across GitHub Actions workflows                      | Added   |
 
 ### v2.2.5 - 23/04/2026
 

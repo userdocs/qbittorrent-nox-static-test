@@ -32,6 +32,12 @@ jobs:
           [[ '${{ inputs.libtorrent_2_0 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.0"]')
           [[ '${{ inputs.libtorrent_2_1 }}' == 'true' ]] && versions=$(printf '%s' "${versions}" | jq -c '. + ["2.1"]')
           printf 'versions=%s\n' "${versions}" >> "$GITHUB_OUTPUT"
+          {
+            printf '### Alpine Release Matrix\n\n'
+            printf '| Libtorrent Versions |\n'
+            printf '| :--- |\n'
+            printf '| `%s` |\n' "${versions}"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   release:
     needs: [setup]
@@ -146,3 +152,43 @@ jobs:
               ${RELEASE_FLAGS} \
               "${LT_VERSION}"/*-qbittorrent-nox dependency-version.json
           fi
+
+      - name: Host - Write release summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          LT_VERSION: ${{ matrix.qbt_libtorrent_version }}
+          RELEASE_TYPE: ${{ matrix.qbt_libtorrent_version == '2.1' && 'latest' || 'prerelease' }}
+        run: |
+          shopt -s nullglob
+          {
+            printf '### Release Summary — libtorrent `v%s`\n\n' "${LT_VERSION}"
+            printf '| Field | Value |\n'
+            printf '| :--- | :--- |\n'
+            printf '| Status | `%s` |\n' "${JOB_STATUS}"
+            printf '| Tag | `%s` |\n' "${release_tag:-unknown}"
+            printf '| Title | `%s` |\n' "${release_title:-unknown}"
+            printf '| Release Type | `%s` |\n\n' "${RELEASE_TYPE}"
+
+            assets=()
+            for candidate in "${LT_VERSION}"/*-qbittorrent-nox dependency-version.json; do
+              [[ -f "${candidate}" ]] && assets+=("${candidate}")
+            done
+            if ((${#assets[@]})); then
+              printf '#### Release Assets\n\n'
+              printf '| Asset | Size | SHA256 |\n'
+              printf '| :--- | :---: | :--- |\n'
+              for asset in "${assets[@]}"; do
+                asset_size="$(du -h "${asset}" | awk '{print $1}')"
+                read -r asset_sha256 _ < <(sha256sum "${asset}")
+                printf '| `%s` | `%s` | `%s` |\n' "${asset##*/}" "${asset_size}" "${asset_sha256}"
+              done
+              printf '\n'
+            fi
+
+            if [[ -f release.md ]]; then
+              printf '<details>\n<summary>Release Notes</summary>\n\n'
+              cat release.md
+              printf '\n</details>\n'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
