@@ -396,7 +396,6 @@ _set_default_values() {
 		"")
 			if [[ ${qbt_build_tool} == 'cmake' ]]; then
 				qbt_qt_version="6"
-				qbt_use_qt6="ON"
 			else
 				qbt_qt_version="5"
 				qbt_use_qt6="OFF"
@@ -1628,8 +1627,8 @@ _install_qbittorrent() {
 				resolved_custom_dir="$(readlink -f "${custom_dir}" 2> /dev/null || printf '%s' "${custom_dir}")"
 				resolved_user_home="$(readlink -f "${LOCAL_USER_HOME}" 2> /dev/null || printf '%s' "${LOCAL_USER_HOME}")"
 
-				# Only use elevated privileges for system-wide custom paths outside user home
-				if [[ ${resolved_custom_dir} =~ ^/ ]] && { [[ -z ${resolved_user_home} || ${resolved_user_home} == "/" ]] || [[ ! ${resolved_custom_dir} =~ ^"${resolved_user_home}"(/|$) ]]; }; then
+				# Only use elevated privileges for absolute system-wide custom paths outside user home. Relative paths stay owned by the local user.
+				if [[ ${custom_dir} =~ ^/ ]] && { [[ -z ${resolved_user_home} || ${resolved_user_home} == "/" ]] || [[ ! ${resolved_custom_dir} =~ ^"${resolved_user_home}"(/|$) ]]; }; then
 					mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "--" "${custom_dir}")
 					install_command=("${command_privilege[@]}" "cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "${custom_dir}")
 					chmod_command=("${command_privilege[@]}" "chmod" "+x" "--" "${custom_dir}/qbittorrent-nox")
@@ -1751,29 +1750,21 @@ _qbt_host_deps() {
 #######################################################################################################################################################
 _set_build_directory() {
 	if [[ -n ${qbt_build_dir} ]]; then
-		[[ ${qbt_build_dir} =~ ^~(/|$) ]] && qbt_build_dir="${qbt_build_dir/#\~/${LOCAL_USER_HOME:-${HOME}}}"
-		[[ ${qbt_build_dir} != "/" ]] && qbt_build_dir="${qbt_build_dir%/}"
 		if [[ ${qbt_build_dir} =~ ^/ ]]; then
 			qbt_install_dir="${qbt_build_dir}"
-			qbt_install_dir_short="${qbt_install_dir/${LOCAL_USER_HOME:-${HOME}}/\~}"
+			qbt_install_dir_short="${qbt_install_dir/${HOME}/\~}"
 		else
 			qbt_install_dir="${qbt_working_dir}/${qbt_build_dir}"
 			qbt_install_dir_short="${qbt_working_dir_short}/${qbt_build_dir}"
 		fi
 	fi
 
-	if [[ ${os_id} =~ ^(alpine)$ && ${QBT_MCM_DOCKER} != "YES" ]]; then
-		qbt_mcm_dir="${qbt_install_dir}"
-		qbt_cross_tool_dir="${qbt_mcm_dir}/bin"
-	fi
-	qbt_host_deps_path="${qbt_install_dir}/host_deps"
-
 	# Set lib and include directory paths based on install path.
 	include_dir="${qbt_install_dir}/include"
 	lib_dir="${qbt_install_dir}/lib"
 
 	# Define some build specific variables
-	LOCAL_USER_HOME="${LOCAL_USER_HOME:-${HOME}}" # Get the local user's home dir path before we contain HOME to the build dir.
+	LOCAL_USER_HOME="${HOME}" # Get the local user's home dir path before we contain HOME to the build dir.
 	HOME="${qbt_install_dir}"
 	PATH="${qbt_install_dir}/bin${PATH:+:${qbt_local_paths}}"
 	PKG_CONFIG_PATH="${lib_dir}/pkgconfig"
@@ -2211,7 +2202,7 @@ _apply_patches() {
 				local temp_json http_code
 				temp_json="${patch_dir}/temp_listing_$$_$(basename "${local_path}").json"
 
-				http_code="$(_curl -w '%{http_code}' "${dir_api_url}" -o "${temp_json}" 2> /dev/null)" || true
+				http_code="$(_curl -w '%{http_code}' "${dir_api_url}" -o "${temp_json}" 2> /dev/null)"
 				if [[ ${http_code} == "404" ]]; then
 					rm -f "${temp_json}"
 					return 0
@@ -2333,7 +2324,7 @@ _apply_patches() {
 
 					# Try to download source directory contents
 					local source_api_url="${api_url}/source"
-					_download_directory_contents "${source_api_url}" "${patch_dir}/source" || true
+					_download_directory_contents "${source_api_url}" "${patch_dir}/source"
 				fi
 				[[ ${downloaded} == true ]] && downloaded_any=true
 			done
@@ -2655,7 +2646,7 @@ _download_folder() {
 		_pushd "${qbt_dl_folder_path}${sub_dir}"
 	fi
 
-	_cache_dirs_qbt_env || true
+	_cache_dirs_qbt_env
 
 	printf '%s' "${github_url[${app_name}]}" |& _tee "${qbt_install_dir}/logs/${app_name}_github_url.log" > /dev/null
 
@@ -2713,10 +2704,9 @@ _get_archive_dir_name() {
 		return 1
 	fi
 
-	# Safely extract top-level directory name
-	if ! dir_name=$(tar tf "${archive_path}" 2> /dev/null | awk '{sub(/^\.\//, ""); sub(/\/.*/, ""); if ($0 != "" && $0 != ".") { print; exit }}'); then
-		return 1
-	fi
+	# Safely extract top-level directory name. The pipeline status is not checked: awk exits after the first entry so tar can be killed by
+	# SIGPIPE (a failure under pipefail) and an empty result already covers corrupt or empty archives.
+	dir_name="$(tar tf "${archive_path}" 2> /dev/null | awk '{sub(/^\.\//, ""); sub(/\/.*/, ""); if ($0 != "" && $0 != ".") { print; exit }}')"
 	[[ -n ${dir_name} ]] || return 1
 
 	# Validate the extracted directory name
@@ -2809,7 +2799,7 @@ _download_file() {
 		_pushd "${qbt_dl_folder_path}${sub_dir}"
 	fi
 
-	_cache_dirs_qbt_env || true
+	_cache_dirs_qbt_env
 
 	if [[ ${qbt_with_qemu} == "no" && ${qbt_restore_host_deps} == "yes" ]]; then
 		app_name="${app_name}_host_deps"
@@ -3479,7 +3469,7 @@ while (("${#}")); do
 			;;
 		-p | --proxy)
 			if [[ -n ${2} && ${2} != -* ]]; then
-				qbt_git_proxy=("-c" "http.sslVerify=false" "-c" "http.proxy=${2}" "-c" "https.proxy=${2}" "-c" "http.https://github.com.proxy=${2}")
+				qbt_git_proxy=("-c" "http.sslVerify=false" "-c" "http.proxy=${2}" "-c" "http.https://github.com.proxy=${2}")
 				qbt_curl_proxy=("--proxy-insecure" "-x" "${2}")
 				shift 2
 			else

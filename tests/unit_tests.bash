@@ -820,9 +820,9 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 		qbt_working_dir="${test_root}/wd"
 		qbt_working_dir_short="${qbt_working_dir}"
 		qbt_local_paths="/usr/bin:/bin"
-		qbt_build_dir="${test_root}/my-build/"
+		qbt_build_dir="${test_root}/my-build"
 		_set_build_directory
-		assert_eq "_set_build_directory strips trailing slash" "${test_root}/my-build" "${qbt_install_dir}"
+		assert_eq "_set_build_directory uses an absolute path as the install dir" "${test_root}/my-build" "${qbt_install_dir}"
 		assert_eq "_set_build_directory sets HOME to install dir" "${test_root}/my-build" "${HOME}"
 		assert_eq "_set_build_directory preserves LOCAL_USER_HOME" "${orig_home}" "${LOCAL_USER_HOME}"
 		assert_eq "_set_build_directory sets PKG_CONFIG_PATH" "${test_root}/my-build/lib/pkgconfig" "${PKG_CONFIG_PATH}"
@@ -831,15 +831,26 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 		qbt_build_dir="rel-build"
 		_set_build_directory
 		assert_eq "_set_build_directory resolves relative path against qbt_working_dir" "${test_root}/wd/rel-build" "${qbt_install_dir}"
+		save_counts
+	)
+	load_counts
 
+	# qbt_build_dir ~ expansion and trailing slash handling happen once, in _set_default_values
+	(
+		load_lib "ubuntu" "resolute" "26.04" "amd64"
 		# shellcheck disable=SC2088
 		qbt_build_dir="~/tilde-build/"
-		_set_build_directory
-		assert_eq "_set_build_directory expands ~ using LOCAL_USER_HOME" "${orig_home}/tilde-build" "${qbt_install_dir}"
+		_set_default_values > /dev/null
+		assert_eq "tilde expanded and trailing slash stripped in qbt_build_dir" "${HOME}/tilde-build" "${qbt_install_dir}"
+		save_counts
+	)
+	load_counts
 
+	(
+		load_lib "ubuntu" "resolute" "26.04" "amd64"
 		qbt_build_dir="/"
-		_set_build_directory
-		assert_eq "_set_build_directory preserves root slash /" "/" "${qbt_install_dir}"
+		_set_default_values > /dev/null
+		assert_eq "qbt_build_dir / keeps the root slash" "/" "${qbt_install_dir}"
 		save_counts
 	)
 	load_counts
@@ -1134,8 +1145,13 @@ printf '\n=== 5. Path Validation & Archive Extraction Name Tests ===\n'
 	tar -czf "${arch_tmp}/dotslash.tar.gz" -C "${arch_tmp}/src" "./zlib-1.3.2"
 	tar -czf "${arch_tmp}/dotroot.tar.gz" -C "${arch_tmp}/src" "."
 	: > "${arch_tmp}/empty.tar.gz"
+	# Large archive: awk exits at the first entry so tar is killed by SIGPIPE, which must not fail the lookup even though this suite runs with pipefail
+	mkdir -p "${arch_tmp}/bigsrc/big-1.0"
+	for ((arch_i = 0; arch_i < 4000; arch_i++)); do : > "${arch_tmp}/bigsrc/big-1.0/file_${arch_i}"; done
+	tar -cf "${arch_tmp}/big.tar" -C "${arch_tmp}/bigsrc" "big-1.0"
 
 	assert_eq "_get_archive_dir_name extracts top dir" "zlib-1.3.2" "$(_get_archive_dir_name "${arch_tmp}/normal.tar.gz")"
+	assert_eq "_get_archive_dir_name tolerates tar SIGPIPE on a large archive under pipefail" "big-1.0" "$(_get_archive_dir_name "${arch_tmp}/big.tar")"
 	assert_eq "_get_archive_dir_name strips leading ./" "zlib-1.3.2" "$(_get_archive_dir_name "${arch_tmp}/dotslash.tar.gz")"
 	assert_eq "_get_archive_dir_name skips bare . entry" "zlib-1.3.2" "$(_get_archive_dir_name "${arch_tmp}/dotroot.tar.gz")"
 	_get_archive_dir_name "${arch_tmp}/empty.tar.gz" > /dev/null 2>&1
@@ -2478,11 +2494,14 @@ printf '\n=== 12. Download, Caching & Host Deps (_download, _cache_dirs, _downlo
 		# Non-bs run copies from cache to install_dir (even when patches exist, cache dir preserved!)
 		mkdir -p "${qbt_install_dir}/patches/zlib/1.3.2"
 		printf 'dummy\n' > "${qbt_install_dir}/patches/zlib/1.3.2/patch"
+		# A sentinel only exists in the original cached repo: a delete-and-reclone would still recreate the directory but not this file
+		printf 'keep\n' > "${qbt_cache_dir}/zlib/cache_sentinel"
 		qbt_cache_dir_options=""
 		qbt_dl_folder_path="${qbt_cache_dir}/zlib"
 		_download_folder > /dev/null 2>&1
 		assert_file_exists "_download_folder copies cached repo to install dir" "${qbt_install_dir}/zlib/ver.txt"
 		assert_dir_exists "_download_folder preserves cache dir when patches exist" "${qbt_cache_dir}/zlib"
+		assert_file_exists "_download_folder leaves the cached repo contents untouched when patches exist" "${qbt_cache_dir}/zlib/cache_sentinel"
 		_popd
 
 		# Non-cache mode with patches forces clean clone + nproc failure falls back to single-threaded clone
@@ -2689,6 +2708,12 @@ printf '\n=== 13. Static Link Fixes, Cleanup (_delete_function), & Install Tests
 	out_sys_custom="$(PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${test_root}/outside_home_bin")"
 	assert_exit "_install_qbittorrent custom outside home exits 0" 0 "$?"
 	assert_contains "_install_qbittorrent custom outside home uses command_privilege" "${out_sys_custom}" "PRIV_USED:"
+
+	# A relative custom path is owned by the local user and must never use command_privilege, even when the working directory is outside LOCAL_USER_HOME
+	out_rel_custom="$(cd "${test_root}" && PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "rel_bin")"
+	assert_exit "_install_qbittorrent custom relative path exits 0" 0 "$?"
+	assert_not_contains "_install_qbittorrent custom relative path avoids command_privilege" "${out_rel_custom}" "PRIV_USED:"
+	assert_file_exists "_install_qbittorrent custom relative path installed binary" "${test_root}/rel_bin/qbittorrent-nox"
 
 	# Traversal and missing path rejected
 	(PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${inst_home}/../escape" > /dev/null 2>&1)
@@ -2916,6 +2941,24 @@ printf '\n=== 15. Dependency Checker (_check_dependencies) Tests ===\n'
 		out="$(_check_dependencies zlib 2>&1)"
 		assert_exit "_check_dependencies non-root no-sudo missing deps exits 1 (alpine)" 1 "$?"
 		assert_contains "_check_dependencies prints apk add hint" "${out}" "apk add"
+		save_counts
+	)
+	load_counts
+
+	# 15b2. Non-root without sudo + all deps installed -> must continue. It used to stop here with exit 1 even though nothing was missing.
+	(
+		load_lib "ubuntu" "resolute" "26.04" "amd64"
+		_set_default_values
+		mdir="${test_root}/dep_nopriv_ok"
+		dlog="${test_root}/dep_nopriv_ok.log"
+		setup_dep_mocks "${mdir}" "bob" 1 0 0 "${dlog}"
+		PATH="${mdir}:${PATH}"
+		out="$(_check_dependencies zlib 2>&1)"
+		assert_exit "_check_dependencies non-root no-sudo with all deps present exits 0" 0 "$?"
+		assert_contains "_check_dependencies non-root no-sudo with all deps present prints All checks passed" "${out}" "All checks passed"
+		assert_not_contains "_check_dependencies non-root no-sudo with all deps present does not warn about privileges" "${out}" "No root or sudo privileges detected"
+		(_check_dependencies install_core > /dev/null 2>&1)
+		assert_exit "_check_dependencies non-root no-sudo install_core exits 1 because it needs privileges" 1 "$?"
 		save_counts
 	)
 	load_counts

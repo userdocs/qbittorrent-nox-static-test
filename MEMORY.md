@@ -14,6 +14,18 @@ This file serves as a persistent context log for AI assistants to understand the
     - Raw Toolchain requires `-fuse-ld=mold`.
 - **Mindset**: "C-like" development—prioritize stability, explicit error handling, and minimal external dependencies.
 
+## Recent Changes (2026-11-23)
+- **v2.2.6 audit** (squashed commit with `qbt-nox-static.bash`, `tests/unit_tests.bash`, `changelog.md`): every changelog claim was checked against the old script; severities and reasons were rewritten, unlisted behaviour changes documented, and no-op/duplicated code removed (`https.proxy` git key, `|| true` without `set -e`, duplicated `_set_build_directory` normalisation, redundant `qbt_use_qt6`).
+- **Unit tests**: `bash tests/unit_tests.bash` (offline, ~15 s; needs `git`, `jq`, `patch`). The suite extracts the function library with `awk` and sources it inside functions, so global arrays must be declared with `declare -gA`, and it runs with `set -o pipefail`, so helpers must not depend on the exit status of `tar tf | awk '...exit'` pipelines (SIGPIPE).
+- **Regression guards added** for: non-root without sudo and all deps present, relative `install custom` paths never using privileges, `_get_archive_dir_name` under `pipefail`, and cached repos surviving patches (sentinel file, because delete-and-reclone also recreates the directory).
+
+## Technical Notes From The Audit
+- `_semantic_version` must strip tag prefixes (`release-`, `boost-`, ...): without it `release-5.1.0rc1` or `boost-2.1.0.beta1` rank above the final release.
+- `-cd <dir> rm` refuses `$HOME`, `$PWD`, the script directory, `/` and `.`/`..` after `readlink -f`; success exits `0`.
+- `_install_qbittorrent custom` only uses privileges for absolute paths outside `$LOCAL_USER_HOME`; relative paths stay user-owned; `..` is rejected.
+- Git proxy: only `http.proxy` and `http.<url>.proxy` exist; `https.proxy` is not a git key.
+- CI lint is `shellcheck --severity=warning` plus `shfmt -ci -sr -i 0`; optional checks such as SC2250 are not enforced. Debian/Ubuntu fixes (`-B${lib_dir}`, no `-fno-plt` for glibc) are validated by the 24-job Debian build matrix, not by the unit tests.
+
 ## Recent Changes (2026-04-25)
 - **AI Config Harmonization**:
     - Updated `CLAUDE.md`, `.github/copilot-instructions.md`, and created `.cursorrules`.
