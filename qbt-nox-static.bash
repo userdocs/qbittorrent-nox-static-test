@@ -88,6 +88,7 @@ _color_test() {
 #######################################################################################################################################################
 script_full_path="$(readlink -f "${BASH_SOURCE[0]}")"
 script_parent_path="${script_full_path%/*}"
+[[ -z ${script_parent_path} ]] && script_parent_path="/"
 script_basename="${script_full_path##*/}"
 #######################################################################################################################################################
 # Function to source /etc/os-release and get info from it on demand.
@@ -187,7 +188,9 @@ _set_default_values() {
 
 	qbt_build_dir="${qbt_build_dir:-qbt-build}" # Build directory
 	[[ ${qbt_build_dir} =~ ^~(/|$) ]] && qbt_build_dir="${qbt_build_dir/#\~/${HOME}}"
-	[[ ${qbt_build_dir} != "/" ]] && qbt_build_dir="${qbt_build_dir%/}"
+	while [[ ${qbt_build_dir} != "/" && ${qbt_build_dir} == */ ]]; do
+		qbt_build_dir="${qbt_build_dir%/}"
+	done
 
 	# Install relative to the script location or use absolute path if provided.
 	if [[ ${qbt_build_dir} =~ ^/ ]]; then
@@ -263,7 +266,9 @@ _set_default_values() {
 
 	# Provide a path to check for cached local git repos and use those instead. Priority over workflow files.
 	[[ ${qbt_cache_dir} =~ ^~(/|$) ]] && qbt_cache_dir="${qbt_cache_dir/#\~/${HOME}}"
-	[[ ${qbt_cache_dir} != "/" ]] && qbt_cache_dir="${qbt_cache_dir%/}"
+	while [[ ${qbt_cache_dir} != "/" && ${qbt_cache_dir} == */ ]]; do
+		qbt_cache_dir="${qbt_cache_dir%/}"
+	done
 	[[ -n ${qbt_cache_dir} && ! ${qbt_cache_dir} =~ ^/ ]] && qbt_cache_dir="${qbt_working_dir}/${qbt_cache_dir}"
 
 	# Env setting for the icu tag
@@ -554,11 +559,6 @@ _set_default_values() {
 		qbt_deps_delete["unzip"]="true"
 
 		qbt_modules_delete["double_conversion"]="true"
-
-	else
-		if [[ ${qbt_skip_icu} != "no" ]]; then
-			qbt_modules_delete["icu"]="true"
-		fi
 	fi
 }
 
@@ -1106,10 +1106,12 @@ _check_dependencies() {
 		fi
 	elif [[ ${qbt_core_deps[*]} =~ "false" || ${qbt_test_tools[*]} =~ "false" || ${needs_privs} == true ]]; then
 		printf '\n%b\n' " ${text_bold}Please request or install the missing core dependencies before using this script${color_end}"
-		if [[ ${os_id} =~ ^(alpine)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_core_deps_sorted[*]}"
-		elif [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
-			printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_core_deps_sorted[*]}"
+		if ((${#qbt_core_deps_sorted[@]})); then
+			if [[ ${os_id} =~ ^(alpine)$ ]]; then
+				printf '\n%b\n\n' " ${color_red_light}apk add${color_end} ${qbt_core_deps_sorted[*]}"
+			elif [[ ${os_id} =~ ^(debian|ubuntu)$ ]]; then
+				printf '\n%b\n\n' " ${color_red_light}apt-get install -y${color_end} ${qbt_core_deps_sorted[*]}"
+			fi
 		fi
 		exit 1
 	fi
@@ -1288,6 +1290,12 @@ _test_git_output() {
 # Boost URL test function
 #######################################################################################################################################################
 _boost_url() {
+	if [[ -z ${github_tag[boost]} || ${github_tag[boost]} == "error_tag" ]]; then
+		boost_url_status="403"
+		source_default[boost]="folder"
+		return
+	fi
+
 	local boost_asset_type="release"
 	local boost_archiveio_asset="${github_tag[boost]//[-\.]/_}"
 
@@ -1439,7 +1447,7 @@ _custom_flags() {
 		gcc_command=("/usr/bin/gcc")
 	elif [[ -n ${qbt_cross_host} ]]; then
 		# If a valid multiarch target is set qbt_cross_host will not be null and will provide the correct triple for the host platform alpine/debian via the _multi_arch function
-		gcc_command=("${qbt_cross_host}-gcc")
+		gcc_command=("${qbt_cross_tool_dir:+${qbt_cross_tool_dir}/}${qbt_cross_host}-gcc")
 	else
 		# else just use the one in the path. Which will also work for native hosts and qbt-mcm docker images.
 		gcc_command=("gcc")
@@ -1515,11 +1523,17 @@ _custom_flags() {
 		fi
 	fi
 
-	# include headers
+	# include headers and library search path (isolate *_host_deps from target install dirs)
+	local target_include_dir="${include_dir}" target_lib_dir="${lib_dir}"
+	if [[ ${app_name} =~ _host_deps$ ]]; then
+		target_include_dir="${qbt_host_deps_path}/include"
+		target_lib_dir="${qbt_host_deps_path}/lib"
+	fi
+
 	if [[ ${os_id} =~ ^(alpine)$ ]]; then
-		qbt_include_headers="-isystem /usr/include/fortify -I${include_dir}"
+		qbt_include_headers="-isystem /usr/include/fortify -I${target_include_dir}"
 	else
-		qbt_include_headers="-I${include_dir}"
+		qbt_include_headers="-I${target_include_dir}"
 	fi
 
 	# if qbt_optimise=yes then set -march=native for non cross builds - see --o | --optimise
@@ -1559,9 +1573,9 @@ _custom_flags() {
 
 		# Only set linker flags for final executables, not for libraries
 		if [[ ${app_name} =~ ^(icu|boost|qtbase|qbittorrent)$ ]]; then
-			LDFLAGS="${qbt_crt_dir:+${qbt_crt_dir} }-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_mold_flag} ${qbt_ldflags:-}"
+			LDFLAGS="${qbt_crt_dir:+${qbt_crt_dir} }-L${target_lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_static_flags} ${qbt_linker_flags} ${qbt_mold_flag} ${qbt_ldflags:-}"
 		else
-			LDFLAGS="${qbt_crt_dir:+${qbt_crt_dir} }-L${lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_mold_flag} ${qbt_ldflags:-}"
+			LDFLAGS="${qbt_crt_dir:+${qbt_crt_dir} }-L${target_lib_dir} ${qbt_strip_flags} -pthread ${qbt_optimise_march} ${qbt_mold_flag} ${qbt_ldflags:-}"
 		fi
 
 		# Export compilation flags for build tools
@@ -1617,18 +1631,20 @@ _install_qbittorrent() {
 				fi
 				custom_dir="${3}"
 				[[ ${custom_dir} =~ ^~(/|$) ]] && custom_dir="${custom_dir/#\~/${LOCAL_USER_HOME}}"
-				[[ ${custom_dir} != "/" ]] && custom_dir="${custom_dir%/}"
+				while [[ ${custom_dir} != "/" && ${custom_dir} == */ ]]; do
+					custom_dir="${custom_dir%/}"
+				done
 				if ! _validate_path "${custom_dir}" "dir"; then
 					printf '\n%b\n\n' " ${unicode_red_circle} Invalid install directory path: ${color_cyan_light}${custom_dir}${color_end}"
 					exit 1
 				fi
 
-				local resolved_custom_dir resolved_user_home
-				resolved_custom_dir="$(readlink -f "${custom_dir}" 2> /dev/null || printf '%s' "${custom_dir}")"
-				resolved_user_home="$(readlink -f "${LOCAL_USER_HOME}" 2> /dev/null || printf '%s' "${LOCAL_USER_HOME}")"
+				local resolved_custom_dir resolved_user_home=""
+				resolved_custom_dir="$(_resolve_path "${custom_dir}")"
+				[[ -n ${LOCAL_USER_HOME} ]] && resolved_user_home="$(_resolve_path "${LOCAL_USER_HOME}")"
 
 				# Only use elevated privileges for absolute system-wide custom paths outside user home. Relative paths stay owned by the local user.
-				if [[ ${custom_dir} =~ ^/ ]] && { [[ -z ${resolved_user_home} || ${resolved_user_home} == "/" ]] || [[ ! ${resolved_custom_dir} =~ ^"${resolved_user_home}"(/|$) ]]; }; then
+				if [[ ${custom_dir} =~ ^/ ]] && { [[ -z ${resolved_user_home} || ${resolved_user_home} == "/" ]] || [[ ${resolved_custom_dir} != "${resolved_user_home}" && ${resolved_custom_dir} != "${resolved_user_home}/"* ]]; }; then
 					mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "--" "${custom_dir}")
 					install_command=("${command_privilege[@]}" "cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "${custom_dir}")
 					chmod_command=("${command_privilege[@]}" "chmod" "+x" "--" "${custom_dir}/qbittorrent-nox")
@@ -1738,7 +1754,7 @@ _qbt_host_deps() {
 		source_archive_url["${qbt_host_deps_name}"]="${qbt_host_deps_url}"
 		qbt_workflow_archive_url["${qbt_host_deps_name}"]="${qbt_host_deps_url}"
 		qbt_workflow_override["${qbt_host_deps_name}"]="no"
-		source_type="source"
+		local sub_dir=""
 		_download "${qbt_host_deps_name}"
 		cd "${qbt_working_dir}" || exit 1
 		dirs -c
@@ -1749,10 +1765,13 @@ _qbt_host_deps() {
 # If nothing is specified or the switch is not used it defaults to the hard-coded path relative to the scripts location - qbittorrent-build
 #######################################################################################################################################################
 _set_build_directory() {
+	LOCAL_USER_HOME="${LOCAL_USER_HOME:-${HOME}}" # Preserve the local user's home dir before containing HOME to the build dir.
+	qbt_local_paths="${qbt_local_paths:-${PATH}}"
+
 	if [[ -n ${qbt_build_dir} ]]; then
 		if [[ ${qbt_build_dir} =~ ^/ ]]; then
 			qbt_install_dir="${qbt_build_dir}"
-			qbt_install_dir_short="${qbt_install_dir/${HOME}/\~}"
+			qbt_install_dir_short="${qbt_install_dir/${LOCAL_USER_HOME}/\~}"
 		else
 			qbt_install_dir="${qbt_working_dir}/${qbt_build_dir}"
 			qbt_install_dir_short="${qbt_working_dir_short}/${qbt_build_dir}"
@@ -1764,9 +1783,8 @@ _set_build_directory() {
 	lib_dir="${qbt_install_dir}/lib"
 
 	# Define some build specific variables
-	LOCAL_USER_HOME="${HOME}" # Get the local user's home dir path before we contain HOME to the build dir.
 	HOME="${qbt_install_dir}"
-	PATH="${qbt_install_dir}/bin${PATH:+:${qbt_local_paths}}"
+	PATH="${qbt_install_dir}/bin${qbt_local_paths:+:${qbt_local_paths}}"
 	PKG_CONFIG_PATH="${lib_dir}/pkgconfig"
 
 	# Explicitly export variables needed by child processes
@@ -2134,7 +2152,7 @@ _apply_patches() {
 						continue
 					else
 						# Download and merge URL content
-						if _curl "${patch_url}" -o "${tmp_patch}"; then
+						if _curl "${patch_url}" -o "${tmp_patch}" && [[ -s ${tmp_patch} ]]; then
 							if [[ ${has_content} == true ]] && cmp -s "${tmp_patch}" "${temp_patch}"; then
 								rm -f "${tmp_patch}"
 								continue
@@ -2248,7 +2266,7 @@ _apply_patches() {
 							local target_file="${local_path}/${name}"
 							if [[ ${local_path} == "${patch_dir}" && -s ${target_file} ]]; then
 								if [[ ${name} == "url" ]]; then
-									if _curl "${url}" -o "${target_file}.tmp" 2> /dev/null; then
+									if _curl "${url}" -o "${target_file}.tmp" 2> /dev/null && [[ -s "${target_file}.tmp" ]]; then
 										printf '\n' >> "${target_file}"
 										cat "${target_file}.tmp" >> "${target_file}"
 										downloaded=true
@@ -2261,7 +2279,7 @@ _apply_patches() {
 									target_file="${local_path}/${patch_repo//\//_}_${name}"
 								fi
 							fi
-							_curl "${url}" -o "${target_file}" 2> /dev/null && downloaded=true
+							_curl "${url}" -o "${target_file}" 2> /dev/null && [[ -s ${target_file} ]] && downloaded=true
 						elif [[ ${type} == "dir" ]]; then
 							# Recursively process directory
 							local subdir_api_url="${dir_api_url}/${name}"
@@ -2306,7 +2324,7 @@ _apply_patches() {
 						target_file="${patch_dir}/${file}"
 						if [[ -s ${target_file} ]]; then
 							if [[ ${file} == "url" ]]; then
-								if _curl --create-dirs "${remote_base}/${file}" -o "${target_file}.tmp" 2> /dev/null; then
+								if _curl --create-dirs "${remote_base}/${file}" -o "${target_file}.tmp" 2> /dev/null && [[ -s "${target_file}.tmp" ]]; then
 									printf '\n' >> "${target_file}"
 									cat "${target_file}.tmp" >> "${target_file}"
 									downloaded=true
@@ -2319,7 +2337,7 @@ _apply_patches() {
 								target_file="${patch_dir}/${patch_repo//\//_}_${file}"
 							fi
 						fi
-						_curl --create-dirs "${remote_base}/${file}" -o "${target_file}" 2> /dev/null && downloaded=true
+						_curl --create-dirs "${remote_base}/${file}" -o "${target_file}" 2> /dev/null && [[ -s ${target_file} ]] && downloaded=true
 					done
 
 					# Try to download source directory contents
@@ -2398,7 +2416,7 @@ _apply_patches() {
 		if [[ ${patch_app_name} == "libtorrent" ]]; then
 			local jamfile_dest="${qbt_dl_folder_path}/Jamfile"
 			if [[ ${qbt_libtorrent_master_jamfile} == "yes" ]]; then
-				if ! _curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${jamfile_dest}.tmp"; then
+				if ! _curl "https://raw.githubusercontent.com/arvidn/libtorrent/${default_jamfile}/Jamfile" -o "${jamfile_dest}.tmp" || [[ ! -s "${jamfile_dest}.tmp" ]]; then
 					rm -f "${jamfile_dest}.tmp"
 					_error_tag "${patch_app_name}" "Failed to download master Jamfile for ${default_jamfile}"
 				fi
@@ -2437,6 +2455,7 @@ _apply_patches() {
 # A unified download function to handle the processing of various options and directions the script can take.
 #######################################################################################################################################################
 _download() {
+	mkdir -p "${qbt_install_dir}"
 	_pushd "${qbt_install_dir}"
 	[[ -n ${1} ]] && app_name="${1}"
 
@@ -2459,7 +2478,7 @@ _download() {
 
 	if [[ ${qbt_workflow_files} == "yes" && ${qbt_workflow_override[${app_name}]} == "no" ]]; then
 		qbt_dl_source_url="${qbt_workflow_archive_url[${app_name}]}"
-		[[ ${qbt_workflow_files} == "yes" ]] && source_type="workflow"
+		source_type="workflow"
 	fi
 
 	[[ -n ${qbt_cache_dir} ]] && _cache_dirs
@@ -2511,7 +2530,7 @@ _cache_dirs_qbt_env_copy() {
 			if cp "${script_parent_path}/.qbt_env" "${temp_file}" && mv "${temp_file}" "${qbt_cache_dir}/.qbt_env"; then
 				[[ ${qbt_cache_dir_options} == "bs" ]] && printf '\n'
 				printf '\n%b\n' " ${unicode_green_circle} Copied ${color_cyan_light}.qbt_env${color_end} to cache directory"
-				[[ ${qbt_cache_dir_options} == "bs" ]] && printf '' || printf '\n'
+				[[ ${qbt_cache_dir_options} != "bs" ]] && printf '\n'
 			else
 				# Clean up temp file on failure
 				[[ -f ${temp_file} ]] && rm -f "${temp_file}"
@@ -2551,7 +2570,7 @@ _cache_dirs_qbt_env() {
 #######################################################################################################################################################
 _download_folder() {
 	# Set this to avoid some warning when cloning some modules
-	_git_git config --global advice.detachedHead false
+	_git_git config --global advice.detachedHead false 2> /dev/null || true
 
 	# Check if patches exist for this module and force cleanup
 	local patch_dir="${qbt_install_dir}/patches/${app_name}/${app_version[${app_name}]}"
@@ -2637,7 +2656,7 @@ _download_folder() {
 
 	if [[ ${qbt_cache_dir_options} != "bs" && -n ${qbt_cache_dir} && -d ${qbt_dl_folder_path} ]]; then
 		printf '\n%b\n\n' " ${unicode_blue_light_circle} Copying ${color_magenta_light}${app_name}${color_end} from cache ${color_cyan_light}${qbt_cache_dir}/${app_name}${color_end} with tag ${color_yellow_light}${github_tag[${app_name}]}${color_end} to ${color_cyan_light}${qbt_install_dir}/${app_name}${color_end}"
-		cp -rf "${qbt_dl_folder_path}" "${qbt_install_dir}/"
+		_cmd cp -rf "${qbt_dl_folder_path}" "${qbt_install_dir}/"
 	fi
 
 	if [[ ${qbt_cache_dir_options} != "bs" ]]; then
@@ -2691,6 +2710,28 @@ _validate_path() {
 	fi
 
 	return 0
+}
+#######################################################################################################################################################
+# Helper function to canonicalise paths even when nested trailing components do not exist yet (BusyBox-compatible)
+#######################################################################################################################################################
+_resolve_path() {
+	local target="${1}" suffix="" parent
+	[[ -z ${target} ]] && return 1
+	[[ ${target} != /* ]] && target="${PWD}/${target}"
+	while [[ ${target} != "/" && ${target} == */ ]]; do
+		target="${target%/}"
+	done
+	while [[ ! -e ${target} && ! -L ${target} && ${target} != "/" ]]; do
+		suffix="/${target##*/}${suffix}"
+		parent="${target%/*}"
+		target="${parent:-/}"
+	done
+	target="$(readlink -f "${target}" 2> /dev/null || printf '%s' "${target}")"
+	if [[ ${target} == "/" ]]; then
+		printf '/%s' "${suffix#/}"
+	else
+		printf '%s%s' "${target}" "${suffix}"
+	fi
 }
 #######################################################################################################################################################
 # Helper function to safely extract archive directory name
@@ -2789,7 +2830,7 @@ _download_file() {
 
 	qbt_dl_folder_path="${qbt_install_dir}/${first_dir}"
 
-	printf '%b\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
+	printf '%s\n' "${qbt_dl_source_url}" |& _tee "${qbt_install_dir}/logs/${app_name}_${source_type}_archive_url.log" > /dev/null
 
 	if [[ ${qbt_cache_dir_options} != "bs" ]]; then
 		_cmd tar xf "${qbt_dl_file_path}" -C "${qbt_install_dir}"
@@ -2816,7 +2857,7 @@ _fix_static_links() {
 	mapfile -t library_list < <(find "${lib_dir}" -maxdepth 1 -type f -name '*.a' -exec basename {} \;)
 	for file in "${library_list[@]}"; do
 		ln -fsn "${file}" "${lib_dir}/${file%\.a}.so"
-		printf '%b\n' "${lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
+		printf '%s\n' "${lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 	done
 	return
 }
@@ -2829,7 +2870,7 @@ _fix_multiarch_static_links() {
 		mapfile -t library_list < <(find "${multiarch_lib_dir}" -maxdepth 1 -type f -name '*.a' -exec basename {} \;)
 		for file in "${library_list[@]}"; do
 			ln -fsn "${file}" "${multiarch_lib_dir}/${file%\.a}.so"
-			printf '%b\n' "${multiarch_lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
+			printf '%s\n' "${multiarch_lib_dir}/${file%\.a}.so changed to point to ${file}" |& _tee -a "${qbt_install_dir}/logs/${log_name}-fix-static-links.log" > /dev/null
 		done
 		return
 	fi
@@ -3282,7 +3323,7 @@ _multi_arch() {
 _release_info() {
 	_error_tag
 
-	local remote_revision_version source_text
+	local remote_revision_version qbt_revision_version="" source_text
 	printf '\n%b\n' " ${unicode_green_circle} ${color_yellow_light}Release bootstrapped${color_end}"
 
 	release_info_dir="${qbt_install_dir}/release_info"
@@ -3297,7 +3338,7 @@ _release_info() {
 		qbittorrent ${app_version[qbittorrent]} libtorrent ${app_version[libtorrent]}
 	TITLE_INFO
 
-	if _git_git ls-remote -t --exit-code "https://github.com/${qbt_revision_url}.git" "${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
+	if [[ ${qbt_revision_url} =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]] && _git_git ls-remote -t --refs --exit-code "https://github.com/${qbt_revision_url}.git" -- "refs/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}" &> /dev/null; then
 		if grep -Eq '"name"[[:space:]]*:[[:space:]]*"dependency-version\.json"' < <(_curl "https://api.github.com/repos/${qbt_revision_url}/releases/tags/${github_tag[qbittorrent]}_${github_tag[libtorrent]}"); then
 			local max_retries=10 retry_count=0 revision_downloaded=true
 			until _curl "https://github.com/${qbt_revision_url}/releases/download/${github_tag[qbittorrent]}_${github_tag[libtorrent]}/dependency-version.json" > "${release_info_dir}/remote-dependency-version.json"; do
@@ -3312,8 +3353,8 @@ _release_info() {
 			done
 
 			if [[ ${revision_downloaded} == true && -s "${release_info_dir}/remote-dependency-version.json" ]]; then
-				if command -v jq > /dev/null 2>&1; then
-					remote_revision_version="$(jq -r '.revision // empty' < "${release_info_dir}/remote-dependency-version.json")"
+				if command -v jq > /dev/null 2>&1 && jq -e 'type == "object"' "${release_info_dir}/remote-dependency-version.json" > /dev/null 2>&1; then
+					remote_revision_version="$(jq -r '.revision // empty' < "${release_info_dir}/remote-dependency-version.json" 2> /dev/null)"
 				else
 					remote_revision_version="$(sed -rn 's|.*"revision"[[:space:]]*:[[:space:]]*"([0-9]+)".*|\1|p' < "${release_info_dir}/remote-dependency-version.json" | head -n1)"
 				fi
@@ -3326,7 +3367,10 @@ _release_info() {
 	fi
 
 	# Dependency version info
-	printf '%b\n' "{\n  \"openssl\": \"${app_version[openssl]}\",\n  \"boost\": \"${app_version[boost]}\",\n  \"libtorrent_${qbt_libtorrent_version//\./_}\": \"${app_version[libtorrent]}\",\n  \"qt${qt_version_short_array[0]}\": \"${app_version[qtbase]}\",\n  \"qbittorrent\": \"${app_version[qbittorrent]}\",\n  \"revision\": \"${qbt_revision_version:-0}\"\n}" > "${release_info_dir}/qt${qt_version_short_array[0]}-dependency-version.json"
+	printf '{\n  "openssl": "%s",\n  "boost": "%s",\n  "libtorrent_%s": "%s",\n  "qt%s": "%s",\n  "qbittorrent": "%s",\n  "revision": "%s"\n}\n' \
+		"${app_version[openssl]}" "${app_version[boost]}" "${qbt_libtorrent_version//\./_}" "${app_version[libtorrent]}" \
+		"${qt_version_short_array[0]}" "${app_version[qtbase]}" "${app_version[qbittorrent]}" "${qbt_revision_version:-0}" \
+		> "${release_info_dir}/qt${qt_version_short_array[0]}-dependency-version.json"
 
 	[[ ${qbt_workflow_files} == "no" ]] && source_text="source files - direct"
 	[[ ${qbt_workflow_files} == "yes" ]] && source_text="source files - workflows: [qbt-workflow-files](https://github.com/userdocs/qbt-workflow-files/releases/latest)"
@@ -3425,14 +3469,14 @@ while (("${#}")); do
 					qbt_cache_dir_options="${3}"
 
 					if [[ ${3} == "rm" ]]; then
-						resolved_cache_dir="$(readlink -f "${qbt_cache_dir}" 2> /dev/null || printf '%s' "${qbt_cache_dir}")"
-						resolved_home="$(readlink -f "${HOME}" 2> /dev/null || printf '%s' "${HOME}")"
-						resolved_pwd="$(readlink -f "${PWD}" 2> /dev/null || printf '%s' "${PWD}")"
-						if [[ -z ${qbt_cache_dir} || ${qbt_cache_dir} =~ ^(/+|\.|\.\.)$ || ${resolved_cache_dir} =~ ^(/+|\.|\.\.)$ || ${resolved_cache_dir} == "${resolved_home}" || ${resolved_cache_dir} == "${resolved_pwd}" || ${resolved_cache_dir} == "${script_parent_path}" ]] || ! _validate_path "${qbt_cache_dir}" "dir"; then
+						resolved_cache_dir="$(_resolve_path "${qbt_cache_dir}")"
+						resolved_home="$(_resolve_path "${HOME}")"
+						resolved_pwd="$(_resolve_path "${PWD}")"
+						if [[ -z ${qbt_cache_dir} || ${qbt_cache_dir} =~ ^(/+|\.|\.\.)$ || ${resolved_cache_dir} =~ ^(/+|\.|\.\.)$ || ${resolved_cache_dir} == "${resolved_home}" || ${resolved_cache_dir} == "${resolved_pwd}" || ${resolved_cache_dir} == "${script_parent_path}" || ${resolved_home} == "${resolved_cache_dir}/"* || ${resolved_pwd} == "${resolved_cache_dir}/"* || ${script_parent_path} == "${resolved_cache_dir}/"* ]] || ! _validate_path "${qbt_cache_dir}" "dir"; then
 							printf '\n%b\n\n' " ${unicode_red_circle} Refusing to remove unsafe cache directory path: ${color_cyan_light}${qbt_cache_dir}${color_end}"
 							exit 1
 						fi
-						[[ -d ${qbt_cache_dir} ]] && rm -rf -- "${qbt_cache_dir}"
+						[[ -d ${qbt_cache_dir} || -L ${qbt_cache_dir} ]] && rm -rf -- "${qbt_cache_dir}"
 						unset resolved_cache_dir resolved_home resolved_pwd
 						printf '\n%b\n\n' " ${unicode_red_circle} Cache directory removed: ${color_cyan_light}${qbt_cache_dir}${color_end}"
 						exit 0
@@ -3448,9 +3492,7 @@ while (("${#}")); do
 			;;
 		-i | --icu)
 			qbt_skip_icu="no"
-			if [[ ${qbt_skip_icu} == "no" ]]; then
-				qbt_modules_delete["icu"]="false"
-			fi
+			qbt_modules_delete["icu"]="false"
 			shift
 			;;
 		-ma | --multi-arch)
@@ -3535,7 +3577,6 @@ set -- "${params1[@]}"
 #######################################################################################################################################################
 _set_default_values "${@}" # see functions
 if [[ -n ${qbt_cache_dir} && ${qbt_cache_dir_options} == "bs" ]]; then
-	[[ ! ${qbt_cache_dir} =~ ^/ ]] && qbt_cache_dir="${qbt_working_dir}/${qbt_cache_dir}"
 	_cache_dirs_qbt_env_copy
 fi
 if [[ ${1} == "install" ]]; then
@@ -3623,7 +3664,7 @@ while (("${#}")); do
 				fi
 				app_version[openssl]="${github_tag[openssl]#openssl-}"
 				source_archive_url[openssl]="https://github.com/openssl/openssl/releases/download/${github_tag[openssl]}/${github_tag[openssl]}.tar.gz"
-				if _curl -sfLI "${source_archive_url[openssl]}" &> /dev/null; then
+				if [[ ${github_tag[openssl]} != "error_tag" ]] && _curl -sfLI "${source_archive_url[openssl]}" &> /dev/null; then
 					source_default[openssl]="file"
 				else
 					source_default[openssl]="folder"
@@ -3711,7 +3752,7 @@ while (("${#}")); do
 					app_version[libtorrent]="${github_tag[libtorrent]}"
 				fi
 				source_archive_url[libtorrent]="https://github.com/arvidn/libtorrent/releases/download/${github_tag[libtorrent]}/libtorrent-rasterbar-${app_version[libtorrent]}.tar.gz"
-				if _curl -sfLI "${source_archive_url[libtorrent]}" &> /dev/null; then
+				if [[ ${github_tag[libtorrent]} != "error_tag" ]] && _curl -sfLI "${source_archive_url[libtorrent]}" &> /dev/null; then
 					source_default[libtorrent]="file"
 				else
 					source_default[libtorrent]="folder"
@@ -3723,13 +3764,15 @@ while (("${#}")); do
 				fi
 				unset qbt_default_libtorrent_github_tag
 
-				read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
-				if [[ -n ${lt_version_short_array[1]} ]]; then
-					qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
-				else
-					qbt_libtorrent_version="${lt_version_short_array[0]}"
+				if [[ ${github_tag[libtorrent]} != "error_tag" ]]; then
+					read -ra lt_version_short_array <<< "${app_version[libtorrent]//\./ }"
+					if [[ -n ${lt_version_short_array[1]} ]]; then
+						qbt_libtorrent_version="${lt_version_short_array[0]}.${lt_version_short_array[1]}"
+					else
+						qbt_libtorrent_version="${lt_version_short_array[0]}"
+					fi
+					[[ ${github_tag[libtorrent]} =~ ^RC_ ]] && app_version[libtorrent]="RC_${app_version[libtorrent]//\./_}" # set back to RC_... so that release info has proper version context
 				fi
-				[[ ${github_tag[libtorrent]} =~ ^RC_ ]] && app_version[libtorrent]="RC_${app_version[libtorrent]//\./_}" # set back to RC_... so that release info has proper version context
 
 				_test_git_output "${github_tag[libtorrent]}" "libtorrent" "$2"
 
@@ -3779,7 +3822,7 @@ while (("${#}")); do
 				else
 					source_archive_url[qbittorrent]="https://github.com/qbittorrent/qBittorrent/archive/refs/heads/${github_tag[qbittorrent]}.tar.gz"
 				fi
-				if _curl -sfLI "${source_archive_url[qbittorrent]}" &> /dev/null; then
+				if [[ ${github_tag[qbittorrent]} != "error_tag" ]] && _curl -sfLI "${source_archive_url[qbittorrent]}" &> /dev/null; then
 					source_default[qbittorrent]="file"
 				else
 					source_default[qbittorrent]="folder"
@@ -3815,20 +3858,22 @@ while (("${#}")); do
 				fi
 				unset qbt_default_qtbase_github_tag
 
-				qbt_qt_version="${app_version[qtbase]%%.*}"
-				read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
-				qt_version_short="${qt_version_short_array[0]}.${qt_version_short_array[1]}"
-				if [[ ${qbt_qt_version} =~ ^6 ]]; then
-					source_archive_url[qtbase]="https://download.qt.io/official_releases/qt/${qt_version_short}/${app_version[qtbase]}/submodules/qtbase-everywhere-src-${app_version[qtbase]}.tar.xz"
-					source_archive_url[qttools]="https://download.qt.io/official_releases/qt/${qt_version_short}/${app_version[qttools]}/submodules/qttools-everywhere-src-${app_version[qttools]}.tar.xz"
-				else
-					source_archive_url[qtbase]="https://download.qt.io/archive/qt/${qt_version_short}/${app_version[qtbase]}/submodules/qtbase-everywhere-opensource-src-${app_version[qtbase]}.tar.xz"
-					source_archive_url[qttools]="https://download.qt.io/archive/qt/${qt_version_short}/${app_version[qttools]}/submodules/qttools-everywhere-opensource-src-${app_version[qttools]}.tar.xz"
+				if [[ ${github_tag[qtbase]} != "error_tag" && ${github_tag[qttools]} != "error_tag" ]]; then
+					qbt_qt_version="${app_version[qtbase]%%.*}"
+					read -ra qt_version_short_array <<< "${app_version[qtbase]//\./ }"
+					qt_version_short="${qt_version_short_array[0]}.${qt_version_short_array[1]}"
+					if [[ ${qbt_qt_version} =~ ^6 ]]; then
+						source_archive_url[qtbase]="https://download.qt.io/official_releases/qt/${qt_version_short}/${app_version[qtbase]}/submodules/qtbase-everywhere-src-${app_version[qtbase]}.tar.xz"
+						source_archive_url[qttools]="https://download.qt.io/official_releases/qt/${qt_version_short}/${app_version[qttools]}/submodules/qttools-everywhere-src-${app_version[qttools]}.tar.xz"
+					else
+						source_archive_url[qtbase]="https://download.qt.io/archive/qt/${qt_version_short}/${app_version[qtbase]}/submodules/qtbase-everywhere-opensource-src-${app_version[qtbase]}.tar.xz"
+						source_archive_url[qttools]="https://download.qt.io/archive/qt/${qt_version_short}/${app_version[qttools]}/submodules/qttools-everywhere-opensource-src-${app_version[qttools]}.tar.xz"
+					fi
 				fi
 				_test_git_output "${github_tag[qtbase]}" "qtbase" "${2}"
 				_test_git_output "${github_tag[qttools]}" "qttools" "${2}"
 
-				if [[ (${qbt_build_tool} == "cmake" && ${app_version[qtbase]} =~ ^5) || (${qbt_build_tool} == "qmake" && ${app_version[qtbase]} =~ ^6) ]]; then
+				if [[ ${github_tag[qtbase]} != "error_tag" ]] && [[ (${qbt_build_tool} == "cmake" && ${app_version[qtbase]} =~ ^5) || (${qbt_build_tool} == "qmake" && ${app_version[qtbase]} =~ ^6) ]]; then
 					printf '\n%b\n' " ${unicode_red_circle} Please use a correct qt and build tool combination"
 					printf '\n%b\n' " ${unicode_green_circle} qt5 + qmake ${unicode_green_circle} qt6 + cmake ${unicode_red_circle} qt5 + cmake ${unicode_red_circle} qt6 + qmake"
 					_print_env

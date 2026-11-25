@@ -21,8 +21,9 @@ This file serves as a persistent context log for AI assistants to understand the
 
 ## Technical Notes From The Audit
 - `_semantic_version` must strip tag prefixes (`release-`, `boost-`, ...): without it `release-5.1.0rc1` or `boost-2.1.0.beta1` rank above the final release.
-- `-cd <dir> rm` refuses `$HOME`, `$PWD`, the script directory, `/` and `.`/`..` after `readlink -f`; success exits `0`.
-- `_install_qbittorrent custom` only uses privileges for absolute paths outside `$LOCAL_USER_HOME`; relative paths stay user-owned; `..` is rejected.
+- `-cd <dir> rm` resolves paths via `_resolve_path` and refuses `$HOME`, `$PWD`, the script directory, any ancestor directory of those three, `/` and `.`/`..`; success exits `0`.
+- `_install_qbittorrent custom` resolves nested non-existent targets via `_resolve_path` and only uses privileges for absolute paths resolving outside `$LOCAL_USER_HOME`; relative paths stay user-owned; `..` is rejected.
+- `*_host_deps` builds (`qbt_with_qemu=no`) must use `/usr/bin/gcc` + host LTO wrappers and scope `-I`/`-L` to `${qbt_host_deps_path}/{include,lib}` rather than target `${include_dir}`/`${lib_dir}`.
 - Git proxy: only `http.proxy` and `http.<url>.proxy` exist; `https.proxy` is not a git key.
 - CI lint is `shellcheck --severity=warning` plus `shfmt -ci -sr -i 0`; optional checks such as SC2250 are not enforced. Debian/Ubuntu fixes (`-B${lib_dir}`, no `-fno-plt` for glibc) are validated by the 24-job Debian build matrix, not by the unit tests.
 

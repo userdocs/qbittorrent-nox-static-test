@@ -831,6 +831,18 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 		qbt_build_dir="rel-build"
 		_set_build_directory
 		assert_eq "_set_build_directory resolves relative path against qbt_working_dir" "${test_root}/wd/rel-build" "${qbt_install_dir}"
+		assert_eq "_set_build_directory second call preserves original LOCAL_USER_HOME" "${orig_home}" "${LOCAL_USER_HOME}"
+
+		qbt_build_dir="${orig_home}/sub-build"
+		_set_build_directory
+		# shellcheck disable=SC2088
+		assert_eq "_set_build_directory formats qbt_install_dir_short against LOCAL_USER_HOME" "~/sub-build" "${qbt_install_dir_short}"
+
+		qbt_local_paths=""
+		# shellcheck disable=SC2123
+		PATH=""
+		_set_build_directory
+		assert_eq "_set_build_directory with empty qbt_local_paths avoids trailing colon in PATH" "${orig_home}/sub-build/bin" "${PATH}"
 		save_counts
 	)
 	load_counts
@@ -839,9 +851,12 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 	(
 		load_lib "ubuntu" "resolute" "26.04" "amd64"
 		# shellcheck disable=SC2088
-		qbt_build_dir="~/tilde-build/"
+		qbt_build_dir="~/tilde-build///"
+		# shellcheck disable=SC2088
+		qbt_cache_dir="~/tilde-cache///"
 		_set_default_values > /dev/null
-		assert_eq "tilde expanded and trailing slash stripped in qbt_build_dir" "${HOME}/tilde-build" "${qbt_install_dir}"
+		assert_eq "tilde expanded and multiple trailing slashes stripped in qbt_build_dir" "${HOME}/tilde-build" "${qbt_install_dir}"
+		assert_eq "tilde expanded and multiple trailing slashes stripped in qbt_cache_dir" "${HOME}/tilde-cache" "${qbt_cache_dir}"
 		save_counts
 	)
 	load_counts
@@ -951,7 +966,8 @@ printf '\n=== 4. Compiler & Linker Flags (_custom_flags) Tests ===\n'
 		assert_eq "glibc resets LDFLAGS to user qbt_ldflags only" "-Wl,--user-ld" "${LDFLAGS}"
 		assert_eq "glibc AR uses non-LTO cross ar" "/usr/bin/riscv64-linux-gnu-ar" "${AR}"
 
-		# *_host_deps uses /usr/bin host compilers + LTO wrappers and omits -B lib_dir
+		# *_host_deps uses /usr/bin host compilers + LTO wrappers, isolates -I/-L to qbt_host_deps_path, and omits -B lib_dir
+		qbt_host_deps_path="${test_root}/build/host_deps"
 		app_name="qtbase_host_deps"
 		_custom_flags
 		assert_eq "host_deps CC uses /usr/bin/gcc" "/usr/bin/gcc" "${CC}"
@@ -961,6 +977,10 @@ printf '\n=== 4. Compiler & Linker Flags (_custom_flags) Tests ===\n'
 		assert_eq "host_deps RANLIB uses /usr/bin/gcc-ranlib" "/usr/bin/gcc-ranlib" "${RANLIB}"
 		assert_eq "host_deps CHOST is empty" "" "${CHOST}"
 		assert_not_contains "host_deps omits -B lib_dir" "${CFLAGS}" "-B${lib_dir}"
+		assert_contains "host_deps CFLAGS uses qbt_host_deps_path/include" "${CFLAGS}" "-I${qbt_host_deps_path}/include"
+		assert_not_contains "host_deps CFLAGS omits target include_dir" "${CFLAGS}" "-I${include_dir}"
+		assert_contains "host_deps LDFLAGS uses qbt_host_deps_path/lib" "${LDFLAGS}" "-L${qbt_host_deps_path}/lib"
+		assert_not_contains "host_deps LDFLAGS omits target lib_dir" "${LDFLAGS}" "-L${lib_dir}"
 
 		# *_host_deps without LTO uses /usr/bin/ar, nm, ranlib
 		qbt_use_lto="no"
@@ -1092,6 +1112,17 @@ EOF
 		qbt_use_lto="no"
 		_custom_flags
 		assert_eq "alpine cross non-LTO AR uses qbt_cross_tool_dir ar" "${test_root}/alp/bin/aarch64-linux-musl-ar" "${AR}"
+
+		# Cross gcc_command probes qbt_cross_tool_dir compiler even when qbt_cross_tool_dir is not on PATH
+		mkdir -p "${test_root}/alp/bin"
+		cat > "${test_root}/alp/bin/aarch64-linux-musl-gcc" << 'EOF'
+#!/bin/bash
+[[ ${1} == "-dumpspecs" ]] && exit 0
+[[ ${1} == "-dumpversion" ]] && printf '14.2.0\n'
+EOF
+		chmod +x "${test_root}/alp/bin/aarch64-linux-musl-gcc"
+		_custom_flags
+		assert_contains "cross gcc_command probes qbt_cross_tool_dir compiler when off PATH" "${CFLAGS}" "-fstrict-flex-arrays=3"
 		save_counts
 	)
 	load_counts
@@ -1136,6 +1167,19 @@ printf '\n=== 5. Path Validation & Archive Extraction Name Tests ===\n'
 	assert_exit "_validate_path rejects command substitution in name mode" 1 "$?"
 	_validate_path "a/b" "name"
 	assert_exit "_validate_path rejects slash in name mode" 1 "$?"
+
+	# _resolve_path tests (including symlinked ancestor + multiple non-existent nested directories)
+	rp_base="${test_root}/rp_real"
+	rp_link="${test_root}/rp_sym"
+	mkdir -p "${rp_base}/existing"
+	ln -s "${rp_base}" "${rp_link}"
+	rp_real_resolved="$(readlink -f "${rp_base}")"
+	assert_eq "_resolve_path resolves existing directory through symlink" "${rp_real_resolved}/existing" "$(_resolve_path "${rp_link}/existing")"
+	assert_eq "_resolve_path resolves multiple missing nested dirs under symlinked parent" "${rp_real_resolved}/new_a/new_b/new_c" "$(_resolve_path "${rp_link}/new_a/new_b/new_c/")"
+	assert_eq "_resolve_path resolves relative path against PWD" "${rp_real_resolved}/rel_sub/leaf" "$(cd "${rp_link}" && _resolve_path "rel_sub/leaf")"
+	assert_eq "_resolve_path preserves root slash" "/" "$(_resolve_path "///")"
+	_resolve_path "" > /dev/null 2>&1
+	assert_exit "_resolve_path rejects empty path" 1 "$?"
 
 	# Archive tests with real tarballs
 	arch_tmp="${test_root}/archives"
@@ -1275,6 +1319,16 @@ printf '\n=== 6. Core Helper Function Tests (_cmd, _post_command, _pushd/_popd, 
 		_boost_url
 		assert_eq "_boost_url all fail sets status 403" "403" "${boost_url_status}"
 		assert_eq "_boost_url all fail sets source_default=folder" "folder" "${source_default[boost]}"
+
+		boost_curl_called="no"
+		github_tag[boost]="error_tag"
+		_curl() {
+			boost_curl_called="yes"
+			return 0
+		}
+		_boost_url
+		assert_eq "_boost_url skips curl probes when github_tag[boost]=error_tag" "no" "${boost_curl_called}"
+		assert_eq "_boost_url sets folder fallback on error_tag" "folder" "${source_default[boost]}"
 		save_counts
 	)
 	load_counts
@@ -2180,6 +2234,50 @@ DIFF
 	)
 	assert_exit "failed master Jamfile download exits 1" 1 "$?"
 
+	# 0-byte master Jamfile HTTP 200 response aborts and preserves existing Jamfile
+	printf 'KEEP_THIS_JAMFILE\n' > "${lt_src}/Jamfile"
+	(
+		_curl() {
+			local out="" i=1
+			while ((i <= $#)); do
+				if [[ ${!i} == "-o" ]]; then
+					((i++))
+					out="${!i}"
+				fi
+				((i++))
+			done
+			[[ -n ${out} ]] && : > "${out}"
+			return 0
+		}
+		_apply_patches > /dev/null 2>&1
+	)
+	assert_exit "0-byte master Jamfile HTTP 200 download exits 1" 1 "$?"
+	assert_eq "0-byte master Jamfile preserves existing source Jamfile" "KEEP_THIS_JAMFILE" "$(< "${lt_src}/Jamfile")"
+	qbt_libtorrent_master_jamfile="no"
+
+	# 0-byte local url download (HTTP 200 empty body) skipped without writing comment-only patch file
+	empty_url_src="${test_root}/empty_url_src"
+	mkdir -p "${empty_url_src}" "${qbt_install_dir}/patches/double_conversion/3.3.1"
+	printf 'untouched\n' > "${empty_url_src}/dc.txt"
+	printf 'https://example.invalid/empty.patch\n' > "${qbt_install_dir}/patches/double_conversion/3.3.1/url"
+	app_version[double_conversion]="3.3.1"
+	qbt_dl_folder_path="${empty_url_src}"
+	app_name="double_conversion"
+	_curl() {
+		local out="" i=1
+		while ((i <= $#)); do
+			if [[ ${!i} == "-o" ]]; then
+				((i++))
+				out="${!i}"
+			fi
+			((i++))
+		done
+		[[ -n ${out} ]] && : > "${out}"
+		return 0
+	}
+	_apply_patches > /dev/null
+	assert_exit "0-byte url patch response skipped cleanly without failing patch -p1" 0 "$?"
+
 	# 11g. Remote API recursive source/ directory download, API 403 fallback, standalone url & *.patch, 0-byte patch ignored
 	(
 		rem_src_dir="${test_root}/rem_src_dir"
@@ -2437,6 +2535,20 @@ printf '\n=== 12. Download, Caching & Host Deps (_download, _cache_dirs, _downlo
 			assert_contains "_download_file cached hit prints Extracting" "${out_hit}" "Extracting"
 			assert_eq "_download_file cached hit does not re-download via _curl" "no" "${curl_called}"
 			assert_eq "_download workflow_override=yes logs source URL" "https://example.invalid/direct/zlib.tar.gz" "$(< "${qbt_install_dir}/logs/zlib_source_archive_url.log")"
+			save_counts
+		)
+		load_counts
+
+		# _download creates missing qbt_install_dir automatically before _pushd
+		(
+			qbt_install_dir="${test_root}/auto_created_install_dir"
+			qbt_cache_dir=""
+			qbt_cache_dir_options=""
+			qbt_workflow_files="no"
+			source_default[zlib]="none"
+			_download "zlib" > /dev/null
+			assert_dir_exists "_download creates missing qbt_install_dir before _pushd" "${qbt_install_dir}"
+			_popd
 			save_counts
 		)
 		load_counts
@@ -2715,6 +2827,22 @@ printf '\n=== 13. Static Link Fixes, Cleanup (_delete_function), & Install Tests
 	assert_not_contains "_install_qbittorrent custom relative path avoids command_privilege" "${out_rel_custom}" "PRIV_USED:"
 	assert_file_exists "_install_qbittorrent custom relative path installed binary" "${test_root}/rel_bin/qbittorrent-nox"
 
+	# Nested non-existent custom path inside a symlinked LOCAL_USER_HOME resolves ancestor symlink and avoids command_privilege
+	real_sym_home="${test_root}/real_sym_home"
+	link_sym_home="${test_root}/link_sym_home"
+	outside_sym_target="${test_root}/outside_sym_target"
+	mkdir -p "${real_sym_home}" "${outside_sym_target}"
+	ln -s "${real_sym_home}" "${link_sym_home}"
+	ln -s "${outside_sym_target}" "${real_sym_home}/escape_to_system"
+	# shellcheck disable=SC2088
+	out_sym_nested="$(LOCAL_USER_HOME="${link_sym_home}" PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "~/missing_parent/nested_bin")"
+	assert_exit "_install_qbittorrent custom nested missing dir under symlinked home exits 0" 0 "$?"
+	assert_not_contains "_install_qbittorrent custom nested missing dir under symlinked home avoids command_privilege" "${out_sym_nested}" "PRIV_USED:"
+
+	# Symlink inside home pointing outside home uses command_privilege when passed as an absolute path
+	out_sym_escape="$(LOCAL_USER_HOME="${link_sym_home}" PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${link_sym_home}/escape_to_system")"
+	assert_contains "_install_qbittorrent custom symlink pointing outside home uses command_privilege" "${out_sym_escape}" "PRIV_USED:"
+
 	# Traversal and missing path rejected
 	(PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${inst_home}/../escape" > /dev/null 2>&1)
 	assert_exit "_install_qbittorrent custom rejects .. traversal" 1 "$?"
@@ -2820,6 +2948,37 @@ printf '\n=== 14. Script Version Check & Release Info Tests ===\n'
 		assert_contains "_release_info renders ${arch_key} row" "$(< "${qbt_install_dir}/release_info/qt6-${arch_key}-release.md")" "${triplet_col}"
 	done
 	assert_contains "_release_info defaults revision to 0 on new tag" "$(< "${qbt_install_dir}/release_info/qt6-dependency-version.json")" '"revision": "0"'
+
+	# _release_info handles non-object JSON without jq stderr and does not leak qbt_revision_version across calls
+	_git_git() { return 0; }
+	_curl() {
+		case "${*}" in
+			*releases/tags/*) printf '{"assets":[{"name":"dependency-version.json"}]}' ;;
+			*dependency-version.json*) printf '{"revision":"11"}' ;;
+			*) return 1 ;;
+		esac
+	}
+	_release_info > /dev/null
+	_curl() {
+		case "${*}" in
+			*releases/tags/*) printf '{"assets":[{"name":"dependency-version.json"}]}' ;;
+			*dependency-version.json*) printf '["not","an","object"]' ;;
+			*) return 1 ;;
+		esac
+	}
+	_release_info > /dev/null 2> "${test_root}/rel_nonobj.err"
+	assert_eq "_release_info non-object JSON emits zero jq stderr" "" "$(< "${test_root}/rel_nonobj.err")"
+	assert_contains "_release_info non-object JSON resets revision to 0 (no state leak)" "$(< "${qbt_install_dir}/release_info/qt6-dependency-version.json")" '"revision": "0"'
+
+	# _release_info skips malformed qbt_revision_url without invoking git or curl
+	rel_git_called="no"
+	_git_git() {
+		rel_git_called="yes"
+		return 0
+	}
+	qbt_revision_url="bad/repo/extra"
+	_release_info > /dev/null
+	assert_eq "_release_info skips malformed qbt_revision_url" "no" "${rel_git_called}"
 
 	save_counts
 )
@@ -2957,8 +3116,9 @@ printf '\n=== 15. Dependency Checker (_check_dependencies) Tests ===\n'
 		assert_exit "_check_dependencies non-root no-sudo with all deps present exits 0" 0 "$?"
 		assert_contains "_check_dependencies non-root no-sudo with all deps present prints All checks passed" "${out}" "All checks passed"
 		assert_not_contains "_check_dependencies non-root no-sudo with all deps present does not warn about privileges" "${out}" "No root or sudo privileges detected"
-		(_check_dependencies install_core > /dev/null 2>&1)
+		out_priv_ic="$(_check_dependencies install_core 2>&1)"
 		assert_exit "_check_dependencies non-root no-sudo install_core exits 1 because it needs privileges" 1 "$?"
+		assert_not_contains "_check_dependencies non-root install_core with all deps present omits empty apt-get hint" "${out_priv_ic}" "apt-get install -y"
 		save_counts
 	)
 	load_counts
@@ -3525,13 +3685,16 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 	assert_exit "-bs-e produces syntactically valid bash file" 0 "$?"
 	rm -f "${cli_dir}/.qbt_env"
 
-	# -cd <dir> rm refuses unsafe paths including trailing slashes and /.
-	safe_home="${test_root}/cli_home"
-	mkdir -p "${safe_home}/legit_cache"
-	for unsafe_path in "/" "///" "." "./" ".." "${safe_home}" "${safe_home}//" "${safe_home}/." "${cli_dir}" "${cli_dir}/."; do
-		HOME="${safe_home}" "${cli_dir}/qbt-nox-static.bash" -cd "${unsafe_path}" rm > /dev/null 2>&1
+	# -cd <dir> rm refuses unsafe paths including trailing slashes, /., symlinks to protected dirs, and ancestor directories of HOME/PWD/script
+	safe_home_parent="${test_root}/cli_home_parent"
+	safe_home="${safe_home_parent}/cli_home"
+	mkdir -p "${safe_home}/legit_cache" "${safe_home}/sub_pwd"
+	ln -s "${safe_home}" "${test_root}/sym_to_home"
+	for unsafe_path in "/" "///" "." "./" ".." "${safe_home}" "${safe_home}//" "${safe_home}/." "${cli_dir}" "${cli_dir}/." "${safe_home_parent}" "${test_root}" "${test_root}/sym_to_home"; do
+		(cd "${safe_home}/sub_pwd" && HOME="${safe_home}" "${cli_dir}/qbt-nox-static.bash" -cd "${unsafe_path}" rm > /dev/null 2>&1)
 		assert_exit "-cd '${unsafe_path}' rm refused with exit 1" 1 "$?"
 	done
+	assert_dir_exists "unsafe -cd rm left HOME parent intact" "${safe_home_parent}"
 	assert_dir_exists "unsafe -cd rm left HOME intact" "${safe_home}"
 	assert_dir_exists "unsafe -cd rm left script dir intact" "${cli_dir}"
 
@@ -3647,6 +3810,18 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 
 	"${cli_off}/qbt-nox-static.bash" -ot lts > /dev/null 2>&1
 	assert_exit "-ot lts fails via error_tag when lookup returns empty" 1 "$?"
+
+	# Invalid tags in Option Loop 2 (-ot, -bt, -lt, -qt, -qtt) skip archive HEAD probes and preserve version vars
+	err_probe_cli="${test_root}/cli_err_probe"
+	err_probe_log="${test_root}/cli_err_probe.log"
+	: > "${err_probe_log}"
+	make_cli_copy "${err_probe_cli}" "ubuntu" "resolute" "26.04" "yes"
+	sed -i "s|^_curl() { return 1; }|_curl() { printf '%s\\\\n' \"\$*\" >> \"${err_probe_log}\"; return 0; }; _git() { printf 'error_tag\\\\n'; }|" "${err_probe_cli}/qbt-nox-static.bash"
+	"${err_probe_cli}/qbt-nox-static.bash" -ot bad -bt bad -lt bad -qt bad -qtt bad > /dev/null 2>&1
+	assert_exit "invalid tags on -ot/-bt/-lt/-qt/-qtt exit 1 via _error_tag" 1 "$?"
+	assert_eq "invalid tags skip all _curl archive HEAD probes" "" "$(< "${err_probe_log}")"
+	out_err_hlm="$("${err_probe_cli}/qbt-nox-static.bash" -lt bad -h-lm 2> /dev/null)"
+	assert_not_contains "invalid -lt does not clobber qbt_libtorrent_version with error_tag" "${out_err_hlm}" "error_tag"
 
 	"${cli_off}/qbt-nox-static.bash" -bs-ma > /dev/null 2>&1
 	assert_exit "-bs-ma rejects default arch" 1 "$?"
@@ -3821,6 +3996,12 @@ printf '\n=== 18. Script Integrity, Security & Contract Regression Tests ===\n'
 		pass "qbt-nox-static.bash contains no eval calls"
 	else
 		fail "eval check" "eval statement found in qbt-nox-static.bash"
+	fi
+
+	if ! grep -nE '(^|[;&|({[:space:]])echo([[:space:]]|$)' "${target_script}" | grep -qv '^[0-9]*:[[:space:]]*#'; then
+		pass "qbt-nox-static.bash contains no standalone echo commands"
+	else
+		fail "echo check" "forbidden echo command found in qbt-nox-static.bash"
 	fi
 
 	# shellcheck disable=SC2016
