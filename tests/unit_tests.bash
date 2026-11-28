@@ -495,7 +495,7 @@ load_counts
 
 printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ===\n'
 (
-	# get_os_info strips Alpine _alpha suffix, handles missing file, rejects bad var names, and does not pollute caller globals
+	# get_os_info strips Alpine _alpha suffix, handles missing file, and does not pollute caller globals
 	(
 		load_lib
 		mock_osr="${test_root}/osr_alpine"
@@ -510,12 +510,6 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 		assert_pass_eq "get_os_info strips Alpine _alpha suffix" "${ver_rc}" "3.21.0" "${ver_val}"
 		get_os_info ID > /dev/null
 		assert_eq "get_os_info does not leak PRETTY_NAME into caller scope" "" "${PRETTY_NAME:-}"
-		bad_key="$(get_os_info "1INVALID")"
-		bad_rc=$?
-		assert_pass_eq "get_os_info rejects invalid identifier" "${bad_rc}" "unknown" "${bad_key}"
-		empty_key="$(get_os_info "")"
-		empty_rc=$?
-		assert_pass_eq "get_os_info rejects empty key" "${empty_rc}" "unknown" "${empty_key}"
 		eval "$(declare -f get_os_info | sed "s|${mock_osr}|${test_root}/no_such_osr|g")"
 		miss_val="$(get_os_info ID)"
 		miss_rc=$?
@@ -715,8 +709,6 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 
 	(
 		load_lib "ubuntu" "resolute" "26.04" "amd64"
-		_set_default_values -qt icu -pr "owner/repo icu" > /dev/null
-		assert_eq "icu as value of -qt or -pr does NOT enable icu module" "yes" "${qbt_skip_icu}"
 		_set_default_values -- icu > /dev/null
 		assert_eq "icu after -- enables icu module" "no" "${qbt_skip_icu}"
 		save_counts
@@ -1199,10 +1191,6 @@ printf '\n=== 5. Path, Repo Validation & Archive Extraction Name Tests ===\n'
 	assert_exit "_validate_path accepts relative path in dir mode" 0 "$?"
 	_validate_path "/abs/path" "name"
 	assert_exit "_validate_path rejects absolute path in name mode" 1 "$?"
-	_validate_path "." "name"
-	assert_exit "_validate_path rejects single dot in name mode" 1 "$?"
-	_validate_path "-rf" "name"
-	assert_exit "_validate_path rejects leading dash in name mode" 1 "$?"
 	_validate_path ".." "dir"
 	assert_exit "_validate_path rejects bare .." 1 "$?"
 	_validate_path "foo/../bar" "dir"
@@ -1255,7 +1243,6 @@ printf '\n=== 5. Path, Repo Validation & Archive Extraction Name Tests ===\n'
 	tar -czf "${arch_tmp}/dotslash.tar.gz" -C "${arch_tmp}/src" "./zlib-1.3.2"
 	tar -czf "${arch_tmp}/dotroot.tar.gz" -C "${arch_tmp}/src" "."
 	tar -czf "${arch_tmp}/double_dot_name.tar.gz" -C "${arch_tmp}/dotsrc" "pkg..1.0"
-	ln -s -- "${arch_tmp}/normal.tar.gz" "${arch_tmp}/symlink.tar.gz"
 	: > "${arch_tmp}/empty.tar.gz"
 	# Large archive: awk exits at the first entry so tar is killed by SIGPIPE, which must not fail the lookup even though this suite runs with pipefail
 	mkdir -p -- "${arch_tmp}/bigsrc/big-1.0"
@@ -1272,8 +1259,6 @@ printf '\n=== 5. Path, Repo Validation & Archive Extraction Name Tests ===\n'
 	assert_pass_eq "_get_archive_dir_name skips bare . entry" "$?" "zlib-1.3.2" "${ad_out}"
 	ad_out="$(_get_archive_dir_name "${arch_tmp}/double_dot_name.tar.gz")"
 	assert_pass_eq "_get_archive_dir_name accepts archive with pkg..1.0 top dir" "$?" "pkg..1.0" "${ad_out}"
-	_get_archive_dir_name "${arch_tmp}/symlink.tar.gz" > /dev/null 2>&1
-	assert_exit "_get_archive_dir_name rejects symlinked archive" 1 "$?"
 	_get_archive_dir_name "${arch_tmp}/src" > /dev/null 2>&1
 	assert_exit "_get_archive_dir_name rejects directory path" 1 "$?"
 	_get_archive_dir_name "${arch_tmp}/empty.tar.gz" > /dev/null 2>&1
@@ -1289,28 +1274,18 @@ printf '\n=== 5. Path, Repo Validation & Archive Extraction Name Tests ===\n'
 	_get_archive_dir_name "${arch_tmp}/badname.tar.gz" > /dev/null 2>&1
 	assert_exit "_get_archive_dir_name rejects unsafe archive dir name" 1 "$?"
 
-	# Archive with leading / or .. member path rejected even when tar -tf emits it
+	# Archive whose only member is an absolute path yields no usable top-level directory
 	tar -P -cf "${arch_tmp}/abs_entry.tar" "${arch_tmp}/src/zlib-1.3.2/sub/file.txt" 2> /dev/null
 	_get_archive_dir_name "${arch_tmp}/abs_entry.tar" > /dev/null 2>&1
-	assert_exit "_get_archive_dir_name rejects archive with leading-slash entry" 1 "$?"
+	assert_exit "_get_archive_dir_name rejects archive with only an absolute-path entry" 1 "$?"
 
 	save_counts
 )
 load_counts
 
-printf '\n=== 6. Core Helper Function Tests (_nproc, _cmd, _post_command, _pushd/_popd, _tee, _error_tag, _test_url, _boost_url, _debug) ===\n'
+printf '\n=== 6. Core Helper Function Tests (_cmd, _post_command, _pushd/_popd, _tee, _error_tag, _test_url, _boost_url, _debug) ===\n'
 (
 	load_lib
-
-	np_val="$(_nproc)"
-	assert_match "_nproc returns positive integer" "$?" "${np_val}" '^[1-9][0-9]*$'
-	(
-		nproc() { return 1; }
-		fb_np="$(_nproc)"
-		assert_pass_eq "_nproc falls back to 1 when nproc fails" "$?" "1" "${fb_np}"
-		save_counts
-	)
-	load_counts
 
 	(_cmd true)
 	assert_exit "_cmd returns 0 on success" 0 "$?"
@@ -1762,28 +1737,7 @@ EOF
 	)
 	load_counts
 
-	# 8d. Negative/rejection cases (including invalid qbt_mcm_url and qbt_mcm_tag)
-	(
-		load_lib "alpine" "alpine" "3.21" "x86_64"
-		qbt_install_dir="${test_root}/bad_mcm_repo"
-		qbt_cross_target="alpine"
-		qbt_cross_name="aarch64"
-		qbt_mcm_url="userdocs/.."
-		_multi_arch > /dev/null 2>&1
-	)
-	assert_exit "alpine _multi_arch rejects traversal qbt_mcm_url" 1 "$?"
-
-	(
-		load_lib "alpine" "alpine" "3.21" "x86_64"
-		qbt_install_dir="${test_root}/bad_mcm_tag"
-		qbt_cross_target="alpine"
-		qbt_cross_name="aarch64"
-		qbt_mcm_url="userdocs/qbt-musl-cross-make"
-		qbt_mcm_tag="../evil"
-		_multi_arch > /dev/null 2>&1
-	)
-	assert_exit "alpine _multi_arch rejects unsafe qbt_mcm_tag" 1 "$?"
-
+	# 8d. Negative/rejection cases
 	(
 		load_lib "alpine" "alpine" "3.21" "x86_64"
 		qbt_cross_target="alpine"
@@ -1881,6 +1835,7 @@ printf '\n=== 9. Git Wrapper & Tag Validation (_git) Tests ===\n'
 		"[v]1.2.20" \
 		"master extra" \
 		$'v1.2.20\n' \
+		'v1\.2\.20' \
 		"v1.0..v2.0" \
 		"HEAD@{0}" \
 		"/master" \
@@ -2305,7 +2260,6 @@ EOF
 						cat > "${out}" << 'JSON'
 [
   {"name": "../evil.patch", "type": "file", "download_url": "https://raw.githubusercontent.com/owner1/repo1/main/evil"},
-  {"name": "-flag.patch", "type": "file", "download_url": "https://raw.githubusercontent.com/owner1/repo1/main/evil2"},
   {"name": "patch", "type": "file", "download_url": "https://raw.githubusercontent.com/owner1/repo1/main/p1"}
 ]
 JSON
@@ -2349,7 +2303,6 @@ DIFF
 			rem_out="$(_apply_patches)"
 			rem_rc=$?
 			assert_contains "remote patches (${mode}) rejects unsafe ../evil.patch" "${rem_rc}" "${rem_out}" "Skipping unsafe remote filename: ../evil.patch"
-			assert_contains "remote patches (${mode}) rejects leading-dash -flag.patch" "${rem_rc}" "${rem_out}" "Skipping unsafe remote filename: -flag.patch"
 			assert_contains "remote patches (${mode}) rejects traversal owner/.. repo" "${rem_rc}" "${rem_out}" "Skipping invalid patch repo format: owner/.."
 			assert_contains "remote patches (${mode}) skips invalid repo format" "${rem_rc}" "${rem_out}" "Skipping invalid patch repo format: bad/repo/extra"
 			assert_eq "remote patches (${mode}) merges multi-repo colliding patches" $'ONE\nTWO' "$(< "${rem_src}/f.txt")"
@@ -3020,12 +2973,6 @@ printf '\n=== 12. Download, Caching & Host Deps (_download, _cache_dirs, _downlo
 			_qbt_host_deps > /dev/null 2>&1
 		)
 		assert_exit "_qbt_host_deps exits 1 on unsupported host arch s390x" 1 "$?"
-
-		(
-			qbt_host_deps_repo="userdocs/.."
-			_qbt_host_deps > /dev/null 2>&1
-		)
-		assert_exit "_qbt_host_deps rejects traversal qbt_host_deps_repo" 1 "$?"
 		save_counts
 	)
 	load_counts
@@ -3822,7 +3769,7 @@ chmod +x \"${qbt_install_dir}/boost/b2\""
 	)
 	load_counts
 
-	# 16h. _double_conversion, _qtbase_host_deps, _qtbase (cmake Qt6, qmake Qt5 cross + idempotency, invalid combo), _qttools_host_deps, _qttools
+	# 16h. _double_conversion, _qtbase_host_deps, _qtbase (cmake Qt6, qmake Qt5 cross, invalid combo), _qttools_host_deps, _qttools
 	(
 		load_lib "ubuntu" "resolute" "26.04" "amd64"
 		qbt_install_dir="${test_root}/m_qt"
@@ -3894,12 +3841,6 @@ chmod +x \"${qbt_install_dir}/boost/b2\""
 		assert_contains "_qtbase qmake injects -static --static in linux-g++/qmake.conf" "${m_rc}" "$(< "${wdir}/mkspecs/linux-g++/qmake.conf")" "QMAKE_LFLAGS = -static --static"
 		assert_contains "_qtbase qmake patches #  include <limits> into qglobal.h" "${m_rc}" "$(< "${wdir}/src/corelib/global/qglobal.h")" "#  include <limits>"
 		assert_contains "_qtbase qmake passes -icu -no-iconv when qbt_skip_icu=no" "${m_rc}" "$(< "${mlog}")" "-icu -no-iconv"
-
-		# Re-run _qtbase on same tree (-n mode): patches must be idempotent (count == 1)
-		(cd "${wdir}" && _qtbase > /dev/null)
-		m_rc2=$?
-		assert_pass_eq "_qtbase qglobal.h limits patch is idempotent" "${m_rc2}" "1" "$(grep -c '#  include <limits>' "${wdir}/src/corelib/global/qglobal.h")"
-		assert_pass_eq "_qtbase linux-g++/qmake.conf static patch is idempotent" "${m_rc2}" "1" "$(grep -c 'QMAKE_LFLAGS = -static --static' "${wdir}/mkspecs/linux-g++/qmake.conf")"
 
 		(
 			qbt_build_tool="qmake"

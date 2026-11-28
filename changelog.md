@@ -1,4 +1,4 @@
-## v2.2.6 - 28/11/2026
+### v2.2.6 - 22/11/2026
 
 Final-state audit of `qbt-nox-static.bash` (`v2.2.6`) and `tests/unit_tests.bash`.
 
@@ -10,21 +10,21 @@ Final-state audit of `qbt-nox-static.bash` (`v2.2.6`) and `tests/unit_tests.bash
 - **Safe `-cd <dir> rm` & `install custom` privilege scoping**: `-cd <dir> rm` refuses `/`, `.`, `..`,
   `$HOME`, `$PWD`, the script directory, their ancestors, and regular files before `rm -rf --` (exit `0`);
   `install custom` elevates privileges only when an absolute target resolves outside `$LOCAL_USER_HOME`.
-- **GitHub repository, branch & git ref validation**: `_validate_github_repo` enforces `owner/repo` and
-  rejects `.` and `..` segments across `-pr`, `qbt_patches_url`, `qbt_revision_url`, `qbt_mcm_url`, and
-  `qbt_host_deps_repo`; remote patch branches and `qbt_mcm_tag` reject `.`, `..`, and leading `-`.
+- **GitHub repository validation**: `_validate_github_repo` enforces `owner/repo` and rejects `.` and `..`
+  segments for `-pr`, `qbt_patches_url`, the libtorrent `Jamfile` fallback, and `qbt_revision_url`; curl
+  collapses dot segments, so `-pr ../..` resolved to `https://github.com/` and passed the existence probe.
 - **Exact `git ls-remote` ref lookups**: `_git <url> -t <ref>` places `--` before `<url>` and rejects
-  leading `-`, leading/trailing `/`, `..`, `@{`, `*.lock`, globs, `[\~^:]`, whitespace, and control
-  characters, querying only exact `refs/heads/<ref>` and `refs/tags/<ref>`.
+  leading `-`, whitespace, control characters, and glob characters including git's `\` wildmatch escape
+  (`-lt 'v1\.0'` matched `v1.0`), querying only exact `refs/heads/<ref>` and `refs/tags/<ref>`.
 - **Symlink, non-regular file & atomic write guards**: `.qbt_env` loading and `_write_qbt_env_template`,
   `_cache_dirs_qbt_env_copy`, `_tee`, `_apply_patches`, and `.active-toolchain-info` reject symlinks
   (`-L`) and non-regular targets, staging writes via `mktemp`/`.tmp` + `mv -f --`.
-- **Archive & remote patch sanitization**: `_get_archive_dir_name` requires a readable, non-empty regular
-  archive and aborts if `tar -tf` lists leading `/` or `..` segments; `_download_directory_contents` caps
-  recursion (`<= 16`), requires `https?://` URLs, and skips unsafe or `-*` remote filenames.
+- **Remote patch staging**: `_download_remote` stages every download (and API listing) in a temp file
+  and moves only non-empty results into place, so failed or empty responses never clobber files from an
+  earlier repository; download URLs must be `https?://` and remote names must be plain filenames.
 - **Option terminators, `%s` formatting & isolated OS probing**: External file, archive, git, and `curl`
   calls pass `--` before operands, untrusted values print via `%s` rather than `%b`, and `get_os_info`
-  validates variable identifiers before sourcing `/etc/os-release` in a subshell.
+  sources `/etc/os-release` in a subshell so `ID`, `NAME`, and friends never leak into the caller.
 
 ### Bug & Regression Fixes
 
@@ -63,7 +63,7 @@ Final-state audit of `qbt-nox-static.bash` (`v2.2.6`) and `tests/unit_tests.bash
   directly via its `${BASH_SOURCE[0]}` guard and enforces expected exit codes inside every output helper
   (`assert_pass_eq`, `assert_contains`, `assert_not_contains`, `assert_match`, `assert_fail_contains`,
   `assert_fail_not_contains`) in single invocations.
-- **Self-contained 928-assertion offline suite**: 18 isolated sections cover OS/arch matrices, C++14–C++23
+- **Self-contained 914-assertion offline suite**: 18 isolated sections cover OS/arch matrices, C++14–C++23
   resolution, `_semantic_version`, dependency gating, path/repo/tag/archive/symlink guards, CRLF `.qbt_env`
   handling, dry-run patch rollback, shallow cache updates, all 24 mocked module builds, and CLI contracts.
 

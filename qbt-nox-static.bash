@@ -94,15 +94,10 @@ script_basename="${script_full_path##*/}"
 # Function to source /etc/os-release and get info from it on demand.
 #######################################################################################################################################################
 get_os_info() {
-	local key="${1:-}"
-	if [[ ! ${key} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-		printf '%s' "unknown"
-		return 0
-	fi
 	(
 		# shellcheck source=/dev/null
 		if source /etc/os-release &> /dev/null; then
-			printf '%s' "${!key%_*}" # the expansion part is specific to the Alpine VERSION_ID format 1.2.3_alpha but won't break anything in Debian based format e.g. 12/24.04
+			printf '%s' "${!1%_*}" # the expansion part is specific to the Alpine VERSION_ID format 1.2.3_alpha but won't break anything in Debian based format e.g. 12/24.04
 		else
 			printf '%s' "unknown" # This will make the script exit on the version check and provide useful reason.
 		fi
@@ -311,33 +306,9 @@ _set_default_values() {
 	qbt_skip_icu="${qbt_skip_icu:-yes}"
 
 	# Don't remove the icu module if icu or icu_host_deps was provided as a positional parameter.
-	local pos_idx=1 pos_arg after_dd=false
-	while ((pos_idx <= $#)); do
-		pos_arg="${!pos_idx}"
-		if [[ ${after_dd} == false ]]; then
-			case "${pos_arg}" in
-				--)
-					after_dd=true
-					((pos_idx++))
-					continue
-					;;
-				-ot | --openssl-tag | -bt | --boost-tag | -lt | --libtorrent-tag | -pr | --patch-repo | -qt | --qbittorrent-tag | -qtt | --qt-tag)
-					((pos_idx += 2))
-					continue
-					;;
-				-*)
-					((pos_idx++))
-					continue
-					;;
-				*) ;;
-			esac
-		fi
-		if [[ ${pos_arg} == "icu" || ${pos_arg} == "icu_host_deps" ]]; then
-			qbt_skip_icu="no"
-			break
-		fi
-		((pos_idx++))
-	done
+	if [[ ${*} =~ ([[:space:]]|^)(icu|icu_host_deps)([[:space:]]|$) ]]; then
+		qbt_skip_icu="no"
+	fi
 
 	# Default to expecting qemu to be present for cross builds.
 	# yes will use the _qbt_host_deps function to pull in this prebuilt dependency package https://github.com/userdocs/qbt-host-deps
@@ -1205,15 +1176,6 @@ _check_dependencies() {
 		esac
 	done
 }
-_nproc() {
-	local n
-	n="$(nproc 2> /dev/null)"
-	if [[ ${n} =~ ^[0-9]+$ ]] && ((n > 0)); then
-		printf '%s' "${n}"
-	else
-		printf '1'
-	fi
-}
 #######################################################################################################################################################
 # This is a command test function: _cmd exit 1
 #######################################################################################################################################################
@@ -1228,16 +1190,15 @@ _cmd() {
 #######################################################################################################################################################
 # shellcheck disable=SC2317,SC2329
 _post_command() {
-	local command_type="${1:-tested}" status
+	local command_type="${1:-tested}"
 	shift
-	for status in "${@}"; do
-		if [[ ${status} != "0" ]]; then
-			printf '\n%b\n' " ${unicode_red_circle}${color_red} Error:${color_end} The ${command_type} command produced an exit code greater than 0 - Check the logs"
-			printf '\n%b\n' " ${unicode_yellow_circle}${color_yellow} Warning:${color_end} Developers can be easily startled or confused by wild issues, if you are seeing this warning and cannot resolve the issue yourself, please open an issue at this repo first:"
-			printf '\n%b\n\n' " ${unicode_blue_circle}${color_blue_light} https://github.com/userdocs/qbittorrent-nox-static/issues ${color_end}"
-			exit 1
-		fi
-	done
+	local outcome=("${@}")
+	if [[ ${outcome[*]} =~ [1-9] ]]; then
+		printf '\n%b\n' " ${unicode_red_circle}${color_red} Error:${color_end} The ${command_type} command produced an exit code greater than 0 - Check the logs"
+		printf '\n%b\n' " ${unicode_yellow_circle}${color_yellow} Warning:${color_end} Developers can be easily startled or confused by wild issues, if you are seeing this warning and cannot resolve the issue yourself, please open an issue at this repo first:"
+		printf '\n%b\n\n' " ${unicode_blue_circle}${color_blue_light} https://github.com/userdocs/qbittorrent-nox-static/issues ${color_end}"
+		exit 1
+	fi
 }
 #######################################################################################################################################################
 # This function is to test a directory exists before attempting to cd and fail with an exit code if it doesn't.
@@ -1337,7 +1298,7 @@ _git() {
 	fi
 
 	if [[ ${2} == '-t' ]]; then
-		if [[ -z ${3} || ${3} == -* || ${3} == /* || ${3} == */ || ${3} == *.lock || ${3} == *".."* || ${3} == *"@{"* || ${3} == *[*?\[\\~^:]* || ${3} =~ [[:space:][:cntrl:]] ]]; then
+		if [[ -z ${3} || ${3} == -* || ${3} == *[*?\[\]\\]* || ${3} =~ [[:space:][:cntrl:]] ]]; then
 			printf '%s\n' 'error_tag'
 			return 0
 		fi
@@ -1810,9 +1771,6 @@ _test_url() {
 #######################################################################################################################################################
 _qbt_host_deps() {
 	if [[ ${qbt_host_deps} == "yes" && ${qbt_cross_name} != "default" ]]; then
-		if ! _validate_github_repo "${qbt_host_deps_repo}"; then
-			_error_tag "host_deps" "Invalid qbt_host_deps_repo format: ${qbt_host_deps_repo}"
-		fi
 		local host_arch qbt_host_deps_name qbt_host_deps_url
 		if [[ ${os_arch} =~ ^(amd64|x86_64)$ ]]; then
 			host_arch="x86_64"
@@ -2219,7 +2177,6 @@ _apply_patches() {
 			if [[ -L ${patch_file} || (-e ${patch_file} && ! -f ${patch_file}) ]]; then
 				return 1
 			fi
-			mkdir -p -- "${patch_dir}"
 			temp_patch="$(mktemp "${patch_file}.tmp.XXXXXX")" || return 1
 
 			# Step 1: Check if main patch file exists (highest priority for base)
@@ -2322,8 +2279,6 @@ _apply_patches() {
 			_download_directory_contents() {
 				local dir_api_url="${1}"
 				local local_path="${2}"
-				local depth="${3:-0}"
-				((depth > 16)) && return 1
 				local temp_json http_code
 				temp_json="$(mktemp "${patch_dir}/.listing.XXXXXX")" || return 1
 
@@ -2367,7 +2322,7 @@ _apply_patches() {
 						[[ -n ${name} ]] || continue
 
 						# Reject traversal or control characters in remote entry names
-						if [[ ${name} == *"/"* || ${name} == "." || ${name} == ".." || ${name} == -* || ${name} =~ [[:cntrl:]] ]]; then
+						if [[ ${name} == *"/"* || ${name} == "." || ${name} == ".." || ${name} =~ [[:cntrl:]] ]]; then
 							printf '%b%s\n' " ${unicode_red_circle} Skipping unsafe remote filename: " "${name}"
 							continue
 						fi
@@ -2400,7 +2355,7 @@ _apply_patches() {
 							# Recursively process directory
 							local subdir_api_url="${dir_api_url}/${name}"
 							local subdir_local_path="${local_path}/${name}"
-							_download_directory_contents "${subdir_api_url}" "${subdir_local_path}" "$((depth + 1))"
+							_download_directory_contents "${subdir_api_url}" "${subdir_local_path}"
 						fi
 					done
 					rm -f -- "${temp_json}"
@@ -2422,8 +2377,8 @@ _apply_patches() {
 				local repo_branch
 				repo_branch="$(_git_git ls-remote -q --symref -- "https://github.com/${patch_repo}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
 
-				# Validate branch name for security (allow alphanumeric, dash, underscore, dot, disallow . and ..)
-				if [[ ${repo_branch} == "." || ${repo_branch} == ".." || ${repo_branch} == -* || ! ${repo_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
+				# Validate branch name for security (allow alphanumeric, dash, underscore, dot)
+				if [[ ! ${repo_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
 					printf '%b%s\n' " ${unicode_red_circle} Invalid branch name detected for ${patch_repo}: " "${repo_branch}"
 					continue
 				fi
@@ -2479,7 +2434,6 @@ _apply_patches() {
 
 		# Apply patches with smart fallback: source > local patches > remote patches
 		_apply_patch() {
-			[[ ! -L ${1} && -f ${1} && -r ${1} ]] || return 1
 			local method
 			if [[ -d "${qbt_dl_folder_path}/.git" ]]; then
 				method="git"
@@ -2555,7 +2509,7 @@ _apply_patches() {
 					_validate_github_repo "${patch_repo}" || continue
 					local repo_branch
 					repo_branch="$(_git_git ls-remote -q --symref -- "https://github.com/${patch_repo}" HEAD | awk '/^ref:/{sub("refs/heads/", "", $2); print $2}')"
-					if [[ ${repo_branch} != "." && ${repo_branch} != ".." && ${repo_branch} != -* && ${repo_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
+					if [[ ${repo_branch} =~ ^[a-zA-Z0-9._-]+$ ]]; then
 						local remote_jamfile="https://raw.githubusercontent.com/${patch_repo}/${repo_branch}/patches/${patch_app_name}/${app_version[${patch_app_name}]}/Jamfile"
 						if _curl -o "${jamfile_dest}.tmp" -- "${remote_jamfile}" 2> /dev/null; then
 							if [[ -s "${jamfile_dest}.tmp" ]]; then
@@ -2835,9 +2789,9 @@ _validate_path() {
 		return 1
 	fi
 
-	# For directory/file names, ensure they contain only safe characters and are not '.' or leading-dash flags
+	# For directory/file names, ensure they contain only safe characters
 	if [[ ${path_type} == "name" ]]; then
-		if [[ ${path} == "." || ${path} == -* || ! ${path} =~ ^[a-zA-Z0-9._-]+$ ]]; then
+		if [[ ! ${path} =~ ^[a-zA-Z0-9._-]+$ ]]; then
 			return 1
 		fi
 	fi
@@ -2873,14 +2827,14 @@ _get_archive_dir_name() {
 	local archive_path="${1}"
 	local dir_name
 
-	# Validate input archive path and require a readable, non-empty regular file (not a symlink or FIFO/device)
-	if ! _validate_path "${archive_path}" "file" || [[ -L ${archive_path} || ! -f ${archive_path} || ! -r ${archive_path} || ! -s ${archive_path} ]]; then
+	# Validate input archive path
+	if ! _validate_path "${archive_path}" "file"; then
 		return 1
 	fi
 
 	# Safely extract top-level directory name. The pipeline status is not checked: awk exits after the first entry so tar can be killed by
 	# SIGPIPE (a failure under pipefail) and an empty result already covers corrupt or empty archives.
-	dir_name="$(tar -tf "${archive_path}" 2> /dev/null | awk '{ if ($0 ~ /^\// || $0 ~ /(^|\/)\.\.(\/|$)/) { exit 1 } sub(/^\.\//, ""); sub(/\/.*/, ""); if ($0 != "" && $0 != ".") { print; exit } }')"
+	dir_name="$(tar tf "${archive_path}" 2> /dev/null | awk '{sub(/^\.\//, ""); sub(/\/.*/, ""); if ($0 != "" && $0 != ".") { print; exit }}')"
 	[[ -n ${dir_name} ]] || return 1
 
 	# Validate the extracted directory name
@@ -2985,7 +2939,6 @@ _download_file() {
 # static lib link fix: check for *.so and *.a versions of a lib in the $lib_dir and change the *.so link to point to the static lib e.g. libdl.a
 #######################################################################################################################################################
 _fix_static_links() {
-	[[ -d ${lib_dir} ]] || return 0
 	local log_name="${app_name}" path file log_lines=""
 	for path in "${lib_dir}"/*.a; do
 		[[ -f ${path} && ! -L ${path} ]] || continue
@@ -3001,7 +2954,6 @@ _fix_multiarch_static_links() {
 	local cross_host="${1}"
 	if [[ -d "${qbt_install_dir}/${cross_host}" ]]; then
 		local log_name="${cross_host}" multiarch_lib_dir="${qbt_install_dir}/${cross_host}/lib" path file log_lines=""
-		[[ -d ${multiarch_lib_dir} ]] || return 0
 		for path in "${multiarch_lib_dir}"/*.a; do
 			[[ -f ${path} && ! -L ${path} ]] || continue
 			file="${path##*/}"
@@ -3341,12 +3293,6 @@ _multi_arch() {
 				fi
 
 				if [[ ${QBT_MCM_DOCKER} != "YES" ]]; then
-					if ! _validate_github_repo "${qbt_mcm_url}"; then
-						_error_tag "toolchain" "Invalid qbt_mcm_url repository format: ${qbt_mcm_url}"
-					fi
-					if [[ -n ${qbt_mcm_tag} ]] && { [[ ${qbt_mcm_tag} == "." || ${qbt_mcm_tag} == ".." || ${qbt_mcm_tag} == -* || ! ${qbt_mcm_tag} =~ ^[a-zA-Z0-9._-]+$ ]]; }; then
-						_error_tag "toolchain" "Invalid qbt_mcm_tag format: ${qbt_mcm_tag}"
-					fi
 					if [[ ${1} == "bootstrap" || ${qbt_cache_dir_options} == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
 						local toolchain_url
 						if [[ -z ${qbt_mcm_tag} ]]; then
@@ -4487,7 +4433,7 @@ _glibc_bootstrap() {
 _glibc() {
 	"${qbt_dl_folder_path}/configure" "${multi_glibc[@]}" --prefix="${qbt_install_dir}" --enable-cet --enable-static-nss --disable-nscd --srcdir="${qbt_dl_folder_path}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command configure "${PIPESTATUS[@]}"
-	make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command install "${PIPESTATUS[@]}"
@@ -4500,7 +4446,7 @@ _zlib() {
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
 		./configure --prefix="${qbt_install_dir}" --static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command configure "${PIPESTATUS[@]}"
-		make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command install "${PIPESTATUS[@]}"
@@ -4527,7 +4473,7 @@ _zlib() {
 		else
 			./configure --prefix="${qbt_install_dir}" --static --zlib-compat |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 			_post_command configure "${PIPESTATUS[@]}"
-			make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+			make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 			_post_command build "${PIPESTATUS[@]}"
 			make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 			_post_command install "${PIPESTATUS[@]}"
@@ -4547,7 +4493,7 @@ _iconv() {
 
 	./configure "${multi_iconv[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command configure "${PIPESTATUS[@]}"
-	make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command install "${PIPESTATUS[@]}"
@@ -4574,7 +4520,7 @@ _icu_host_deps() {
 	_pushd "${qbt_host_deps_path}"
 	"${qbt_install_dir}/${app_name/_host_deps/}${sub_dir}/runConfigureICU" Linux --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command configure "${PIPESTATUS[@]}"
-	make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	_popd
 }
@@ -4588,7 +4534,7 @@ _icu_bootstrap() {
 _icu() {
 	./configure "${multi_icu[@]}" --prefix="${qbt_install_dir}" --disable-shared --enable-static --disable-samples --disable-tests --with-data-packaging=static |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command configure "${PIPESTATUS[@]}"
-	make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command install "${PIPESTATUS[@]}"
@@ -4599,7 +4545,7 @@ _openssl() {
 	local -a openssl_config=("threads" "no-shared" "no-dso" "no-docs" "no-async" "no-comp" "no-idea" "no-mdc2" "no-rc5" "no-ec2m" "no-ssl3" "no-seed" "no-weak-ssl-ciphers")
 	"${multi_openssl[@]}" --prefix="${qbt_install_dir}" --libdir="${lib_dir##*/}" --openssldir="/etc/ssl" "${qbt_openssl_build_type}" "${openssl_config[@]}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command configure "${PIPESTATUS[@]}"
-	make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+	make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command build "${PIPESTATUS[@]}"
 	make install_sw |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 	_post_command install "${PIPESTATUS[@]}"
@@ -4630,9 +4576,7 @@ _boost() {
 			# no valid way to make bootstrap.sh build b2 statically so we do this otherwise it links dynamically against gcc.
 			local boost_build_sh="${qbt_install_dir}/boost/tools/build/src/engine/build.sh"
 			if [[ -f ${boost_build_sh} ]]; then
-				if ! grep -Fq -- "-static --static -o b2" "${boost_build_sh}"; then
-					sed -i "s|-o b2|-static --static -o b2|" "${boost_build_sh}"
-				fi
+				sed -i "s|-o b2|-static --static -o b2|" "${boost_build_sh}"
 			else
 				printf '\n%b\n\n' " ${unicode_red_circle} ${color_red_light}Error:${color_end} Boost build.sh not found at expected path: ${boost_build_sh}"
 				exit 1
@@ -4709,7 +4653,7 @@ _libtorrent() {
 			lt_cmake_flags="-DTORRENT_USE_LIBCRYPTO -DTORRENT_USE_OPENSSL -DTORRENT_USE_I2P=1 -DBOOST_ALL_NO_LIB -DBOOST_ASIO_ENABLE_CANCELIO -DBOOST_ASIO_HAS_STD_CHRONO -DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION -DBOOST_SYSTEM_NO_DEPRECATED -DBOOST_SYSTEM_STATIC_LINK=1 -DTORRENT_USE_ICONV=1"
 		fi
 
-		"${qbt_install_dir}/boost/b2" -j"$(_nproc)" \
+		"${qbt_install_dir}/boost/b2" -j"$(nproc)" \
 			"${multi_libtorrent[@]}" \
 			"${lt_version_options[@]}" \
 			address-model="${bitness:-$(getconf LONG_BIT)}" \
@@ -4837,7 +4781,7 @@ _qtbase() {
 	fi
 
 	# force qmake to build and link statically against the cross compiler.
-	if [[ ${qbt_build_tool} != "cmake" && -f "mkspecs/linux-g++/qmake.conf" ]] && ! grep -Fq 'QMAKE_LFLAGS = -static --static' "mkspecs/linux-g++/qmake.conf"; then
+	if [[ ${qbt_build_tool} != "cmake" && -f "mkspecs/linux-g++/qmake.conf" ]]; then
 		sed -i '/load(qt_config)/i QMAKE_LFLAGS = -static --static' "mkspecs/linux-g++/qmake.conf"
 	fi
 	local arm_libatomic=""
@@ -4874,13 +4818,9 @@ _qtbase() {
 			icu=("-no-icu" "-iconv" "QMAKE_CXXFLAGS+=-w -fpermissive")
 		fi
 		# Fix 5.15.4 to build on gcc 11
-		if [[ -f "src/corelib/global/qglobal.h" ]] && ! grep -Fq '#  include <limits>' "src/corelib/global/qglobal.h"; then
-			sed -i '/^#  include <utility>/a #  include <limits>' "src/corelib/global/qglobal.h"
-		fi
+		sed '/^#  include <utility>/a #  include <limits>' -i "src/corelib/global/qglobal.h"
 		# Don't strip by default by disabling these options. We will set it as off by default and use it with a switch
-		if [[ ! -f "mkspecs/common/linux.conf" ]] || ! grep -Fq "CONFIG                 += ${qbt_strip_qmake}" "mkspecs/common/linux.conf"; then
-			printf '%b\n' "CONFIG                 += ${qbt_strip_qmake}" >> "mkspecs/common/linux.conf"
-		fi
+		printf '%b\n' "CONFIG                 += ${qbt_strip_qmake}" >> "mkspecs/common/linux.conf"
 
 		./configure "${multi_qtbase[@]}" -prefix "${qbt_install_dir}" \
 			QMAKE_CFLAGS="${CFLAGS}" QMAKE_CXXFLAGS="${CXXFLAGS}" QMAKE_LFLAGS="${LDFLAGS}" \
@@ -4891,7 +4831,7 @@ _qtbase() {
 			-no-feature-glib -no-feature-opengl -no-feature-dbus -no-feature-gui -no-feature-widgets -no-feature-testlib -no-compile-examples \
 			-skip tests -nomake tests -skip examples -nomake examples |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command configure "${PIPESTATUS[@]}"
-		make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command install "${PIPESTATUS[@]}"
@@ -4943,7 +4883,7 @@ _qttools() {
 		_post_command configure "${PIPESTATUS[@]}"
 		"${qbt_install_dir}/bin/qmake" QMAKE_CFLAGS="-static -w" QMAKE_CXXFLAGS="-std=c++${qbt_standard} -static -w -fpermissive" QMAKE_LFLAGS="${qbt_crt_dir:+${qbt_crt_dir} }-static" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command configure "${PIPESTATUS[@]}"
-		make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command install "${PIPESTATUS[@]}"
@@ -4994,7 +4934,7 @@ _qbittorrent() {
 			--disable-gui \
 			--with-boost="${qbt_install_dir}/boost" --with-boost-libdir="${lib_dir}" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command configure "${PIPESTATUS[@]}"
-		make -j"$(_nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
+		make -j"$(nproc)" |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
 		make install |& _tee -a "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command install "${PIPESTATUS[@]}"
