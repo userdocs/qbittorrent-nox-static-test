@@ -95,6 +95,7 @@ script_basename="${script_full_path##*/}"
 #######################################################################################################################################################
 get_os_info() {
 	(
+		set +u
 		# shellcheck source=/dev/null
 		if source /etc/os-release &> /dev/null; then
 			printf '%s' "${!1%_*}" # the expansion part is specific to the Alpine VERSION_ID format 1.2.3_alpha but won't break anything in Debian based format e.g. 12/24.04
@@ -999,9 +1000,10 @@ _check_dependencies() {
 		qbt_core_deps_sorted=()
 
 		# This checks over the qbt_core_deps array for the OS specified dependencies to see if they are installed
+		local pkg_out
 		while IFS= read -r pkg; do
 			[[ -n ${pkg} ]] || continue
-			if "${pkgman[@]}" "${pkg}" > /dev/null 2>&1; then
+			if pkg_out="$("${pkgman[@]}" "${pkg}" 2> /dev/null)" && [[ ${os_id} == "alpine" || ${pkg_out} == *"Status: install ok installed"* ]]; then
 				[[ ${silent} != 'silent' ]] && printf '%b\n' " ${unicode_green_circle} ${color_magenta}${pkg}${color_end}"
 				qbt_core_deps["${pkg}"]="true"
 			else
@@ -1228,7 +1230,7 @@ _tee() {
 			printf '\n%b%s%b\n\n' " ${unicode_red_circle} Refusing to write log to unsafe path: " "${target}" "${color_end}" >&2
 			return 1
 		fi
-		[[ ${target} == */* ]] && mkdir -p -- "${target%/*}"
+		[[ ${target} == */* && -n ${target%/*} ]] && mkdir -p -- "${target%/*}"
 	fi
 	command tee "$@"
 }
@@ -1651,16 +1653,18 @@ _custom_flags() {
 # This function installs a completed static build of qbittorrent-nox to the /usr/local/bin for root or ${HOME}/bin for non root
 #######################################################################################################################################################
 _install_qbittorrent() {
-	if [[ -f "${qbt_install_dir}/completed/qbittorrent-nox" ]]; then
-		local method local_path install_dir run_cmd custom_dir
+	local src_bin="${qbt_install_dir}/completed/qbittorrent-nox"
+	if [[ -f ${src_bin} ]]; then
+		local method local_path install_dir target_bin run_cmd custom_dir
 		local -a mkdir_command install_command chmod_command
 
 		case "$2" in
 			root)
 				method="${2}"
-				mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "--" "/usr/local/bin")
-				install_command=("${command_privilege[@]}" "cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "/usr/local/bin")
-				chmod_command=("${command_privilege[@]}" "chmod" "+x" "--" "/usr/local/bin/qbittorrent-nox")
+				install_dir="/usr/local/bin"
+				mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "--" "${install_dir}")
+				install_command=("${command_privilege[@]}" "cp" "-f" "--" "${src_bin}" "${install_dir}")
+				chmod_command=("${command_privilege[@]}" "chmod" "+x" "--" "${install_dir}/qbittorrent-nox")
 				;;
 			custom)
 				method="${2}"
@@ -1677,6 +1681,7 @@ _install_qbittorrent() {
 					printf '\n%b%s%b\n\n' " ${unicode_red_circle} Invalid install directory path: ${color_cyan_light}" "${custom_dir}" "${color_end}"
 					exit 1
 				fi
+				install_dir="${custom_dir}"
 
 				local resolved_custom_dir resolved_user_home=""
 				resolved_custom_dir="$(_resolve_path "${custom_dir}")"
@@ -1685,21 +1690,30 @@ _install_qbittorrent() {
 				# Only use elevated privileges for absolute system-wide custom paths outside user home. Relative paths stay owned by the local user.
 				if [[ ${custom_dir} =~ ^/ ]] && { [[ -z ${resolved_user_home} || ${resolved_user_home} == "/" ]] || [[ ${resolved_custom_dir} != "${resolved_user_home}" && ${resolved_custom_dir} != "${resolved_user_home}/"* ]]; }; then
 					mkdir_command=("${command_privilege[@]}" "mkdir" "-p" "--" "${custom_dir}")
-					install_command=("${command_privilege[@]}" "cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "${custom_dir}")
+					install_command=("${command_privilege[@]}" "cp" "-f" "--" "${src_bin}" "${custom_dir}")
 					chmod_command=("${command_privilege[@]}" "chmod" "+x" "--" "${custom_dir}/qbittorrent-nox")
 				else
 					mkdir_command=("mkdir" "-p" "--" "${custom_dir}")
-					install_command=("cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "${custom_dir}")
+					install_command=("cp" "-f" "--" "${src_bin}" "${custom_dir}")
 					chmod_command=("chmod" "+x" "--" "${custom_dir}/qbittorrent-nox")
 				fi
 				;;
 			*)
 				method="local"
+				install_dir="${LOCAL_USER_HOME}/bin"
 				mkdir_command=("mkdir" "-p" "--" "${LOCAL_USER_HOME}/bin")
-				install_command=("cp" "-f" "--" "${qbt_install_dir}/completed/qbittorrent-nox" "${LOCAL_USER_HOME}/bin")
+				install_command=("cp" "-f" "--" "${src_bin}" "${LOCAL_USER_HOME}/bin")
 				chmod_command=("chmod" "+x" "--" "${LOCAL_USER_HOME}/bin/qbittorrent-nox")
 				;;
 		esac
+
+		# Normalize (remove trailing slash) and refuse a symlinked target: cp -f would write through it, as root when privileged
+		install_dir="${install_dir%/}"
+		target_bin="${install_dir}/qbittorrent-nox"
+		if [[ -L ${target_bin} || (-e ${target_bin} && ! -f ${target_bin}) ]]; then
+			printf '\n%b%s%b\n\n' " ${unicode_red_circle} Refusing to overwrite unsafe install target: ${color_cyan_light}" "${target_bin}" "${color_end}" >&2
+			exit 1
+		fi
 
 		"${mkdir_command[@]}" || exit 1
 		"${install_command[@]}" || exit 1
@@ -1715,28 +1729,11 @@ _install_qbittorrent() {
 		# Determine the local user's PATH for checking (prefer preserved paths if available)
 		local_path="${qbt_local_paths:-${PATH}}"
 
-		# Determine the install dir based on method
-		case "${method}" in
-			local)
-				install_dir="${LOCAL_USER_HOME}/bin"
-				;;
-			custom)
-				install_dir="${custom_dir}"
-				;;
-			root)
-				install_dir="/usr/local/bin"
-				;;
-			*) ;;
-		esac
-
-		# Normalize (remove trailing slash)
-		install_dir="${install_dir%/}"
-
 		# If install_dir is in PATH, we can run by name; otherwise, show the full path
 		if [[ ":${local_path}:" == *":${install_dir}:"* ]]; then
 			run_cmd="qbittorrent-nox"
 		else
-			run_cmd="${install_dir}/qbittorrent-nox"
+			run_cmd="${target_bin}"
 		fi
 
 		printf '\n%b\n\n' " ${color_green}${run_cmd}${color_end}"
@@ -1942,7 +1939,8 @@ _set_module_urls() {
 	if [[ ${qbt_zlib_type} == "zlib" ]]; then
 		app_version[zlib]="${github_tag[zlib]#v}"
 	elif [[ ${qbt_zlib_type} == "zlib-ng" ]]; then
-		app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p' | sed 's/\.zlib-ng//g')"
+		app_version[zlib]="$(_curl "https://raw.githubusercontent.com/zlib-ng/zlib-ng/${github_tag[zlib]}/zlib.h.in" | sed -rn 's|#define ZLIB_VERSION "(.*)"|\1|p')"
+		app_version[zlib]="${app_version[zlib]//.zlib-ng/}"
 		[[ -z ${app_version[zlib]} ]] && app_version[zlib]="${github_tag[zlib]#v}"
 	fi
 
@@ -2115,28 +2113,22 @@ _installation_modules() {
 # This function will test to see if a Jamfile patch file exists via the variable patches_github_url for the tag used.
 #######################################################################################################################################################
 _apply_patches() {
-	[[ -n ${1} ]] && app_name="${1}"
 	# Start to define the default master branch we will use by transforming the qbt_libtorrent_version variable to underscores. The result is dynamic and can be: RC_1_0, RC_1_1, RC_1_2, RC_2_0, RC_2_1 and so on.
 	local default_jamfile="RC_${qbt_libtorrent_version//./_}"
 
-	if [[ ${app_name} == "bootstrap" ]]; then
-		local qbt_md module_patch patch_dir_count=0
-		for qbt_md in "${!qbt_modules_delete[@]}"; do
-			if [[ ${qbt_modules_delete["${qbt_md}"]} == "true" ]]; then
-				unset "qbt_modules_install[${qbt_md}]"
-			fi
-		done
-		unset "qbt_modules_install[all]" "qbt_modules_install[install]"
-		_sort_modules
-		for module_patch in "${qbt_modules_install_processed[@]}"; do
+	if [[ ${1:-${app_name}} == "bootstrap" ]]; then
+		local module_patch patch_dir_count=0
+		for module_patch in "${qbt_modules_order[@]}"; do
+			[[ ${module_patch} == "all" || ${module_patch} == "install" || ! -v qbt_modules_install["${module_patch}"] || ${qbt_modules_delete["${module_patch}"]} == "true" ]] && continue
 			if [[ -n ${app_version["${module_patch}"]} ]]; then
-				mkdir -p "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
+				mkdir -p -- "${qbt_install_dir}/patches/${module_patch}/${app_version["${module_patch}"]}/source"
 				((patch_dir_count++))
 			fi
 		done
 
 		printf '\n%b\n' " ${unicode_yellow_circle} Patch directories created for ${patch_dir_count} modules${color_end}"
 	else
+		[[ -n ${1} ]] && app_name="${1}"
 		local patch_app_name="${app_name/_host_deps/}"
 		local patch_dir="${qbt_install_dir}/patches/${patch_app_name}/${app_version[${patch_app_name}]}"
 		local patch_file="${patch_dir}/patch"
@@ -2175,6 +2167,7 @@ _apply_patches() {
 			local has_content=false
 			local temp_patch
 			if [[ -L ${patch_file} || (-e ${patch_file} && ! -f ${patch_file}) ]]; then
+				printf '\n%b%s%b\n\n' " ${unicode_red_circle} Refusing to write merged patch to unsafe path: " "${patch_file}" "${color_end}" >&2
 				return 1
 			fi
 			temp_patch="$(mktemp "${patch_file}.tmp.XXXXXX")" || return 1
@@ -2257,12 +2250,14 @@ _apply_patches() {
 
 			# Final validation and atomic move
 			if [[ ${has_content} == true && -s ${temp_patch} ]]; then
-				mv -f -- "${temp_patch}" "${patch_file}"
-				return 0
+				mv -f -- "${temp_patch}" "${patch_file}" || {
+					rm -f -- "${temp_patch}"
+					return 1
+				}
 			else
 				rm -f -- "${temp_patch}"
-				return 1
 			fi
+			return 0
 		}
 
 		# Download remote patches function
@@ -2470,7 +2465,8 @@ _apply_patches() {
 		elif _has_valid_patch_files "${patch_dir}"; then
 			printf '%b\n' " ${unicode_green_circle} Using local patches method"
 
-			if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
+			_process_local_patches || return 1
+			if [[ -f ${patch_file} && -s ${patch_file} ]]; then
 				_apply_patch "${patch_file}" || return 1
 			fi
 
@@ -2483,7 +2479,8 @@ _apply_patches() {
 				if [[ -d "${patch_dir}/source" && ! -L "${patch_dir}/source" && -n "$(ls -A "${patch_dir}/source" 2> /dev/null)" ]]; then
 					cp -rf -- "${patch_dir}/source/". "${qbt_dl_folder_path}/" || return 1
 				elif _has_valid_patch_files "${patch_dir}"; then
-					if _process_local_patches && [[ -f ${patch_file} && -s ${patch_file} ]]; then
+					_process_local_patches || return 1
+					if [[ -f ${patch_file} && -s ${patch_file} ]]; then
 						_apply_patch "${patch_file}" || return 1
 					fi
 				fi
@@ -2658,7 +2655,7 @@ _download_folder() {
 	local patch_candidate
 
 	# Force clean clone if patches are detected
-	for patch_candidate in "${patch_file}" "${patch_dir}/url" "${patch_dir}"/*.{patch,diff}; do
+	for patch_candidate in "${patch_file}" "${patch_dir}/url" "${patch_dir}/Jamfile" "${patch_dir}"/*.{patch,diff}; do
 		if [[ ! -L ${patch_candidate} && -f ${patch_candidate} && -s ${patch_candidate} ]]; then
 			needs_clean_clone=true
 			break
@@ -2856,7 +2853,7 @@ _download_file() {
 	local patch_candidate
 
 	# Force clean extraction if patches are detected
-	for patch_candidate in "${patch_file}" "${patch_dir}/url" "${patch_dir}"/*.{patch,diff}; do
+	for patch_candidate in "${patch_file}" "${patch_dir}/url" "${patch_dir}/Jamfile" "${patch_dir}"/*.{patch,diff}; do
 		if [[ ! -L ${patch_candidate} && -f ${patch_candidate} && -s ${patch_candidate} ]]; then
 			needs_clean_extract=true
 			break
@@ -2901,11 +2898,17 @@ _download_file() {
 		printf '\n%b\n\n' " ${unicode_blue_light_circle} Extracting ${color_magenta_light}${app_name}${color_end} cached ${color_yellow_light}${source_type}${color_end} files from - ${color_cyan_light}${qbt_cache_dir}/${app_name}.tar.xz${color_end}"
 	fi
 
-	# download the remote source file using curl
+	# download the remote source file using curl (stage via .tmp to preserve prior cache and leave zero partial files on failure)
+	if [[ -L ${qbt_dl_file_path} || (-e ${qbt_dl_file_path} && ! -f ${qbt_dl_file_path}) ]]; then
+		_error_tag "${app_name}" "Refusing to use unsafe archive path: ${qbt_dl_file_path}"
+	fi
 	if [[ ${qbt_cache_dir_options} == "bs" || ! -f ${qbt_dl_file_path} ]]; then
-		if ! _curl --create-dirs -o "${qbt_dl_file_path}" -- "${qbt_dl_source_url}"; then
+		rm -f -- "${qbt_dl_file_path}.tmp" # unlink any leftover or planted symlink so curl -o cannot write through it
+		if ! _curl --create-dirs -o "${qbt_dl_file_path}.tmp" -- "${qbt_dl_source_url}" || [[ ! -s "${qbt_dl_file_path}.tmp" ]]; then
+			rm -f -- "${qbt_dl_file_path}.tmp"
 			_error_tag "${app_name}" "Failed to download ${qbt_dl_source_url}"
 		fi
+		mv -f -- "${qbt_dl_file_path}.tmp" "${qbt_dl_file_path}" || _error_tag "${app_name}" "Failed to move downloaded archive into place: ${qbt_dl_file_path}"
 	fi
 
 	# Set the extracted dir name to a var to easily use or remove it
@@ -3278,10 +3281,6 @@ _multi_arch() {
 
 			mkdir -p -- "${qbt_install_dir}/logs"
 
-			if [[ ${1} == 'bootstrap' || ${qbt_cache_dir_options} == "bs" ]] && [[ -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
-				rm -f -- "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
-			fi
-
 			if [[ ${qbt_cross_target} =~ ^(alpine)$ ]]; then
 				if [[ ${os_arch} == "aarch64" ]]; then
 					qbt_mcm_toolchain_prefix="aarch64"
@@ -3293,7 +3292,11 @@ _multi_arch() {
 				fi
 
 				if [[ ${QBT_MCM_DOCKER} != "YES" ]]; then
-					if [[ ${1} == "bootstrap" || ${qbt_cache_dir_options} == "bs" || ! -f "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" ]]; then
+					local tc_archive="${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz"
+					if [[ -L ${tc_archive} || (-e ${tc_archive} && ! -f ${tc_archive}) ]]; then
+						_error_tag "toolchain" "Refusing to use unsafe toolchain archive path: ${tc_archive}"
+					fi
+					if [[ ${1} == "bootstrap" || ${qbt_cache_dir_options} == "bs" || ! -f ${tc_archive} ]]; then
 						local toolchain_url
 						if [[ -z ${qbt_mcm_tag} ]]; then
 							toolchain_url="https://github.com/${qbt_mcm_url}/releases/latest/download/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz"
@@ -3301,9 +3304,12 @@ _multi_arch() {
 							toolchain_url="https://github.com/${qbt_mcm_url}/releases/download/${qbt_mcm_tag}/${qbt_mcm_toolchain_prefix}-${qbt_cross_host}.tar.xz"
 						fi
 						printf '\n%b\n' " ${unicode_blue_light_circle} Downloading ${color_magenta_light}${qbt_cross_host}.tar.gz${color_end} cross toolchain - ${color_cyan_light}${toolchain_url}${color_end}"
-						if ! _curl --create-dirs -o "${qbt_cache_dir:-${qbt_install_dir}}/${qbt_cross_host}.tar.gz" -- "${toolchain_url}"; then
+						rm -f -- "${tc_archive}.tmp" # unlink any leftover or planted symlink so curl -o cannot write through it
+						if ! _curl --create-dirs -o "${tc_archive}.tmp" -- "${toolchain_url}" || [[ ! -s "${tc_archive}.tmp" ]]; then
+							rm -f -- "${tc_archive}.tmp"
 							_error_tag "toolchain" "Failed to download ${toolchain_url}"
 						fi
+						mv -f -- "${tc_archive}.tmp" "${tc_archive}" || _error_tag "toolchain" "Failed to move downloaded toolchain into place: ${tc_archive}"
 					fi
 
 					skip_toolchain_extract="no"
@@ -3523,17 +3529,40 @@ _release_info() {
 	return
 }
 _write_qbt_env_template() {
-	local mode="${1:-full}" target="${script_parent_path}/.qbt_env" tmp_env
+	local mode="${1:-full}" target="${script_parent_path}/.qbt_env" tmp_env key val
 	if [[ -L ${target} || (-e ${target} && ! -f ${target}) ]]; then
 		printf '\n%b%s%b\n\n' " ${unicode_red_circle} Refusing to overwrite unsafe .qbt_env path: ${color_cyan_light}" "${target}" "${color_end}" >&2
 		exit 1
 	fi
 	tmp_env="$(mktemp "${script_parent_path}/.qbt_env.tmp.XXXXXX")" || exit 1
-	if [[ ${mode} == "empty" ]]; then
-		qbt_advanced_view="yes" _print_env | sed -rn -e 's/'$'\e''\[[0-9;]*m//g' -e 's/^[[:space:]]*(qbt_[a-zA-Z0-9_]+)=.*/\1=""/p' > "${tmp_env}"
-	else
-		qbt_advanced_view="yes" _print_env | sed -e '1,/qbt/{ /qbt/!d }' -e 's/'$'\e''\[[0-9;]*m//g' -e 's/^[[:space:]]*//' -e '/^$/d' > "${tmp_env}"
-	fi
+	local -a env_keys=(
+		qbt_zlib_type qbt_skip_icu qbt_openssl_tag qbt_boost_tag
+		qbt_libtorrent_version qbt_libtorrent_tag qbt_libtorrent_master_jamfile
+		qbt_qt_version qbt_qt_tag qbt_qbittorrent_tag qbt_build_dir qbt_build_tool
+		qbt_cross_name qbt_mcm_url qbt_patches_url qbt_workflow_files qbt_cache_dir
+		qbt_optimise_strip qbt_build_debug qbt_standard qbt_static_ish qbt_optimise
+		qbt_with_qemu qbt_host_deps qbt_host_deps_repo qbt_legacy_mode qbt_use_lto
+		qbt_linker_mold qbt_advanced_view
+	)
+	for key in "${env_keys[@]}"; do
+		val=""
+		if [[ ${mode} != "empty" ]]; then
+			case "${key}" in
+				qbt_openssl_tag) val="${github_tag[openssl]}" ;;
+				qbt_boost_tag) val="${github_tag[boost]}" ;;
+				qbt_libtorrent_tag) val="${github_tag[libtorrent]}" ;;
+				qbt_qt_tag) val="${github_tag[qtbase]}" ;;
+				qbt_qbittorrent_tag) val="${github_tag[qbittorrent]}" ;;
+				*) val="${!key}" ;;
+			esac
+			# Escape the characters that are special inside double quotes so sourcing .qbt_env round-trips the literal value
+			val="${val//\\/\\\\}"
+			val="${val//\"/\\\"}"
+			val="${val//\$/\\\$}"
+			val="${val//\`/\\\`}"
+		fi
+		printf '%s="%s"\n' "${key}" "${val}"
+	done > "${tmp_env}"
 	if ! mv -f -- "${tmp_env}" "${target}"; then
 		rm -f -- "${tmp_env}"
 		exit 1
@@ -3588,7 +3617,13 @@ if [[ ${BASH_SOURCE[0]} == "${0}" ]]; then
 								printf '\n%b%s%b\n\n' " ${unicode_red_circle} Refusing to remove unsafe cache directory path: ${color_cyan_light}" "${qbt_cache_dir}" "${color_end}"
 								exit 1
 							fi
-							[[ -d ${qbt_cache_dir} || -L ${qbt_cache_dir} ]] && rm -rf -- "${qbt_cache_dir}"
+							if [[ -d ${qbt_cache_dir} || -L ${qbt_cache_dir} ]]; then
+								[[ -d ${qbt_cache_dir} && ! -L ${qbt_cache_dir} ]] && chmod -R u+rwX -- "${qbt_cache_dir}" 2> /dev/null
+								if ! rm -rf -- "${qbt_cache_dir}"; then
+									printf '\n%b%s%b\n\n' " ${unicode_red_circle} Failed to remove cache directory: ${color_cyan_light}" "${qbt_cache_dir}" "${color_end}" >&2
+									exit 1
+								fi
+							fi
 							unset resolved_cache_dir resolved_home resolved_pwd
 							printf '\n%b%s%b\n\n' " ${unicode_red_circle} Cache directory removed: ${color_cyan_light}" "${qbt_cache_dir}" "${color_end}"
 							exit 0
@@ -4672,7 +4707,7 @@ _libtorrent() {
 			boost-link=static \
 			install --prefix="${qbt_install_dir}" |& _tee "${qbt_install_dir}/logs/${app_name}.log"
 		_post_command build "${PIPESTATUS[@]}"
-		libtorrent_strings_version="$(strings -d "${lib_dir}/${libtorrent_library_filename}" | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
+		libtorrent_strings_version="$(strings -d -- "${lib_dir}/${libtorrent_library_filename}" 2> /dev/null | grep -Eom1 "^libtorrent/[0-9]\.(.*)")" # ${libtorrent_strings_version#*/}
 		[[ -z ${libtorrent_strings_version} && -n ${libtorrent_version_hpp} ]] && libtorrent_strings_version="libtorrent/${libtorrent_version_hpp}"
 		cat > "${PKG_CONFIG_PATH}/libtorrent-rasterbar.pc" <<- LIBTORRENT_PKG_CONFIG
 			prefix=${qbt_install_dir}

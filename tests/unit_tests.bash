@@ -514,6 +514,14 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 		miss_val="$(get_os_info ID)"
 		miss_rc=$?
 		assert_pass_eq "get_os_info returns unknown when file missing" "${miss_rc}" "unknown" "${miss_val}"
+		eu_val="$(
+			bash -euc '
+				source "$1"
+				eval "$(declare -f get_os_info | sed "s|/etc/os-release|$2|g")"
+				get_os_info VERSION_CODENAME
+			' _ "${target_script}" "${mock_osr}" 2>&1
+		)"
+		assert_pass_eq "get_os_info succeeds under bash -eu when VERSION_CODENAME is unset" "$?" "" "${eu_val}"
 		save_counts
 	)
 	load_counts
@@ -521,11 +529,15 @@ printf '\n=== 3. Default Values, OS Info, Env Display & Build Directory Tests ==
 	# _short_path exact prefix boundary checks
 	(
 		load_lib
-		assert_pass_eq "_short_path exact home match returns ~" 0 "~" "$(_short_path "/home/bob" "/home/bob")"
+		sp_out="$(_short_path "/home/bob" "/home/bob")"
+		assert_pass_eq "_short_path exact home match returns ~" "$?" "~" "${sp_out}"
+		sp_out="$(_short_path "/home/bob/sub" "/home/bob")"
 		# shellcheck disable=SC2088
-		assert_pass_eq "_short_path home child returns ~/sub" 0 "~/sub" "$(_short_path "/home/bob/sub" "/home/bob")"
-		assert_pass_eq "_short_path sibling prefix /home/al vs /home/alice unchanged" 0 "/home/alice/build" "$(_short_path "/home/alice/build" "/home/al")"
-		assert_pass_eq "_short_path root HOME=/ leaves /work/build unchanged" 0 "/work/build" "$(_short_path "/work/build" "/")"
+		assert_pass_eq "_short_path home child returns ~/sub" "$?" "~/sub" "${sp_out}"
+		sp_out="$(_short_path "/home/alice/build" "/home/al")"
+		assert_pass_eq "_short_path sibling prefix /home/al vs /home/alice unchanged" "$?" "/home/alice/build" "${sp_out}"
+		sp_out="$(_short_path "/work/build" "/")"
+		assert_pass_eq "_short_path root HOME=/ leaves /work/build unchanged" "$?" "/work/build" "${sp_out}"
 		save_counts
 	)
 	load_counts
@@ -1333,6 +1345,18 @@ printf '\n=== 6. Core Helper Function Tests (_cmd, _post_command, _pushd/_popd, 
 	assert_eq "_tee did not clobber symlink target" "" "$(< "${test_root}/tee_wd/real_target")"
 	dir_tee_out="$(printf 'evil\n' | _tee "${test_root}/tee_wd/existing_dir" 2>&1)"
 	assert_fail_contains "_tee refuses directory target" "$?" "${dir_tee_out}" "Refusing to write log"
+	mkdir -p -- "${test_root}/mock_tee_bin"
+	printf '#!/bin/sh\nprintf "TEE_OK"\n' > "${test_root}/mock_tee_bin/tee"
+	chmod +x -- "${test_root}/mock_tee_bin/tee"
+	root_tee_out="$(
+		mkdir() {
+			printf 'BAD_MKDIR:%s\n' "$*"
+			return 1
+		}
+		PATH="${test_root}/mock_tee_bin:${PATH}"
+		printf 'x\n' | _tee "/top_level.log" 2>&1
+	)"
+	assert_pass_eq "_tee on root-level path skips empty mkdir" "$?" "TEE_OK" "${root_tee_out}"
 
 	# _error_tag
 	github_tag[zlib]="v1.3.2"
@@ -1728,6 +1752,40 @@ EOF
 		assert_eq "bootstrap resets skip_toolchain_extract to no" "no" "${skip_toolchain_extract}"
 		assert_file_exists "bootstrap re-extracts updated toolchain archive" "${qbt_install_dir}/aarch64-linux-musl/lib/libupdated.a"
 
+		# Failed bootstrap download preserves existing cached toolchain archive and leaves zero .tmp files
+		(
+			_curl() {
+				local out="" i=1
+				while ((i <= $#)); do
+					[[ ${!i} == "-o" ]] && {
+						((i++))
+						out="${!i}"
+					}
+					((i++))
+				done
+				[[ -n ${out} ]] && : > "${out}"
+				return 1
+			}
+			_multi_arch bootstrap > /dev/null 2>&1
+		)
+		assert_exit "failed toolchain download exits 1" 1 "$?"
+		assert_file_exists "failed toolchain download preserves prior toolchain archive" "${qbt_install_dir}/aarch64-linux-musl.tar.gz"
+		assert_file_missing "failed toolchain download cleans up .tmp file" "${qbt_install_dir}/aarch64-linux-musl.tar.gz.tmp"
+		if [[ -s "${qbt_install_dir}/aarch64-linux-musl.tar.gz" ]]; then
+			pass "prior toolchain archive remains non-empty after failed refresh"
+		else
+			fail "prior toolchain archive" "wiped to 0 bytes"
+		fi
+
+		# Symlinked toolchain archive target refused
+		(
+			qbt_install_dir="${test_root}/sym_tc_dir"
+			mkdir -p -- "${qbt_install_dir}"
+			ln -s -- "${test_root}/fake_tc.tar.gz" "${qbt_install_dir}/aarch64-linux-musl.tar.gz"
+			_multi_arch bootstrap > /dev/null 2>&1
+		)
+		assert_exit "_multi_arch refuses symlinked toolchain archive path" 1 "$?"
+
 		# QBT_MCM_DOCKER=YES skips download completely
 		last_tc_url=""
 		QBT_MCM_DOCKER="YES"
@@ -2068,11 +2126,16 @@ printf '\n=== 11. Patching System (_apply_patches) Tests ===\n'
 		qbt_modules_order=("all" "install" "zlib" "icu_host_deps" "icu")
 		qbt_modules_delete=()
 		app_version=([zlib]="1.3.2" [icu]="76-1")
-		bs_out="$(_apply_patches bootstrap)"
+		app_name="zlib"
+		# Run in the current shell (not $(...)) so the state assertions below observe _apply_patches' mutations
+		_apply_patches bootstrap > "${test_root}/p11a_bs.out"
 		bs_rc=$?
+		bs_out="$(< "${test_root}/p11a_bs.out")"
 		assert_contains "_apply_patches bootstrap counts only modules with app_version (2)" "${bs_rc}" "${bs_out}" "Patch directories created for 2 modules"
 		assert_dir_exists "_apply_patches bootstrap creates zlib/1.3.2/source" "${qbt_install_dir}/patches/zlib/1.3.2/source"
 		assert_dir_exists "_apply_patches bootstrap creates icu/76-1/source" "${qbt_install_dir}/patches/icu/76-1/source"
+		assert_eq "_apply_patches bootstrap preserves qbt_modules_install[all]" "true" "${qbt_modules_install[all]:-}"
+		assert_eq "_apply_patches bootstrap preserves caller app_name" "zlib" "${app_name}"
 		save_counts
 	)
 	load_counts
@@ -2616,6 +2679,20 @@ DIFF
 		}
 		_apply_patches > /dev/null
 		assert_pass_eq "remote API 403 falls back to raw filename probing" "$?" "new_via_fallback" "$(< "${fb_src}/x.txt")"
+
+		# Symlinked patch_file alongside valid 01.patch must fail _apply_patches (not silently skip 01.patch!)
+		sym_p_src="${test_root}/sym_p_src"
+		mkdir -p -- "${sym_p_src}" "${qbt_install_dir}/patches/boost/1.88.0"
+		printf 'UNTOUCHED_VICTIM\n' > "${test_root}/sym_patch_victim"
+		ln -fsn -- "${test_root}/sym_patch_victim" "${qbt_install_dir}/patches/boost/1.88.0/patch"
+		printf '%s\n' $'--- a/v.txt\n+++ b/v.txt\n@@ -1 +1 @@\n-a\n+b' > "${qbt_install_dir}/patches/boost/1.88.0/01.patch"
+		printf 'a\n' > "${sym_p_src}/v.txt"
+		app_version[boost]="1.88.0"
+		qbt_dl_folder_path="${sym_p_src}"
+		app_name="boost"
+		sym_p_out="$(_apply_patches 2>&1)"
+		assert_fail_contains "_apply_patches fails when merged patch target is a symlink" "$?" "${sym_p_out}" "Refusing to write merged patch"
+		assert_eq "_apply_patches preserved symlinked patch victim" "UNTOUCHED_VICTIM" "$(< "${test_root}/sym_patch_victim")"
 		save_counts
 	)
 	load_counts
@@ -2734,15 +2811,66 @@ printf '\n=== 12. Download, Caching & Host Deps (_download, _cache_dirs, _downlo
 		)
 		assert_exit "_download_file exits 1 on corrupt archive in non-bs mode" 1 "$?"
 
-		# Failed _curl download exits 1
+		# Failed _curl download in bs mode preserves prior cached archive and leaves zero .tmp files
 		(
-			qbt_cache_dir_options=""
+			qbt_cache_dir_options="bs"
 			app_name="zlib"
-			qbt_dl_file_path="${test_root}/missing_dl.tar.xz"
-			_curl() { return 1; }
+			qbt_dl_file_path="${qbt_cache_dir}/zlib.tar.xz"
+			_curl() {
+				local out="" i=1
+				while ((i <= $#)); do
+					[[ ${!i} == "-o" ]] && {
+						((i++))
+						out="${!i}"
+					}
+					((i++))
+				done
+				[[ -n ${out} ]] && : > "${out}"
+				return 1
+			}
 			_download_file > /dev/null 2>&1
 		)
-		assert_exit "_download_file exits 1 when _curl fails" 1 "$?"
+		assert_exit "_download_file exits 1 when _curl fails in bs mode" 1 "$?"
+		if [[ -s "${qbt_cache_dir}/zlib.tar.xz" ]]; then
+			pass "_download_file preserves existing cached archive when refresh download fails"
+		else
+			fail "_download_file rollback" "existing cached archive wiped on download failure"
+		fi
+		assert_file_missing "_download_file removes .tmp file on failed download" "${qbt_cache_dir}/zlib.tar.xz.tmp"
+
+		# A planted .tmp symlink is unlinked before curl -o, so the download never writes through it
+		printf 'TMP_VICTIM\n' > "${test_root}/dl_tmp_victim"
+		ln -s -- "${test_root}/dl_tmp_victim" "${qbt_cache_dir}/zlib.tar.xz.tmp"
+		(
+			qbt_cache_dir_options="bs"
+			app_name="zlib"
+			qbt_dl_file_path="${qbt_cache_dir}/zlib.tar.xz"
+			_curl() {
+				local out="" i=1
+				while ((i <= $#)); do
+					[[ ${!i} == "-o" ]] && {
+						((i++))
+						out="${!i}"
+					}
+					((i++))
+				done
+				printf 'EVIL\n' > "${out}"
+				return 1
+			}
+			_download_file > /dev/null 2>&1
+		)
+		assert_exit "_download_file with planted .tmp symlink exits 1 on failed download" 1 "$?"
+		assert_eq "_download_file did not write through planted .tmp symlink" "TMP_VICTIM" "$(< "${test_root}/dl_tmp_victim")"
+
+		# Symlinked archive path refused
+		(
+			ln -s -- "${test_root}/good_zlib.tar.gz" "${test_root}/sym_dl.tar.xz"
+			qbt_cache_dir_options=""
+			app_name="zlib"
+			qbt_dl_file_path="${test_root}/sym_dl.tar.xz"
+			_download_file > /dev/null 2>&1
+		)
+		assert_exit "_download_file refuses symlinked archive path" 1 "$?"
 
 		# Invalid app_name with .. exits 1
 		(
@@ -2880,6 +3008,19 @@ printf '\n=== 12. Download, Caching & Host Deps (_download, _cache_dirs, _downlo
 			nc_rc=$?
 			assert_contains "_download_folder non-cache with patches forces clean clone" "${nc_rc}" "${out_nc}" "Forcing clean clone due to patches"
 			assert_contains "_download_folder falls back when nproc fails" "${nc_rc}" "${out_nc}" "single-threaded clone"
+			save_counts
+		)
+		load_counts
+
+		# A patch dir holding only a Jamfile (copied over the source tree later) also forces a clean clone
+		(
+			qbt_cache_dir=""
+			qbt_cache_dir_options=""
+			qbt_dl_folder_path="${qbt_install_dir}/zlib"
+			rm -f -- "${qbt_install_dir}/patches/zlib/1.3.2/patch"
+			printf 'jam\n' > "${qbt_install_dir}/patches/zlib/1.3.2/Jamfile"
+			out_jam="$(_download_folder 2> /dev/null)"
+			assert_contains "_download_folder Jamfile-only patch dir forces clean clone" "$?" "${out_jam}" "Forcing clean clone due to patches"
 			save_counts
 		)
 		load_counts
@@ -3104,6 +3245,15 @@ printf '\n=== 13. Static Link Fixes, Cleanup (_delete_function), & Install Tests
 	out_sym_escape="$(LOCAL_USER_HOME="${link_sym_home}" PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${link_sym_home}/escape_to_system")"
 	assert_contains "_install_qbittorrent custom symlink pointing outside home uses command_privilege" "$?" "${out_sym_escape}" "PRIV_USED:"
 
+	# Symlinked destination binary rejected without clobbering the symlink target
+	sym_inst_dir="${test_root}/sym_inst_dir"
+	mkdir -p -- "${sym_inst_dir}"
+	printf 'DO_NOT_OVERWRITE\n' > "${test_root}/inst_victim"
+	ln -s -- "${test_root}/inst_victim" "${sym_inst_dir}/qbittorrent-nox"
+	sym_dst_out="$(PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${sym_inst_dir}" 2>&1)"
+	assert_fail_contains "_install_qbittorrent refuses symlinked destination binary" "$?" "${sym_dst_out}" "Refusing to overwrite unsafe install target"
+	assert_eq "_install_qbittorrent left symlink destination victim untouched" "DO_NOT_OVERWRITE" "$(< "${test_root}/inst_victim")"
+
 	# Traversal and missing path rejected
 	(PATH="${mock_id_dir}:${PATH}" _install_qbittorrent install custom "${inst_home}/../escape" > /dev/null 2>&1)
 	assert_exit "_install_qbittorrent custom rejects .. traversal" 1 "$?"
@@ -3255,7 +3405,7 @@ printf '\n=== 14. Script Version Check & Release Info Tests ===\n'
 			ri_rc=$?
 			assert_contains "_release_info renders ${arch_key} row" "${ri_rc}" "$(< "${qbt_install_dir}/release_info/qt6-${arch_key}-release.md")" "${triplet_col}"
 		done
-		assert_contains "_release_info defaults revision to 0 on new tag" 0 "$(< "${qbt_install_dir}/release_info/qt6-dependency-version.json")" '"revision": "0"'
+		assert_contains "_release_info defaults revision to 0 on new tag" "${ri_rc}" "$(< "${qbt_install_dir}/release_info/qt6-dependency-version.json")" '"revision": "0"'
 
 		# Non-object JSON array containing "revision":"99" must be rejected by jq (NOT parsed by sed!) and emit zero stderr
 		_git_git() { return 0; }
@@ -3315,7 +3465,10 @@ printf '\n=== 15. Dependency Checker (_check_dependencies) Tests ===\n'
 		cat > "${mdir}/dpkg" <<- EOF
 			#!/bin/bash
 			printf 'dpkg %s\n' "\$*" >> "${log}"
-			if [[ -f "${mdir}/installed_all" ]]; then exit 0; fi
+			if [[ -f "${mdir}/installed_all" || ${pkg_rc} -eq 0 ]]; then
+				printf 'Status: install ok installed\n'
+				exit 0
+			fi
 			exit ${pkg_rc}
 		EOF
 		cat > "${mdir}/apt" <<- EOF
@@ -3382,6 +3535,19 @@ printf '\n=== 15. Dependency Checker (_check_dependencies) Tests ===\n'
 		chmod +x -- "${mdir2}/apt-get"
 		(PATH="${mdir2}:${PATH}" _check_dependencies install_core > /dev/null 2>&1)
 		assert_exit "_check_dependencies install_core exits 1 when deps still missing after install" 1 "$?"
+
+		# dpkg -s exiting 0 with 'Status: deinstall ok config-files' must be treated as uninstalled (false)
+		mdir_rc="${test_root}/dep_deinstall_rc"
+		dlog_rc="${test_root}/dep_deinstall_rc.log"
+		setup_dep_mocks "${mdir_rc}" "bob" 1 0 0 "${dlog_rc}"
+		cat > "${mdir_rc}/dpkg" << 'EOF'
+#!/bin/bash
+printf 'Status: deinstall ok config-files\n'
+exit 0
+EOF
+		chmod +x -- "${mdir_rc}/dpkg"
+		rc_state_out="$(PATH="${mdir_rc}:${PATH}" _check_dependencies zlib 2>&1)"
+		assert_fail_contains "_check_dependencies treats dpkg deinstall config-files state as missing" "$?" "${rc_state_out}" "apt-get install -y"
 		save_counts
 	)
 	load_counts
@@ -4020,6 +4186,21 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 	assert_exit "-cd cache..v2 rm allows double-dot directory name" 0 "$?"
 	assert_dir_missing "-cd cache..v2 rm removed cache..v2" "${safe_home}/cache..v2"
 
+	# -cd <dir> rm removes 0500 read-only cached subdirectories (rm -rf alone gets EACCES on their entries), and exits 1 if rm fails
+	mkdir -p -- "${safe_home}/ro_cache/pack"
+	printf 'packdata\n' > "${safe_home}/ro_cache/pack/obj"
+	chmod 0444 "${safe_home}/ro_cache/pack/obj"
+	chmod 0500 "${safe_home}/ro_cache/pack"
+	HOME="${safe_home}" "${cli_dir}/qbt-nox-static.bash" -cd "${safe_home}/ro_cache" rm > /dev/null
+	assert_exit "-cd ro_cache rm removes read-only subdirectories cleanly" 0 "$?"
+	assert_dir_missing "-cd ro_cache rm deleted read-only cache tree" "${safe_home}/ro_cache"
+
+	mkdir -p -- "${safe_home}/fail_rm_cache" "${test_root}/fail_rm_bin"
+	printf '#!/bin/sh\nexit 1\n' > "${test_root}/fail_rm_bin/rm"
+	chmod +x -- "${test_root}/fail_rm_bin/rm"
+	fail_rm_out="$(PATH="${test_root}/fail_rm_bin:${PATH}" HOME="${safe_home}" "${cli_dir}/qbt-nox-static.bash" -cd "${safe_home}/fail_rm_cache" rm 2>&1)"
+	assert_fail_contains "-cd rm exits 1 when rm fails instead of reporting false success" "$?" "${fail_rm_out}" "Failed to remove cache directory"
+
 	# Value-taking option-loop-1 flags reject missing or -* values
 	for loop1_flag in -b --build-directory -cd --cache-directory -p --proxy; do
 		"${cli_dir}/qbt-nox-static.bash" "${loop1_flag}" -d > /dev/null 2>&1
@@ -4239,6 +4420,24 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 	assert_contains "CRLF .qbt_env preserved qbt_zlib_type=zlib-ng without CR" "${bsef_rc}" "$(< "${cli_off_qt5}/.qbt_env")" 'qbt_zlib_type="zlib-ng"'
 	rm -f -- "${cli_off_qt5}/.qbt_env"
 
+	# -bs-ef escapes ", $, `, and \ safely and never executes command substitutions when sourced
+	pwn_env_marker="${test_root}/bsef_pwned"
+	special_bdir="/tmp/quote\"dollar\$VAR_cmd\$(touch ${pwn_env_marker})_back\\slash"
+	multiline_mcm=$'userdocs/qbt-musl-cross-make\ntouch '"${pwn_env_marker}"
+	qbt_mcm_url="${multiline_mcm}" "${cli_off_qt5}/qbt-nox-static.bash" -b "${special_bdir}" -bs-ef > /dev/null
+	assert_exit "-bs-ef with special chars exits 0" 0 "$?"
+	bash -n "${cli_off_qt5}/.qbt_env"
+	assert_exit "-bs-ef with quotes and dollars produces valid bash syntax" 0 "$?"
+	roundtrip_vals="$(
+		unset qbt_build_dir qbt_mcm_url
+		# shellcheck source=/dev/null
+		source "${cli_off_qt5}/.qbt_env"
+		printf '%s|%s' "${qbt_build_dir}" "${qbt_mcm_url}"
+	)"
+	assert_pass_eq "-bs-ef round-trips literal quotes, dollars, backslashes, and newlines when sourced" "$?" "${special_bdir}|${multiline_mcm}" "${roundtrip_vals}"
+	assert_file_missing "-bs-ef escaped command substitution did not execute on source" "${pwn_env_marker}"
+	rm -f -- "${cli_off_qt5}/.qbt_env"
+
 	# -bs-ef refuses symlinked .qbt_env if created mid-run or present
 	printf 'qbt_qt_version="6"\n' > "${cli_off}/.qbt_env"
 	"${cli_off}/qbt-nox-static.bash" -q -bs-ef > /dev/null 2>&1
@@ -4258,8 +4457,9 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 	assert_file_exists "-bs-r creates tag.md in custom -b dir" "${bs_build}/release_info/tag.md"
 
 	bsa_build="${test_root}/cli_bsa_build"
-	"${cli_off}/qbt-nox-static.bash" -b "${bsa_build}" -bs-a > /dev/null
-	assert_exit "-b <dir> -bs-a exits 0" 0 "$?"
+	out_bsa="$("${cli_off}/qbt-nox-static.bash" -b "${bsa_build}" -bs-a)"
+	bsa_rc=$?
+	assert_contains "-b <dir> -bs-a exits 0 and keeps 'all' in supported modules" "${bsa_rc}" "${out_bsa}" " all "
 	assert_dir_exists "-bs-a creates patches in custom -b dir" "${bsa_build}/patches/zlib/1.3.2/source"
 	assert_file_exists "-bs-a creates release_info in custom -b dir" "${bsa_build}/release_info/title.md"
 
@@ -4288,6 +4488,13 @@ printf '\n=== 17. End-to-End CLI Tests (OS Matrix, All Help Flags, Option Loops 
 	assert_exit "-cd <dir> bs runs download and skips module build & boost check" 0 "$?"
 	assert_file_exists "-cd bs cached zlib" "${cd_bs_dir}/zlib.cached"
 	assert_file_exists "-cd bs cached libtorrent" "${cd_bs_dir}/libtorrent.cached"
+
+	bsp_all_cache="${test_root}/cli_bsp_all_cache"
+	bsp_all_build="${test_root}/cli_bsp_all_build"
+	"${cli_cd_bs}/qbt-nox-static.bash" -b "${bsp_all_build}" -cd "${bsp_all_cache}" bs -bs-p all > /dev/null
+	assert_exit "-bs-p combined with 'all' passes module validation and exits 0" 0 "$?"
+	assert_dir_exists "-bs-p all created patch dir" "${bsp_all_build}/patches/qbittorrent/5.1.0/source"
+	assert_file_exists "-bs-p all expanded 'all' and cached qbittorrent" "${bsp_all_cache}/qbittorrent.cached"
 
 	save_counts
 )
@@ -4355,10 +4562,35 @@ printf '\n=== 18. Script Integrity, Sourcing Safety & Contract Regression Tests 
 		fail "duplicate color_end" "found duplicate color_end sequence"
 	fi
 
-	# 18b. 100% parity between -h env help and _print_env
+	# 18b. 100% parity between -h env help, _print_env, and _write_qbt_env_template output
 	help_env_vars="$(awk '/-h \| --help\)/,/-h-b \|/' "${target_script}" | grep -oE 'export qbt_[a-zA-Z0-9_]+=' | sed 's/^export //; s/=$//' | sort -u)"
 	print_env_vars="$(awk '/^_print_env\(\) \{/,/^\}/' "${target_script}" | grep -oE 'qbt_[a-zA-Z0-9_]+=' | sed 's/=$//' | sort -u)"
+	tmpl_env_vars="$(
+		load_lib
+		script_parent_path="${test_root}/parity_env_dir"
+		mkdir -p -- "${script_parent_path}"
+		_write_qbt_env_template "empty" > /dev/null
+		grep -oE '^qbt_[a-zA-Z0-9_]+=' "${script_parent_path}/.qbt_env" | sed 's/=$//' | sort -u
+	)"
 	assert_eq "-h env documentation matches _print_env variables 1:1" "${print_env_vars}" "${help_env_vars}"
+	assert_pass_eq "_write_qbt_env_template output matches _print_env variables 1:1" "$?" "${print_env_vars}" "${tmpl_env_vars}"
+	# Full mode must write the same value per key that _print_env shows (catches key-to-variable/github_tag mapping drift)
+	env_value_parity="$(
+		load_lib
+		script_parent_path="${test_root}/parity_full_env_dir"
+		mkdir -p -- "${script_parent_path}"
+		github_tag=([openssl]="openssl-3.5.0" [boost]="boost-1.88.0" [libtorrent]="v2.0.11" [qtbase]="v6.9.0" [qbittorrent]="release-5.1.0")
+		qbt_advanced_view="yes"
+		_write_qbt_env_template "full" > /dev/null || exit 1
+		shown="$(_print_env | sed -e 's/'$'\e''\[[0-9;]*m//g' -e 's/^[[:space:]]*//' | grep -E '^qbt_' | sort)"
+		written="$(grep -E '^qbt_' "${script_parent_path}/.qbt_env" | sort)"
+		if [[ ${shown} == "${written}" ]]; then
+			printf 'MATCH'
+		else
+			diff <(printf '%s\n' "${shown}") <(printf '%s\n' "${written}")
+		fi
+	)"
+	assert_pass_eq "_write_qbt_env_template full mode writes the values _print_env shows" "$?" "MATCH" "${env_value_parity}"
 
 	# 18c. Every flag advertised in -h has a matching case handler in Option Loop 1 or Option Loop 2
 	help_flags="$(awk '/-h \| --help\)/,/-h-b \|/' "${target_script}" | sed -E 's/\$\{[^}]+\}//g' | grep -oE '(^|[[:space:]])--?[a-z][a-z0-9-]*([[:space:]]|$)' | tr -d ' \t' | sort -u)"

@@ -1,4 +1,4 @@
-### v2.2.6 - 22/11/2026
+### v2.2.6 - 28/11/2026
 
 Final-state audit of `qbt-nox-static.bash` (`v2.2.6`) and `tests/unit_tests.bash`.
 
@@ -6,66 +6,66 @@ Final-state audit of `qbt-nox-static.bash` (`v2.2.6`) and `tests/unit_tests.bash
 
 - **Path canonicalization & segment-exact traversal checks**: `_resolve_path` resolves symlinks and
   non-existent tails while `_validate_path` matches `..` strictly as path segments (`..`, `../*`,
-  `*/../*`, `*/..`), preserving valid names like `foo..bar` and rejecting `.` and `-*` in `"name"` mode.
-- **Safe `-cd <dir> rm` & `install custom` privilege scoping**: `-cd <dir> rm` refuses `/`, `.`, `..`,
-  `$HOME`, `$PWD`, the script directory, their ancestors, and regular files before `rm -rf --` (exit `0`);
-  `install custom` elevates privileges only when an absolute target resolves outside `$LOCAL_USER_HOME`.
-- **GitHub repository validation**: `_validate_github_repo` enforces `owner/repo` and rejects `.` and `..`
-  segments for `-pr`, `qbt_patches_url`, the libtorrent `Jamfile` fallback, and `qbt_revision_url`; curl
-  collapses dot segments, so `-pr ../..` resolved to `https://github.com/` and passed the existence probe.
-- **Exact `git ls-remote` ref lookups**: `_git <url> -t <ref>` places `--` before `<url>` and rejects
-  leading `-`, whitespace, control characters, and glob characters including git's `\` wildmatch escape
-  (`-lt 'v1\.0'` matched `v1.0`), querying only exact `refs/heads/<ref>` and `refs/tags/<ref>`.
-- **Symlink, non-regular file & atomic write guards**: `.qbt_env` loading and `_write_qbt_env_template`,
-  `_cache_dirs_qbt_env_copy`, `_tee`, `_apply_patches`, and `.active-toolchain-info` reject symlinks
-  (`-L`) and non-regular targets, staging writes via `mktemp`/`.tmp` + `mv -f --`.
-- **Remote patch staging**: `_download_remote` stages every download (and API listing) in a temp file
-  and moves only non-empty results into place, so failed or empty responses never clobber files from an
-  earlier repository; download URLs must be `https?://` and remote names must be plain filenames.
-- **Option terminators, `%s` formatting & isolated OS probing**: External file, archive, git, and `curl`
-  calls pass `--` before operands, untrusted values print via `%s` rather than `%b`, and `get_os_info`
-  sources `/etc/os-release` in a subshell so `ID`, `NAME`, and friends never leak into the caller.
+  `*/../*`, `*/..`), preserving valid names like `foo..bar` while blocking directory traversal.
+- **Safe `-cd <dir> rm` & `_install_qbittorrent` guards**: `-cd <dir> rm` refuses `/`, `.`, `..`, `$HOME`,
+  `$PWD`, the script directory, their ancestors, and regular files, makes read-only cached subtrees writable
+  before `rm -rf --`, and exits `1` if removal fails; `_install_qbittorrent` refuses a symlinked or
+  non-regular destination binary (`cp -f` otherwise writes through it, as root under `sudo`) and elevates
+  privileges only for absolute paths outside `$LOCAL_USER_HOME`.
+- **GitHub repository & exact git ref validation**: `_validate_github_repo` enforces `owner/repo` and
+  rejects `.` and `..` segments (which `curl` collapses) across `-pr`, `qbt_patches_url`, the `Jamfile`
+  fallback, and `qbt_revision_url`; `_git <url> -t <ref>` places `--` before `<url>` and rejects leading
+  `-`, whitespace, control chars, and globs including `\` (`-lt 'v1\.0'`), matching exact heads/tags only.
+- **Symlink, non-regular file & escaped `.qbt_env` writes**: `.qbt_env` loading, `_write_qbt_env_template`,
+  `_cache_dirs_qbt_env_copy`, `_tee`, `_apply_patches`, `_download_file`, `_multi_arch`, and
+  `.active-toolchain-info` reject symlinks (`-L`) and non-regular targets; `_write_qbt_env_template`
+  serializes keys in pure Bash (escaping `\`, `"`, `$`, `` ` ``) and stages via `mktemp` + `mv -f --`, so
+  quotes, dollars, and newlines round-trip literally and never execute commands when `.qbt_env` is sourced.
+- **Staged downloads, option terminators & subshell OS probing**: Source, toolchain, `Jamfile`, and remote
+  patch downloads stage to temp files and move only non-empty results into place (source/toolchain `.tmp`
+  paths are unlinked first so a planted symlink is never written through; URLs must be `https?://` and names
+  plain filenames); external commands pass `--`, untrusted strings format via `%s`, and `get_os_info`
+  sources `/etc/os-release` in a `set +u` subshell without leaking variables or failing on unset keys.
 
 ### Bug & Regression Fixes
 
 - **Sourcing safety & variable scope hygiene**: All four top-level execution blocks are guarded by
   `[[ ${BASH_SOURCE[0]} == "${0}" ]]` with `declare -gA` maps, `local` helper state, and no top-level
   `readonly` declarations so `bash -ec` double-sourcing exits `0` and preserves `PWD`, `IFS`, and `LC_ALL`.
-- **Debian/Ubuntu static CRT & RISC-V `glibc` linking**: `_custom_flags` adds `-B${lib_dir}` on static
-  Debian/Ubuntu builds (except `glibc` and `*_host_deps`), omits `-fno-plt` when building `glibc` (fixing
-  GCC 15 RISC-V `localedef` segfaults), and resets `LDFLAGS` in `_custom_flags_reset`.
+- **Debian/Ubuntu static CRT, RISC-V `glibc` & `dpkg` status**: `_custom_flags` adds `-B${lib_dir}` on
+  static Debian/Ubuntu builds (except `glibc` and `*_host_deps`), omits `-fno-plt` for `glibc`, and resets
+  `LDFLAGS` in `_custom_flags_reset`; `_check_dependencies` requires `Status: install ok installed` from
+  `dpkg -s` (which exits `0` on removed `deinstall ok config-files` packages) and allows unprivileged runs
+  when all dependencies are already installed.
 - **Host-deps isolation & cross-build guards**: `*_host_deps` builds (`qbt_with_qemu=no`) use host
   `/usr/bin/gcc` and LTO wrappers scoped to `${qbt_host_deps_path}/{include,lib}`, strip `_host_deps` for
-  patches/ICU/cleanup, and are deleted on native builds after checking positional `icu`/`icu_host_deps`.
-- **Multi-arch & `-o` ordering**: `-o`/`--optimise` is rejected with cross targets in any flag order,
-  `-bs-ma` rejects `default`, and `_multi_arch` resets `skip_toolchain_extract` per call and forces
-  extraction during `bootstrap` and `bs` runs.
-- **Non-interactive patch rollback & idempotent merging**: `_apply_patch` runs
-  `patch -p1 --batch --forward --dry-run` before applying (`--no-backup-if-mismatch -r -`) so failed or
-  reversed patches never hang or leave partial edits, `.orig`, or `.rej` files.
-- **Multi-repo & CRLF patch assembly**: `_process_local_patches` strips `\r`, matches merge markers via
-  `grep -Fxq --`, records `# Merged from URL:` when `cmp -s` skips identical patches, ensures trailing
-  newlines, and namespaces colliding files across `qbt_patches_url` repositories.
-- **Shallow git cache updates**: `-cd <dir> bs` copies cached repos before patching, passes
-  `-c advice.detachedHead=false` per command instead of `--global`, and updates advancing shallow branches
-  via `git fetch --force --depth=1` + `checkout -f -B <branch> FETCH_HEAD`.
-- **Deferred bootstrap & `.qbt_env` parity**: Value-taking flags reject missing or `-*` values, `--`
-  forwards operands, `-bs-c` is handled in both loops, deferred bootstrap flags run after `_error_tag`
-  (leaving zero `error_tag` directories), and `.qbt_env` strips `\r` and writes beside the script.
-- **Qt/build-tool precedence, versions & builders**: `qbt_qt_version=5` keeps `qmake` unless `-c` was set
-  on the CLI, minor pins (`5.15`, `6.8`) map to major keys, non-numeric `-lt`/`-qtt` branches preserve
-  numeric defaults, `_semantic_version` orders dash prereleases in pure Bash, `jq` validates JSON types,
-  unprivileged runs work when dependencies exist, and builders check steps via `_post_command`/`_cmd`.
+  patches/ICU/cleanup, and are deleted on native builds after checking positional `icu`/`icu_host_deps`;
+  `-o`/`-si` reject cross targets in any order, and `_multi_arch` resets `skip_toolchain_extract` per call.
+- **Rollback-safe patches, archives & shallow git caches**: `_apply_patch` runs
+  `patch -p1 --batch --forward --dry-run` before applying (`--no-backup-if-mismatch -r -`) for clean
+  rollback; `_process_local_patches` strips `\r`, matches markers via `grep -Fxq --`, records identical
+  `cmp -s` URLs, ensures trailing newlines, and namespaces multi-repo collisions; `_download_file` and
+  `_multi_arch` preserve prior cached archives on failed downloads; a patch dir holding only a `Jamfile` now
+  forces a clean clone/extract like other patch files; `-cd <dir> bs` copies cached repos and
+  updates shallow branches via `git fetch --force --depth=1` + `checkout -f -B <branch> FETCH_HEAD`.
+- **Bootstrap, CLI precedence, JSON & builders**: `_apply_patches bootstrap` preserves
+  `qbt_modules_install[all]` so `-bs-p all` and `-bs-a all` succeed; deferred bootstrap flags run after
+  `_error_tag`; `_tee` skips empty `mkdir` on `/file` paths; `qbt_qt_version=5` keeps `qmake` unless `-c` is
+  passed on the CLI; non-numeric `-lt`/`-qtt` branches preserve numeric defaults; `_semantic_version` orders
+  dash prereleases in pure Bash; `jq` validates JSON container types; and builders verify steps via
+  `_post_command`/`_cmd`.
 
 ### Unit Test Suite
 
 - **Direct sourcing & non-vacuous assertions**: `tests/unit_tests.bash` sources `qbt-nox-static.bash`
   directly via its `${BASH_SOURCE[0]}` guard and enforces expected exit codes inside every output helper
   (`assert_pass_eq`, `assert_contains`, `assert_not_contains`, `assert_match`, `assert_fail_contains`,
-  `assert_fail_not_contains`) in single invocations.
-- **Self-contained 914-assertion offline suite**: 18 isolated sections cover OS/arch matrices, C++14–C++23
-  resolution, `_semantic_version`, dependency gating, path/repo/tag/archive/symlink guards, CRLF `.qbt_env`
-  handling, dry-run patch rollback, shallow cache updates, all 24 mocked module builds, and CLI contracts.
+  `assert_fail_not_contains`) in single invocations with real captured statuses.
+- **Self-contained 948-assertion offline suite**: 18 isolated sections cover OS/arch matrices, C++14–C++23
+  resolution, `_semantic_version`, `dpkg` `rc`-state and unprivileged dependency gating, symlink/path/repo/ref
+  guards, escaped `.qbt_env` round-trips and key/value parity with `_print_env`, dry-run patch and cache
+  download rollbacks, shallow branch updates,
+  all 24 mocked module builds, `bash -ec`/`bash -eu` sourcing invariants, and CLI/help contracts.
 
 ### v2.2.5 - 23/04/2026
 
